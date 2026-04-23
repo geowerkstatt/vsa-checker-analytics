@@ -15,6 +15,7 @@ jobs:
     permissions:
       actions: read
       contents: read
+      packages: read
       security-events: write
 
     strategy:
@@ -30,6 +31,10 @@ jobs:
       uses: github/codeql-action/init@v4
       with:
         languages: ${{ matrix.language }}
+
+    - name: Authenticate to GitHub Packages
+      if: matrix.language == 'csharp'
+      run: dotnet nuget update source github-geowerkstatt --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text
 
     - name: Autobuild
       uses: github/codeql-action/autobuild@v4
