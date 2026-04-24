@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'csharp', 'javascript', 'actions' ]
+        language: [ 'csharp', 'actions' ]
 
     steps:
     - name: Checkout repository
