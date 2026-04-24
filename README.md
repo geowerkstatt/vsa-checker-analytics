@@ -2,7 +2,7 @@
 
 ## Setup
 
-The project references the [GeoWerkstatt.Geopilot.PipelineCore](https://github.com/geowerkstatt/geopilot/pkgs/nuget/GeoWerkstatt.Geopilot.PipelineCore/) NuGet package.
+The project references the [GeoWerkstatt.Geopilot.PipelineCore](https://github.com/geowerkstatt/geopilot/pkgs/nuget/GeoWerkstatt.Geopilot.PipelineCore/) NuGet package, published on the GitHub registry.
 The GitHub registry requires every user to authenticate before they can pull packages. Because of that, you need add authentication to your NuGet configuration before pulling the package.
 You can use the following command to add the authentication:
 ```bash
