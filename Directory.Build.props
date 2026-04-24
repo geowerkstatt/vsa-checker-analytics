@@ -1,0 +1,23 @@
+<Project>
+
+  <PropertyGroup>
+    <Product>VsaCheckerAnalytics</Product>
+    <Authors>GeoWerkstatt GmbH</Authors>
+    <Company>GeoWerkstatt GmbH</Company>
+    <Copyright>© GeoWerkstatt GmbH</Copyright>
+    <PackageProjectUrl>https://github.com/GeoWerkstatt/vsa-checker-analytics</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/GeoWerkstatt/vsa-checker-analytics.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <AnalysisLevel>10.0-recommended</AnalysisLevel>
+	<GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <VersionPrefix>1.0</VersionPrefix>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

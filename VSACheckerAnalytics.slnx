@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="nuget.config" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="src/VSACheckerAnalytics/VSACheckerAnalytics.csproj" />
+  <Project Path="tests/VSACheckerAnalytics.Test/VSACheckerAnalytics.Test.csproj" Id="fba26c5b-3c55-4237-bc75-93ec62d6bfc2" />
+</Solution>
