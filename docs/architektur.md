@@ -2,7 +2,7 @@
 
 ## Zweck
 
-Der VSA Checker validiert und aggregiert Geodaten aus dem Bereich Siedlungsentwässerung (GEP — Genereller Entwässerungsplan). Die Pipeline nimmt hochgeladene Dateien des Benutzers entgegen, gleicht sie gegen mitgelieferte Vorlagen und Referenztabellen ab und liefert ein gebündeltes ZIP-Paket mit aggregiertem GeoPackage, Statistik-Tabellen und QGIS-Projektdatei zurück.
+Der VSA Checker aggregiert Geodaten aus dem Bereich Siedlungsentwässerung in den Datenmodellen VSA-DSS Mini 2020 und VSA-DSS Mini 2020.1 gemeinsam mit ihren Prüflogs aus dem GEP-Checker des VSA (CHECKVSA). Die Pipeline nimmt hochgeladene Dateien des Benutzers entgegen, konvertiert sie in ein GeoPackage und reichert dieses mit mitgelieferte Vorlagen und Referenztabellen an. Output ist ein ZIP-Paket mit aggregiertem GeoPackage, Statistik-Tabellen gemäss einer definierten Excel-Vorlage und eine QGIS-Projektdatei zur Visualisierung des GeoPackages.
 
 ## Übersicht
 
@@ -14,8 +14,8 @@ flowchart
 	subgraph appResources["Application Ressources"]
 		geoPackageTemplates@{ shape: "docs", label: "Geo Package Templates (2020, 2020.1)" }
 		orgTables@{ shape: "docs", label: "Org Tables (XTF: 2020, 2020.1)" }
-		errorMatrix@{ shape: "doc", label: "Error-Matrix (XLS)" }
-		qgisProject@{ shape: "doc", label: "QGIS Project File (XML)" }
+		errorMatrix@{ shape: "doc", label: "Error-Matrix (XLSX)" }
+		qgisProject@{ shape: "doc", label: "QGIS Project File (QGZ)" }
 	end
 	subgraph vsaCheckerPipeline["VSA Checker Pipeline"]
 		vsaMatcher["VSA Matcher"]
@@ -40,8 +40,8 @@ flowchart
 	
 	aggregationProcess
 	networkTopology
-	aggregationProcess ---|"Aggregated GPGK with statistics"| networkTopology
-	aggregationProcess ---|"Aggregated GPGK with statistics"| excelMapper
+	aggregationProcess ---|"Aggregated GPKG with statistics"| networkTopology
+	aggregationProcess ---|"Aggregated GPKG with statistics"| excelMapper
 	vsaMatcher ---|"QGIS Project File"| zipPacker
 	networkTopology ---|"complete GPKG"| zipPacker
 	excelMapper ---|"3 XLSX ('SO', 'Haltung' and 'Knoten')"| zipPacker
@@ -61,11 +61,11 @@ schreibgeschützt eingelesen.
 
 - **Geo Package Templates (2020, 2020.1)** — Vorlagen-GeoPackages, die als
   Schema-Grundlage für das aggregierte Ausgabe-GPKG dienen. Die Versionsnummern
-  entsprechen den VSA-Datenmodellversionen. Die verwendete Version wird anhand der Version des hochgeladenen GEPs bestimmt.
+  entsprechen den VSA-Datenmodellversionen. Die verwendete Version wird anhand der Version der hochgeladenen GEP-Transferdatei (DSS Mini-XTF) bestimmt.
 - **Org Tables (XTF: 2020, 2020.1)** — Standard-Organisationstabellen im
-  INTERLIS-Transferformat (XTF), eine pro Datenmodellversion. Die verwendete Version wird anhand der Version des hochgeladenen GEPs bestimmt. Die Organisationstabellen enthalten Informationen über die am Projekt beteiligten Organisationen (z.B. Gemeinden, Ingenieurbüros) und werden für die Validierung und Anreicherung der Daten verwendet.
+  INTERLIS-Transferformat (XTF), eine pro Datenmodellversion. Die verwendete Version wird anhand der Version der hochgeladenen GEP-Transferdatei bestimmt. Die Organisationstabellen enthalten Informationen über die am Projekt beteiligten Organisationen (z.B. Gemeinden, Ingenieurbüros) und werden für die Validierung und Anreicherung der Daten verwendet.
 - **Error-Matrix (XLS)** — Excel-Tabelle mit der Definition möglicher
-  Validierungsfehler und deren Schweregrad / Kategorisierung. Anhand der Error-Matrix können die Ergebnisse des IG Checkers interpretiert und in die Validierungsergebnisse des VSA Checkers überführt werden. Die Error-Matrix dient als zentrale Referenz für die Fehlerklassifikation und ermöglicht eine konsistente Bewertung der Prüfergebnisse.
+  Validierungsfehler und deren Schweregrad / Kategorisierung. Anhand der Error-Matrix können die Ergebnisse des GEP-Datencheckers (CHECKVSA) interpretiert und damit das Validierungsergebnis mit zusätzlichen Informationen  angereichert  werden. Die Error-Matrix dient als zentrale Referenz für die Fehlerklassifikation und ermöglicht eine konsistente Bewertung der Prüfergebnisse.
 - **QGIS Project File (XML)** — Vorbereitetes QGIS-Projekt, das dem Endbenutzer
   ein direkt öffenbares Visualisierungs-Setup für die Ausgabedaten liefert.
 
@@ -78,27 +78,27 @@ Schritt.
 
 ### IG Checker Output Unzipper
 
-Entpackt das vom Benutzer hochgeladene IG-Checker-Resultat (ZIP) und stellt die enthaltenen Dateien — typischerweise drei Tripel aus CSV, XTF und Log-Datei — für den VSA Matcher bereit. Somit werden 9 Files aus dem ZIP extrahiert: die drei VSA-Prüfklassen `a`, `FP` und `T` <!-- TODO: Bedeutung der Kürzel ergänzen (z.B. a = Anschluss?) -->, jeweils als CSV, XTF und Log. Der Inhalt der verschiedenen Dateitypen ist der selbe aber in unterschiedlichen Formaten (CSV als tabellarische Darstellung, XTF als INTERLIS-Transferformat, Log als Rohtext mit Fehlermeldungen). Die weitere Verarbeitung erfolgt einfachheitshalber mit den CSV-Dateien, da sich diese am besten für die weitere Verarbeitung eignen.
+Entpackt das vom Benutzer hochgeladene GEP-Checker-Resultat (ZIP) und stellt die enthaltenen Dateien — typischerweise drei Tripel aus CSV, XTF und Log-Datei — für den VSA Matcher bereit. Somit werden 9 Files aus dem ZIP extrahiert: die drei VSA-Prüfklassen `a`, `FP` und `T` <!-- TODO: Bedeutung der Kürzel ergänzen (z.B. a = Anschluss?) -->, jeweils als CSV, XTF und Log. Der Inhalt der verschiedenen Dateitypen ist der selbe aber in unterschiedlichen Formaten (CSV als tabellarische Darstellung, XTF als INTERLIS-Transferformat, Log als Rohtext mit Fehlermeldungen). Die weitere Verarbeitung erfolgt einfachheitshalber mit den CSV-Dateien, da sich diese am besten für die weitere Verarbeitung eignen.
 
 Der Prozess, der welcher Zip Dateien extrahiert und folgenden Prozessen zur Verfügung stellt ist Teil von geopilot und wird daher im VSA Plugin nicht implementiert, sondern nur konfiguriert.
 
 ### VSA Matcher
 
-Prozessor, welcher die Eingabedaten aus User-Upload und IG-Checker-Output gemäss ihrer Semantik aufteilt, mit den passenden Application Resources anreichert und auf benannten Kanälen an die nachfolgenden Prozessoren weitergibt.
+Prozessor, welcher die Eingabedaten aus User-Upload und GEP-Checker-Output gemäss ihrer Semantik aufteilt, mit den passenden Application Resources anreichert und auf benannten Kanälen an die nachfolgenden Prozessoren weitergibt.
 
 **Inputs**:
 
-- **User-Upload**: GEP (definiert die Modellversion 2020 / 2020.1 und damit die Auswahl der Resources), optional eine Organisationstabelle.
-- **IG Checker Output**: 9 Dateien aus dem Unzipper (`a` / `FP` / `T` × CSV / XTF / Log) — der Matcher verwendet nur die CSV-Dateien für die Weiterverarbeitung.
+- **User-Upload**: DSS Mini-Transferdatei (definiert die Modellversion 2020 / 2020.1 und damit die Auswahl der Resources), optional eine Organisationstabelle.
+- **GEP-Checker-Output**: 9 Dateien aus dem Unzipper (`a` / `FP` / `T` × CSV / XTF / Log) — der Matcher verwendet nur die CSV-Dateien für die Weiterverarbeitung.
 - **Application Resources**: anhand der Modellversion aus dem GEP wird automatisch das passende Vorlage-GPKG und die passende Standard-Org-Tabelle gewählt; Error-Matrix und QGIS-Projektdatei sind versionsunabhängig.
 
 **Ausgabekanäle** (was an `Geopackage Generation` weitergegeben wird):
 
-- GEP (durchgereicht)
+- DSS Mini-Transferdatei (durchgereicht)
 - Modellversion: `2020` oder `2020.1` (extrahiert aus GEP)
 - Sprache: `DE` oder `FR` (extrahiert aus GEP) <!-- TODO: Wo wird die Sprache nachgelagert verwendet — Excel-Spaltenüberschriften? Fehlertexte aus der Error-Matrix? Beides? -->
 - Optionale Organisationstabelle (durchgereicht, falls vorhanden)
-- IG-Checker-CSVs (`a`, `FP`, `T`)
+- GEP-Checker-CSVs (`a`, `FP`, `T`)
 - Vorlage-GPKG (passend zur Modellversion)
 - Standard-Org-Tabelle (passend zur Modellversion)
 - Error-Matrix
@@ -106,11 +106,11 @@ Prozessor, welcher die Eingabedaten aus User-Upload und IG-Checker-Output gemäs
 
 Der VSA-Matcher enthält eine Liste von Post-Conditions, welche prüfen ob alle notwendigen Daten für die nachfolgenden Schritte vorhanden sind. Wenn eine Post-Condition fehlschlägt, wird der gesamte Prozess mit einem Fehler abgebrochen.
 
-- Exakt ein GEP muss vorhanden sein
+- Exakt eine DSS Mini-Transferdatei muss vorhanden sein
 - Exakt eine Modellversion muss definiert sein (2020 oder 2020.1)
 - Exakt eine Sprache muss definiert sein (DE oder FR)
 - Entweder keine oder genau eine Organisationstabelle (optional)
-- Drei Error Datensätze aus dem IG Checker Output müssen vorhanden sein (CSV: a, FP und T)
+- Drei Error Datensätze aus dem GEP-Checker-Output müssen vorhanden sein (CSV: a, FP und T)
 - Ein Geopackage Template muss vorhanden sein
 - Eine Standard-Organisationstabelle muss vorhanden sein
 - Eine Error-Matrix muss vorhanden sein
@@ -130,8 +130,8 @@ Die Aggregation umfasst drei Hauptschritte:
 
 **2. Fehleraufbereitung**:
 
-1. Import der Fehler aus dem IG Checker Output (CSV)
-2. Error-Matrix-Import (XLS)
+1. Import der Fehler aus dem GEP-Checker-Output (CSV)
+2. Error-Matrix-Import (XLSX)
 3. Verknüpfung der Fehler aus dem IG Checker mit den Definitionen in der Error-Matrix.
 
 **3. Statistiken** — diverse Joins und Aggregationen mit den Geodaten:
@@ -154,9 +154,9 @@ Komplettiert falls notwendig die Netztopologie und gibt dieses vervollständigte
 
 Erzeugt aus dem aggregierten GPKG drei XLSX-Tabellen:
 
-- **SO** - Kantonale Erweiterung Solothurn
-- **Haltung** - Tabellarische Darstellung der Haltungen (Rohrleitungen).
-- **Knoten** - Tabellarische Darstellung der Knoten (Schächte, Sonderbauwerke).
+- **Fehlerübersicht** - Tabellarische Darstellung der aggregierten Fehler und ihrer Bezugsobjekte mit einer Übersichtsstatistik
+- **Haltung** - Tabellarische Darstellung der Haltungen (Rohrleitungen) und aller Fehler, die mit ihnen assoziiert sind mit einer Übersichtsstatistik.
+- **Knoten** - Tabellarische Darstellung der Knoten (Schächte, Sonderbauwerke) und aller Fehler, die mit ihnen assoziiert sind mit einer Übersichtsstatistik..
 
 ### ZIP Packer
 
