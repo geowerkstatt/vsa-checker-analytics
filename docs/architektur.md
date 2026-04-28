@@ -64,7 +64,7 @@ schreibgeschützt eingelesen.
   INTERLIS-Transferformat (XTF), eine pro Datenmodellversion. Die verwendete Version wird anhand der Version der hochgeladenen GEP-Transferdatei bestimmt. Die Organisationstabellen enthalten Informationen über die am Projekt beteiligten Organisationen (z.B. Gemeinden, Ingenieurbüros) und werden für die Validierung und Anreicherung der Daten verwendet.
 - **Error-Matrix (XLS)** — Excel-Tabelle mit der Definition möglicher
   Validierungsfehler und deren Schweregrad / Kategorisierung. Anhand der Error-Matrix können die Ergebnisse des GEP-Datencheckers (CHECKVSA) interpretiert und damit das Validierungsergebnis mit zusätzlichen Informationen  angereichert  werden. Die Error-Matrix dient als zentrale Referenz für die Fehlerklassifikation und ermöglicht eine konsistente Bewertung der Prüfergebnisse.
-- **QGIS Project File (XML)** — Vorbereitetes QGIS-Projekt, das dem Endbenutzer
+- **QGIS Project File (QGZ)** — Vorbereitetes QGIS-Projekt, das dem Endbenutzer
   ein direkt öffenbares Visualisierungs-Setup für die Ausgabedaten liefert.
 
 ## Pipeline-Prozessoren
