@@ -1,5 +1,9 @@
 # VSA Checker Analytics
 
+## Architecture
+
+A description of the pipeline architecture and a flow chart of the processors can be found in the [architecture documentation](docs/architektur.md) (in German).
+
 ## Setup
 
 The project references the [GeoWerkstatt.Geopilot.PipelineCore](https://github.com/geowerkstatt/geopilot/pkgs/nuget/GeoWerkstatt.Geopilot.PipelineCore/) NuGet package, published on the GitHub registry.
