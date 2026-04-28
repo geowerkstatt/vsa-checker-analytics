@@ -2,7 +2,11 @@
 
 ## Zweck
 
-Der VSA Checker aggregiert Geodaten aus dem Bereich Siedlungsentwässerung in den Datenmodellen VSA-DSS Mini 2020 und VSA-DSS Mini 2020.1 gemeinsam mit ihren Prüflogs aus dem GEP-Checker des VSA (CHECKVSA). Die Pipeline nimmt hochgeladene Dateien des Benutzers entgegen, konvertiert sie in ein GeoPackage und reichert dieses mit mitgelieferte Vorlagen und Referenztabellen an. Output ist ein ZIP-Paket mit aggregiertem GeoPackage, Statistik-Tabellen gemäss einer definierten Excel-Vorlage und eine QGIS-Projektdatei zur Visualisierung des GeoPackages.
+Der VSA Checker aggregiert Geodaten aus dem Bereich Siedlungsentwässerung in den Datenmodellen VSA-DSS Mini 2020 und VSA-DSS Mini 2020.1 gemeinsam mit ihren Prüflogs aus dem GEP-Checker des VSA (CHECKVSA).
+
+Der **GEP-Checker (CHECKVSA)** ist ein eigenständiges, vorgelagertes VSA-Tool, das vom Benutzer separat ausgeführt wird und ein ZIP mit Prüflogs (CSV / XTF / Log je Prüfklasse) erzeugt. Dieses ZIP bildet zusammen mit dem GEP selbst den Input für den VSA Checker — CHECKVSA selbst ist nicht Teil dieser Architektur.
+
+Die Pipeline nimmt die hochgeladenen Dateien des Benutzers entgegen, konvertiert sie in ein GeoPackage und reichert dieses mit mitgelieferten Vorlagen und Referenztabellen an. Output ist ein ZIP-Paket mit aggregiertem GeoPackage, Statistik-Tabellen gemäss einer definierten Excel-Vorlage und eine QGIS-Projektdatei zur Visualisierung des GeoPackages.
 
 ## Übersicht
 
@@ -42,14 +46,14 @@ flowchart
 	aggregationProcess ---|"Aggregated GPKG with statistics"| excelMapper
 	vsaMatcher ---|"QGIS Project File"| zipPacker
 	networkTopology ---|"complete GPKG"| zipPacker
-	excelMapper ---|"3 XLSX ('SO', 'Haltung' and 'Knoten')"| zipPacker
+	excelMapper ---|"3 XLSX ('Fehlerübersicht', 'Haltung' and 'Knoten')"| zipPacker
 	zipPacker --- |"1 ZIP File"| fileDownload
 
 	classDef geopilotBuiltIn fill:#f5f5f5,stroke:#888,stroke-dasharray:5 5
 	class zipMatcher,igCheckerOutputUnzipper,zipPacker geopilotBuiltIn
 ```
 
-> Gestrichelte Knoten (`IG Checker Output Unzipper`, `ZIP Packer`) sind Built-In-Prozessoren von geopilot und werden im VSA-Plugin nur konfiguriert, nicht implementiert.
+> Gestrichelte Knoten (`ZIP Matcher`, `IG Checker Output Unzipper`, `ZIP Packer`) sind Built-In-Prozessoren von geopilot und werden im VSA-Plugin nur konfiguriert, nicht implementiert.
 
 ## Application Resources
 
@@ -62,8 +66,8 @@ schreibgeschützt eingelesen.
   entsprechen den VSA-Datenmodellversionen. Die verwendete Version wird anhand der Version der hochgeladenen GEP-Transferdatei (DSS Mini-XTF) bestimmt.
 - **Org Tables (XTF: 2020, 2020.1)** — Standard-Organisationstabellen im
   INTERLIS-Transferformat (XTF), eine pro Datenmodellversion. Die verwendete Version wird anhand der Version der hochgeladenen GEP-Transferdatei bestimmt. Die Organisationstabellen enthalten Informationen über die am Projekt beteiligten Organisationen (z.B. Gemeinden, Ingenieurbüros) und werden für die Validierung und Anreicherung der Daten verwendet.
-- **Error-Matrix (XLS)** — Excel-Tabelle mit der Definition möglicher
-  Validierungsfehler und deren Schweregrad / Kategorisierung. Anhand der Error-Matrix können die Ergebnisse des GEP-Datencheckers (CHECKVSA) interpretiert und damit das Validierungsergebnis mit zusätzlichen Informationen  angereichert  werden. Die Error-Matrix dient als zentrale Referenz für die Fehlerklassifikation und ermöglicht eine konsistente Bewertung der Prüfergebnisse.
+- **Error-Matrix (XLSX)** — Excel-Tabelle mit der Definition möglicher
+  Validierungsfehler und deren Schweregrad / Kategorisierung. Anhand der Error-Matrix können die Ergebnisse des GEP-Datencheckers (CHECKVSA) interpretiert und damit das Validierungsergebnis mit zusätzlichen Informationen angereichert werden. Die Error-Matrix dient als zentrale Referenz für die Fehlerklassifikation und ermöglicht eine konsistente Bewertung der Prüfergebnisse.
 - **QGIS Project File (QGZ)** — Vorbereitetes QGIS-Projekt, das dem Endbenutzer
   ein direkt öffenbares Visualisierungs-Setup für die Ausgabedaten liefert.
 
@@ -76,17 +80,17 @@ Schritt.
 
 ### ZIP Matcher
 
-Erkennt alle hochgeladenen ZIP-Dateien und stellt sie [IG Checker Output Unzipper] zur Verfügung.
+> Generischer geopilot-Built-In zur Selektion von Dateien aus dem Upload nach Dateityp. Wird im VSA-Plugin nur konfiguriert, nicht implementiert.
 
-Der Prozess, der welcher Zip Dateien erkennt und dem Unzipper zur Verfügung stellt ist Teil von geopilot und wird daher im VSA Plugin nicht implementiert, sondern nur konfiguriert.
+Erkennt alle hochgeladenen ZIP-Dateien und stellt sie dem [IG Checker Output Unzipper](#ig-checker-output-unzipper) zur Verfügung.
 
-Der Zip Packer enthält eine Post-Condition, welche sicherstellt, dass genau eine ZIP-Datei gefunden wurde. Wenn keine oder mehrere ZIP-Dateien gefunden werden, wird die Pipeline mit einem Fehler abgebrochen.
+Der ZIP Matcher enthält eine Post-Condition, welche sicherstellt, dass genau eine ZIP-Datei gefunden wurde. Wenn keine oder mehrere ZIP-Dateien gefunden werden, wird die Pipeline mit einem Fehler abgebrochen.
 
 ### IG Checker Output Unzipper
 
-Entpackt das vom Benutzer hochgeladene GEP-Checker-Resultat (ZIP) und stellt die enthaltenen Dateien — typischerweise drei Tripel aus CSV, XTF und Log-Datei — für den VSA Matcher bereit. Somit werden 9 Files aus dem ZIP extrahiert: die drei VSA-Prüfklassen `a`, `FP` und `T` <!-- TODO: Bedeutung der Kürzel ergänzen (z.B. a = Anschluss?) -->, jeweils als CSV, XTF und Log. Der Inhalt der verschiedenen Dateitypen ist der selbe aber in unterschiedlichen Formaten (CSV als tabellarische Darstellung, XTF als INTERLIS-Transferformat, Log als Rohtext mit Fehlermeldungen). Die weitere Verarbeitung erfolgt einfachheitshalber mit den CSV-Dateien, da sich diese am besten für die weitere Verarbeitung eignen.
+> Der Unzipper stammt aus der geopilot-Konfiguration und ist generisch — der Prozessor ist ein Built-In zum Entpacken beliebiger ZIPs und hat keinen direkten Bezug zum vorgelagerten GEP-Checker (CHECKVSA). In dieser Pipeline entpackt er dessen Output.
 
-Der Prozess, der welcher Zip Dateien extrahiert und folgenden Prozessen zur Verfügung stellt ist Teil von geopilot und wird daher im VSA Plugin nicht implementiert, sondern nur konfiguriert.
+Entpackt das vom Benutzer hochgeladene GEP-Checker-Resultat (ZIP) und stellt die enthaltenen Dateien — typischerweise drei Tripel aus CSV, XTF und Log-Datei — für den VSA Matcher bereit. Somit werden 9 Files aus dem ZIP extrahiert: die drei VSA-Prüfklassen `a` (ARA-Einzugsgebiet), `FP` (Fachprüfungen) und `T` (Trägerschaft), jeweils als CSV, XTF und Log. Der Inhalt der verschiedenen Dateitypen ist der selbe aber in unterschiedlichen Formaten (CSV als tabellarische Darstellung, XTF als INTERLIS-Transferformat, Log als Rohtext mit Fehlermeldungen). Die weitere Verarbeitung erfolgt einfachheitshalber mit den CSV-Dateien, da sich diese am besten für die weitere Verarbeitung eignen.
 
 ### VSA Matcher
 
@@ -104,7 +108,10 @@ Prozessor, welcher die Eingabedaten aus User-Upload und GEP-Checker-Output gemä
 - Modellversion: `2020` oder `2020.1` (extrahiert aus GEP)
 - Sprache: `DE` oder `FR` (extrahiert aus GEP) <!-- TODO: Wo wird die Sprache nachgelagert verwendet — Excel-Spaltenüberschriften? Fehlertexte aus der Error-Matrix? Beides? -->
 - Optionale Organisationstabelle (durchgereicht, falls vorhanden)
-- GEP-Checker-CSVs (`a`, `FP`, `T`)
+- GEP-Checker-CSVs
+  - `T`: "Prüfungsart: Trägerschaft"
+  - `A`: "Prüfungsart: "ARA-Einzugsgebiet"
+  - `FP`: "Prüfungsart: "Fachprüfungen"
 - Vorlage-GPKG (passend zur Modellversion)
 - Standard-Org-Tabelle (passend zur Modellversion)
 - Error-Matrix
@@ -138,7 +145,7 @@ Die Aggregation umfasst drei Hauptschritte:
 
 1. Import der Fehler aus dem GEP-Checker-Output (CSV)
 2. Error-Matrix-Import (XLSX)
-3. Verknüpfung der Fehler aus dem IG Checker mit den Definitionen in der Error-Matrix.
+3. Verknüpfung der Fehler aus dem GEP-Checker mit den Definitionen in der Error-Matrix.
 
 **3. Statistiken** — diverse Joins und Aggregationen mit den Geodaten:
 
@@ -162,9 +169,11 @@ Erzeugt aus dem aggregierten GPKG drei XLSX-Tabellen:
 
 - **Fehlerübersicht** - Tabellarische Darstellung der aggregierten Fehler und ihrer Bezugsobjekte mit einer Übersichtsstatistik
 - **Haltung** - Tabellarische Darstellung der Haltungen (Rohrleitungen) und aller Fehler, die mit ihnen assoziiert sind mit einer Übersichtsstatistik.
-- **Knoten** - Tabellarische Darstellung der Knoten (Schächte, Sonderbauwerke) und aller Fehler, die mit ihnen assoziiert sind mit einer Übersichtsstatistik..
+- **Knoten** - Tabellarische Darstellung der Knoten (Schächte, Sonderbauwerke) und aller Fehler, die mit ihnen assoziiert sind mit einer Übersichtsstatistik.
 
 ### ZIP Packer
+
+> Generischer geopilot-Built-In, der mehrere Eingabedateien zu einem ZIP bündelt. Wird im VSA-Plugin nur konfiguriert, nicht implementiert.
 
 Bündelt das Endergebnis aus drei Quellen zu einem einzigen ZIP-File:
 
@@ -172,12 +181,10 @@ Bündelt das Endergebnis aus drei Quellen zu einem einzigen ZIP-File:
 - Vollständiges GPKG (von Network Topology)
 - Drei XLSX-Tabellen (vom Excel Mapper)
 
-Dieser Prozess ist Teil von geopilot und wird daher im VSA Plugin nicht implementiert, sondern nur konfiguriert.
-
 Das resultierende ZIP wird dem Benutzer als File Download bereitgestellt.
 
 ## Fehlerverhalten
 
 - **VSA Matcher** prüft am Ende eine Liste von Post-Conditions (siehe [VSA Matcher](#vsa-matcher)). Schlägt eine fehl, wird die Pipeline mit einem Fehler abgebrochen — fail-fast vor jeder schwergewichtigen Verarbeitung (Aggregation, Topologie, Excel-Generierung).
-- **Geopilot-Built-Ins** (`IG Checker Output Unzipper`, `ZIP Packer`): Fehlerbehandlung erfolgt durch das Geopilot-Framework.
+- **Geopilot-Built-Ins** (`ZIP Matcher`, `IG Checker Output Unzipper`, `ZIP Packer`): Fehlerbehandlung erfolgt durch das Geopilot-Framework.
 - **Übrige Prozessoren** (`Geopackage Generation`, `Network Topology`, `Excel Mapper`): Prüfung in einer PRE-Condition ob die Daten vorhanden sind, ansonsten Abbruch mit Fehler.
