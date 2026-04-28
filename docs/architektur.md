@@ -18,8 +18,9 @@ flowchart
 		qgisProject@{ shape: "doc", label: "QGIS Project File (QGZ)" }
 	end
 	subgraph vsaCheckerPipeline["VSA Checker Pipeline"]
-		vsaMatcher["VSA Matcher"]
+		zipMatcher["ZIP Matcher"]
 		igCheckerOutputUnzipper["IG Checker Output Unzipper"]
+		vsaMatcher["VSA Matcher"]
 		aggregationProcess["Geopackage Generation"]
 		
 		networkTopology["Network Topology"]
@@ -28,7 +29,8 @@ flowchart
 	end
 	fileUpload@{ shape: "docs", label: "File Upload" }
 	fileDownload@{ shape: "doc", label: "File Download" }
-	fileUpload --- igCheckerOutputUnzipper
+	fileUpload --- zipMatcher
+	zipMatcher --- igCheckerOutputUnzipper
 	fileUpload ---|"GEP and Org. Table (ZIP unused)"| vsaMatcher
 	geoPackageTemplates --- vsaMatcher
 	orgTables --- vsaMatcher
@@ -36,10 +38,6 @@ flowchart
 	qgisProject --- vsaMatcher
 	errorMatrix --- vsaMatcher
 	vsaMatcher ---|"GEP, User Org. default Org, GPKG Template, Error Matrix, Language, Model"| aggregationProcess
-	aggregationProcess
-	
-	aggregationProcess
-	networkTopology
 	aggregationProcess ---|"Aggregated GPKG with statistics"| networkTopology
 	aggregationProcess ---|"Aggregated GPKG with statistics"| excelMapper
 	vsaMatcher ---|"QGIS Project File"| zipPacker
@@ -48,7 +46,7 @@ flowchart
 	zipPacker --- |"1 ZIP File"| fileDownload
 
 	classDef geopilotBuiltIn fill:#f5f5f5,stroke:#888,stroke-dasharray:5 5
-	class igCheckerOutputUnzipper,zipPacker geopilotBuiltIn
+	class zipMatcher,igCheckerOutputUnzipper,zipPacker geopilotBuiltIn
 ```
 
 > Gestrichelte Knoten (`IG Checker Output Unzipper`, `ZIP Packer`) sind Built-In-Prozessoren von geopilot und werden im VSA-Plugin nur konfiguriert, nicht implementiert.
@@ -75,6 +73,14 @@ Die Pipeline ist sequenziell und basiert auf den Abstraktionen aus
 `GeoWerkstatt.Geopilot.PipelineCore`. Jeder Prozessor erhält definierte
 Eingabe-Daten und produziert wohldefinierte Ausgaben für den nächsten
 Schritt.
+
+### ZIP Matcher
+
+Erkennt alle hochgeladenen ZIP-Dateien und stellt sie [IG Checker Output Unzipper] zur Verfügung.
+
+Der Prozess, der welcher Zip Dateien erkennt und dem Unzipper zur Verfügung stellt ist Teil von geopilot und wird daher im VSA Plugin nicht implementiert, sondern nur konfiguriert.
+
+Der Zip Packer enthält eine Post-Condition, welche sicherstellt, dass genau eine ZIP-Datei gefunden wurde. Wenn keine oder mehrere ZIP-Dateien gefunden werden, wird die Pipeline mit einem Fehler abgebrochen.
 
 ### IG Checker Output Unzipper
 
