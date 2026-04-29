@@ -25,7 +25,7 @@ flowchart
 	end
 	subgraph vsaCheckerPipeline["VSA Checker Pipeline"]
 		zipMatcher["ZIP Matcher"]
-		gepCheckerOutputUnzipper["GEP Checker Output Unzipper"]
+		unzipper["ZIP Unpacker"]
 		vsaMatcher["VSA Matcher"]
 		aggregationProcess["Geopackage Generation"]
 		
@@ -36,11 +36,11 @@ flowchart
 	fileUpload@{ shape: "docs", label: "File Upload" }
 	fileDownload@{ shape: "doc", label: "File Download" }
 	fileUpload --- zipMatcher
-	zipMatcher --- gepCheckerOutputUnzipper
+	zipMatcher --- unzipper
 	fileUpload ---|"GEP and Org. Table (ZIP unused)"| vsaMatcher
 	geoPackageTemplates --- vsaMatcher
 	orgTables --- vsaMatcher
-	gepCheckerOutputUnzipper ---|"3 * (CSV, XTF, log)"| vsaMatcher
+	unzipper ---|"3 * (CSV, XTF, log)"| vsaMatcher
 	qgisProject --- vsaMatcher
 	errorMatrix --- vsaMatcher
 	vsaMatcher ---|"GEP, User Org. default Org, GPKG Template, Error Matrix, Language, Model"| aggregationProcess
@@ -52,10 +52,10 @@ flowchart
 	zipPacker --- |"1 ZIP File"| fileDownload
 
 	classDef geopilotBuiltIn fill:#f5f5f5,stroke:#888,stroke-dasharray:5 5
-	class zipMatcher,gepCheckerOutputUnzipper,zipPacker geopilotBuiltIn
+	class zipMatcher,unzipper,zipPacker geopilotBuiltIn
 ```
 
-> Gestrichelte Knoten (`ZIP Matcher`, `GEP Checker Output Unzipper`, `ZIP Packer`) sind Built-In-Prozessoren von geopilot und werden im VSA-Plugin nur konfiguriert, nicht implementiert.
+> Gestrichelte Knoten (`ZIP Matcher`, `ZIP Unpacker`, `ZIP Packer`) sind Built-In-Prozessoren von geopilot und werden im VSA-Plugin nur konfiguriert, nicht implementiert.
 
 ## Application Resources
 
@@ -88,11 +88,11 @@ Schritt.
 
 > Generischer geopilot-Built-In zur Selektion von Dateien aus dem Upload nach Dateityp. Wird im VSA-Plugin nur konfiguriert, nicht implementiert.
 
-Erkennt alle hochgeladenen ZIP-Dateien und stellt sie dem [GEP Checker Output Unzipper](#gep-checker-output-unzipper) zur Verfügung.
+Erkennt alle hochgeladenen ZIP-Dateien und stellt sie dem [ZIP Unpacker](#zip-unpacker) zur Verfügung.
 
 Der ZIP Matcher enthält eine Post-Condition, welche sicherstellt, dass genau eine ZIP-Datei gefunden wurde. Wenn keine oder mehrere ZIP-Dateien gefunden werden, wird die Pipeline mit einem Fehler abgebrochen.
 
-### GEP Checker Output Unzipper
+### ZIP Unpacker
 
 > Generischer geopilot-Built-In zum Entpacken von ZIPs. Wird im VSA-Plugin nur konfiguriert, nicht implementiert.
 
@@ -193,5 +193,5 @@ Das resultierende ZIP wird dem Benutzer als File Download bereitgestellt.
 ## Fehlerverhalten
 
 - **VSA Matcher** prüft am Ende eine Liste von Post-Conditions (siehe [VSA Matcher](#vsa-matcher)). Schlägt eine fehl, wird die Pipeline mit einem Fehler abgebrochen — fail-fast vor jeder schwergewichtigen Verarbeitung (Aggregation, Topologie, Excel-Generierung).
-- **Geopilot-Built-Ins** (`ZIP Matcher`, `GEP Checker Output Unzipper`, `ZIP Packer`): Fehlerbehandlung erfolgt durch das Geopilot-Framework.
+- **Geopilot-Built-Ins** (`ZIP Matcher`, `ZIP Unpacker`, `ZIP Packer`): Fehlerbehandlung erfolgt durch das Geopilot-Framework.
 - **Übrige Prozessoren** (`Geopackage Generation`, `Network Topology`, `Excel Mapper`): Prüfung in einer PRE-Condition ob die Daten vorhanden sind, ansonsten Abbruch mit Fehler.
