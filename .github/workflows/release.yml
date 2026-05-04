@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    name: Build plugin and create a new GitHub release
+    permissions:
+      contents: write
+      packages: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set environment variables
+        run: |
+          echo VERSION=$(grep -oP "(?<=<VersionPrefix>)[^<]+" Directory.Build.props).$GITHUB_RUN_NUMBER >> $GITHUB_ENV
+
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0"
+
+      - name: Authenticate to GitHub Packages
+        run: dotnet nuget update source github-geowerkstatt --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text
+
+      - name: Publish plugin
+        run: dotnet publish src/VSACheckerAnalytics/VSACheckerAnalytics.csproj -c Release -p:Version=${{ env.VERSION }} -o publish
+
+      - name: Zip plugin output
+        run: |
+          cd publish
+          zip -r ../VSACheckerAnalytics-v${{ env.VERSION }}.zip .
+
+      - name: Create GitHub release with asset
+        run: |
+          gh release create "v${{ env.VERSION }}" \
+            --target ${{ github.sha }} \
+            --title "${{ env.VERSION }}" \
+            "VSACheckerAnalytics-v${{ env.VERSION }}.zip"
