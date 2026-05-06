@@ -100,11 +100,13 @@ Entpackt das vom Benutzer hochgeladene GEP-Checker-Resultat (ZIP) und stellt die
 
 ### VSA Matcher
 
+> Detaillierte technische Dokumentation (Konfiguration, Ein-/Ausgaben, ILI-Modellnamen, Validierung): [vsa-matcher.md](vsa-matcher.md)
+
 Prozessor, welcher die Eingabedaten aus User-Upload und GEP-Checker-Output gemäss ihrer Semantik aufteilt, mit den passenden Application Resources anreichert und auf benannten Kanälen an die nachfolgenden Prozessoren weitergibt.
 
 **Inputs**:
 
-- **User-Upload**: DSS Mini-Transferdatei (definiert die Modellversion 2020 / 2020.1 und damit die Auswahl der Resources), optional eine Organisationstabelle.
+- **User-Upload**: DSS Mini-Transferdatei (anhand des INTERLIS-Modellnamens werden Modellversion 2020 / 2020.1 und Sprache DE / FR bestimmt — beides steuert die Auswahl der Resources), optional eine Organisationstabelle.
 - **GEP-Checker-Output**: 9 Dateien aus dem Unzipper (`a` / `FP` / `T` × CSV / XTF / Log) — der Matcher verwendet nur die CSV-Dateien für die Weiterverarbeitung.
 - **Application Resources**: anhand der Modellversion aus dem GEP wird automatisch das passende Vorlage-GPKG gewählt; Error-Matrix und QGIS-Projektdatei sind versionsunabhängig.
 - **VSA Repository**: anhand der Modellversion wird die passende Standard-Org-Tabelle bei jedem Run frisch vom öffentlichen VSA-Repository geladen.
@@ -113,7 +115,7 @@ Prozessor, welcher die Eingabedaten aus User-Upload und GEP-Checker-Output gemä
 
 - DSS Mini-Transferdatei (durchgereicht)
 - Modellversion: `2020` oder `2020.1` (extrahiert aus GEP)
-- Sprache: `DE` oder `FR` (extrahiert aus GEP) <!-- TODO: Wo wird die Sprache nachgelagert verwendet — Excel-Spaltenüberschriften? Fehlertexte aus der Error-Matrix? Beides? -->
+- Sprache: `DE` oder `FR` (abgeleitet aus dem INTERLIS-Modellnamen des GEP)
 - Optionale Organisationstabelle (durchgereicht, falls vorhanden)
 - GEP-Checker-CSVs
   - `T`: "Prüfungsart: Trägerschaft"

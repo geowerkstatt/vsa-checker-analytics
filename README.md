@@ -4,6 +4,10 @@
 
 A description of the pipeline architecture and a flow chart of the processors can be found in the [architecture documentation](docs/architektur.md) (in German).
 
+Detailed process documentation:
+
+- [VSA Matcher](docs/vsa-matcher.md) -- configuration, inputs/outputs, file identification and validation rules
+
 ## Setup
 
 The project references the [GeoWerkstatt.Geopilot.PipelineCore](https://github.com/geowerkstatt/geopilot/pkgs/nuget/GeoWerkstatt.Geopilot.PipelineCore/) NuGet package, published on the GitHub registry.
