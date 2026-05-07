@@ -142,7 +142,6 @@ public sealed class VsaMatcherProcessTest
         Assert.IsNull(result["gpkg_template"]);
         Assert.IsNull(result["standard_org_table"]);
         Assert.IsNotNull(result["error_matrix"]);
-        Assert.IsNotNull(result["qgis_project"]);
     }
 
     [TestMethod]
@@ -306,7 +305,7 @@ public sealed class VsaMatcherProcessTest
     }
 
     [TestMethod]
-    public async Task RunAsync_CopiesErrorMatrixAndQgisProject()
+    public async Task RunAsync_CopiesErrorMatrix()
     {
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "VSADSSMINI_2020_LV95");
         var uploads = new TestPipelineFileList([gepFile]);
@@ -317,10 +316,6 @@ public sealed class VsaMatcherProcessTest
         var errorMatrix = result["error_matrix"] as IPipelineFile;
         Assert.IsNotNull(errorMatrix);
         Assert.AreEqual("xlsx", errorMatrix.FileExtension);
-
-        var qgisProject = result["qgis_project"] as IPipelineFile;
-        Assert.IsNotNull(qgisProject);
-        Assert.AreEqual("qgz", qgisProject.FileExtension);
     }
 
     [TestMethod]
@@ -343,7 +338,6 @@ public sealed class VsaMatcherProcessTest
         var templatePath2020 = fileFactory.CreateResourceFile("template_2020.gpkg");
         var templatePath20201 = fileFactory.CreateResourceFile("template_2020_1.gpkg");
         var errorMatrixPath = fileFactory.CreateResourceFile("error_matrix.xlsx");
-        var qgisProjectPath = fileFactory.CreateResourceFile("project.qgz");
 
         var process = new VsaMatcherProcess(
             NullLogger.Instance,
@@ -351,7 +345,6 @@ public sealed class VsaMatcherProcessTest
             templatePath2020,
             templatePath20201,
             errorMatrixPath,
-            qgisProjectPath,
             OrgTableUrl2020,
             OrgTableUrl20201);
 

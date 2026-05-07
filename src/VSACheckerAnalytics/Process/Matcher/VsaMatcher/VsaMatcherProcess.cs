@@ -46,7 +46,6 @@ internal sealed class VsaMatcherProcess : IDisposable
     private readonly string geoPackageTemplatePath2020;
     private readonly string geoPackageTemplatePath20201;
     private readonly string errorMatrixPath;
-    private readonly string qgisProjectPath;
     private readonly string vsaOrgTableUrl2020;
     private readonly string vsaOrgTableUrl20201;
     private HttpClient httpClient = new();
@@ -59,7 +58,6 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// <param name="geoPackageTemplatePath2020">Path to the GeoPackage template for model version 2020.</param>
     /// <param name="geoPackageTemplatePath20201">Path to the GeoPackage template for model version 2020.1.</param>
     /// <param name="errorMatrixPath">Path to the error matrix XLSX.</param>
-    /// <param name="qgisProjectPath">Path to the QGIS project file.</param>
     /// <param name="vsaOrgTableUrl2020">URL of the standard organisation table (2020) on the VSA repository.</param>
     /// <param name="vsaOrgTableUrl20201">URL of the standard organisation table (2020.1) on the VSA repository.</param>
     public VsaMatcherProcess(
@@ -68,7 +66,6 @@ internal sealed class VsaMatcherProcess : IDisposable
         string geoPackageTemplatePath2020,
         string geoPackageTemplatePath20201,
         string errorMatrixPath,
-        string qgisProjectPath,
         string vsaOrgTableUrl2020,
         string vsaOrgTableUrl20201)
     {
@@ -77,7 +74,6 @@ internal sealed class VsaMatcherProcess : IDisposable
         this.geoPackageTemplatePath2020 = geoPackageTemplatePath2020;
         this.geoPackageTemplatePath20201 = geoPackageTemplatePath20201;
         this.errorMatrixPath = errorMatrixPath;
-        this.qgisProjectPath = qgisProjectPath;
         this.vsaOrgTableUrl2020 = vsaOrgTableUrl2020;
         this.vsaOrgTableUrl20201 = vsaOrgTableUrl20201;
     }
@@ -126,7 +122,6 @@ internal sealed class VsaMatcherProcess : IDisposable
         }
 
         IPipelineFile? errorMatrix = await CopyResourceToPipelineFileAsync(errorMatrixPath, cancellationToken).ConfigureAwait(false);
-        IPipelineFile? qgisProject = await CopyResourceToPipelineFileAsync(qgisProjectPath, cancellationToken).ConfigureAwait(false);
 
         return new Dictionary<string, object?>
         {
@@ -140,7 +135,6 @@ internal sealed class VsaMatcherProcess : IDisposable
             { "gpkg_template", gpkgTemplate },
             { "standard_org_table", standardOrgTable },
             { "error_matrix", errorMatrix },
-            { "qgis_project", qgisProject },
         };
     }
 

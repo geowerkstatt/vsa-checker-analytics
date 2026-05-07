@@ -19,7 +19,6 @@ injected automatically by the framework.
 | `geoPackageTemplatePath2020`  | `string` | Path to the GeoPackage template for model version 2020.           |
 | `geoPackageTemplatePath20201` | `string` | Path to the GeoPackage template for model version 2020.1.         |
 | `errorMatrixPath`             | `string` | Path to the error matrix XLSX.                                    |
-| `qgisProjectPath`            | `string` | Path to the QGIS project file.                                    |
 | `vsaOrgTableUrl2020`         | `string` | URL of the standard organisation table (2020) on the VSA repository (https://www.vsa.ch/models/organisation/vsa_organisationen.xtf).  |
 | `vsaOrgTableUrl20201`        | `string` | URL of the standard organisation table (2020.1) on the VSA repository (https://www.vsa.ch/models/organisation/vsa_organisationen_2020_1.xtf).|
 
@@ -48,7 +47,6 @@ The `RunAsync` method receives two collections:
 | `gpkg_template`     | `IPipelineFile?`  | GeoPackage template copied from app resources, matching the model version. Mandatory for further processing, Step Post condition will ensure its presence. |
 | `standard_org_table`| `IPipelineFile?`  | Standard organisation table fetched from the VSA repository, matching the model version. Mandatory for further processing, Step Post condition will ensure its presence. |
 | `error_matrix`      | `IPipelineFile?`  | Error matrix XLSX copied from app resources. Mandatory for further processing, Step Post condition will ensure its presence. |
-| `qgis_project`      | `IPipelineFile?`  | QGIS project file copied from app resources. Mandatory for further processing, Step Post condition will ensure its presence. |
 
 ## File identification
 
