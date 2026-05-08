@@ -6,10 +6,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>VsaCheckerAnalytics</RootNamespace>
+    <NoWarn>CS1591;CA1707;CA1001;CA2000;SA1600;SA1601;SA1648;SA1203</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="MSTest" Version="4.0.1" />
+    <PackageReference Include="GeoWerkstatt.Geopilot.PipelineCore" Version="1.1.305" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\VSACheckerAnalytics\VSACheckerAnalytics.csproj" />
   </ItemGroup>
 
   <ItemGroup>
