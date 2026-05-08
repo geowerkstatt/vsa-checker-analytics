@@ -1,0 +1,144 @@
+processes:
+  - id: zip_file_matcher
+    implementation: Geopilot.Api.Pipeline.Process.Matcher.FileMatcher.FileMatcherProcess
+    default_config:
+      fileExtensions:
+      - zip
+  - id: unzipper
+    implementation: Geopilot.Api.Pipeline.Process.Unzip.UnzipProcess
+  - id: vsa_matcher
+    implementation: VsaCheckerAnalytics.Process.Matcher.VsaMatcher.VsaMatcherProcess
+pipelines:
+  - id: vsa_checker_analytics
+    display_name:
+      de: VSA Checker Analyse
+      en: VSA Checker Analytics
+      fr: VSA Analyse du vérificateur
+      it: VSA Analisi del controllo
+    steps:
+      - id: gep_checker_file_matcher
+        display_name:
+          de: GEP-Checker-Datei Zuordnung (ZIP)
+          en: GEP Checker File Matching (ZIP)
+          fr: Correspondance des fichiers GEP Checker (ZIP)
+          it: Corrispondenza file GEP Checker (ZIP)
+        process_id: zip_file_matcher
+        output:
+          - take: matched_files
+            as: gep_checker_files
+        conditions:
+          post:
+            fail_conditions:
+              - expression: "Length([gep_checker_file_matcher.gep_checker_files]) != 1"
+                message:
+                  de: "Genau eine GEP-Checker-Datei ist erforderlich"
+                  en: "Exactly one GEP Checker file is required"
+                  fr: "Un fichier GEP Checker est requis"
+                  it: "È necessario un file GEP Checker"
+      - id: gep_checker_unzipper
+        display_name:
+          de: GEP-Checker-Datei entpacken
+          en: GEP Checker File Unzipping
+          fr: Décompression du fichier GEP Checker
+          it: Estrazione del file GEP Checker
+        process_id: unzipper
+        input:
+          - from: gep_checker_file_matcher
+            take: gep_checker_files
+            as: zipFile
+        output:
+          - take: extracted_files
+            as: gep_checker_files
+          - take: status_message
+            as: status_message
+            action:
+              - StatusMessage
+      - id: vsa_matcher
+        display_name:
+          de: VSA Zuordnung
+          en: VSA Matching
+          fr: VSA Correspondance
+          it: VSA Corrispondenza
+        process_id: vsa_matcher
+        input:
+          - from: gep_checker_unzipper
+            take: gep_checker_files
+            as: unzippedFiles
+        output:
+          - take: gep
+            as: gep
+          - take: model_version
+            as: model_version
+          - take: language
+            as: language
+          - take: user_org_table
+            as: user_org_table
+          - take: checker_csv_a
+            as: checker_csv_a
+          - take: checker_csv_fp
+            as: checker_csv_fp
+          - take: checker_csv_t
+            as: checker_csv_t
+          - take: gpkg_template
+            as: gpkg_template
+            action:
+              - Download
+          - take: standard_org_table
+            as: standard_org_table
+            action:
+              - Download
+          - take: error_matrix
+            as: error_matrix
+            action:
+              - Download
+        conditions:
+          post:
+            fail_conditions:
+              - expression: "Length([vsa_matcher.gep]) != 1"
+                message:
+                  de: "Ein GEP File notwendig"
+                  en: "Exactly one GEP file is required"
+                  fr: "Un fichier GEP est requis"
+                  it: "È necessario un file GEP"
+              - expression: "Length([vsa_matcher.user_org_table]) > 1"
+                message:
+                  de: "Mehrere benutzerdefinierte Organisationstabellen gefunden"
+                  en: "Multiple user-defined organisation tables found"
+                  fr: "Plusieurs tables d'organisation définies par l'utilisateur trouvées"
+                  it: "Trovate più tabelle di organizzazione definite dall'utente"
+              - expression: "Length([vsa_matcher.checker_csv_a]) != 1"
+                message:
+                  de: "Ein Checker CSV ARA-Einzugsgebiet File notwendig"
+                  en: "Exactly one checker CSV file for ARA catchment area is required"
+                  fr: "Un fichier CSV du vérificateur pour le bassin versant ARA est requis"
+                  it: "È necessario un file CSV del controllo per il bacino ARA"
+              - expression: "Length([vsa_matcher.checker_csv_fp]) != 1"
+                message:
+                  de: "Ein Checker CSV Fachprüfungen File notwendig"
+                  en: "Exactly one checker CSV file for technical inspections is required"
+                  fr: "Un fichier CSV du vérificateur pour les examens techniques est requis"
+                  it: "È necessario un file CSV del controllo per le verifiche tecniche"
+              - expression: "Length([vsa_matcher.checker_csv_t]) != 1"
+                message:
+                  de: "Ein Checker CSV Trägerschaft File notwendig"
+                  en: "Exactly one checker CSV file for sponsorship is required"
+                  fr: "Un fichier CSV du vérificateur pour l'organisme responsable est requis"
+                  it: "È necessario un file CSV del controllo per l'ente responsabile"
+              - expression: "[vsa_matcher.gpkg_template] == null"
+                message:
+                  de: "Ein GPKG Template File notwendig"
+                  en: "Exactly one GPKG template file is required"
+                  fr: "Un fichier de modèle GPKG est requis"
+                  it: "È necessario un file modello GPKG"
+              - expression: "[vsa_matcher.standard_org_table] == null"
+                message:
+                  de: "Ein Standard-Organisations-Tabellen File notwendig"
+                  en: "Exactly one standard organisation table file is required"
+                  fr: "Un fichier de table d'organisation standard est requis"
+                  it: "È necessario un file di tabella organizzativa standard"
+              - expression: "[vsa_matcher.error_matrix] == null"
+                message:
+                  de: "Ein Fehler-Matrix File notwendig"
+                  en: "Exactly one error matrix file is required"
+                  fr: "Un fichier de matrice d'erreurs est requis"
+                  it: "È necessario un file matrice degli errori"
