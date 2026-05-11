@@ -91,6 +91,10 @@ pipelines:
             as: error_matrix
             action:
               - Download
+          - take: status_message
+            as: status_message
+            action:
+              - StatusMessage
         conditions:
           post:
             fail_conditions:
