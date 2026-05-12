@@ -2,6 +2,7 @@
 using Geopilot.PipelineCore.Pipeline;
 using Geopilot.PipelineCore.Pipeline.Process;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
@@ -33,6 +34,31 @@ internal sealed class VsaMatcherProcess : IDisposable
     private const string CheckerCsvPatternFp = "_fp_err$";
     private const string CheckerCsvPatternT = "_t_err$";
     private static readonly XNamespace Interlis24Namespace = "http://www.interlis.ch/xtf/2.4/INTERLIS";
+
+    private static readonly Dictionary<string, string> GepFoundStatusMessageFormat = new()
+    {
+        { "de", "GEP-Datei erkannt (Modell {0}, {1}), {2} Checker-CSV(s) gefunden." },
+        { "fr", "Fichier GEP identifié (modèle {0}, {1}), {2} CSV de vérification trouvé(s)." },
+        { "it", "File GEP identificato (modello {0}, {1}), {2} CSV di verifica trovati." },
+        { "en", "GEP file identified (model {0}, {1}), {2} checker CSV(s) found." },
+    };
+
+    private static readonly Dictionary<string, string> NoGepFoundStatusMessage = new()
+    {
+        { "de", "Keine GEP-Transferdatei in den hochgeladenen Dateien gefunden." },
+        { "fr", "Aucun fichier de transfert GEP trouvé dans les fichiers téléchargés." },
+        { "it", "Nessun file di trasferimento GEP trovato nei file caricati." },
+        { "en", "No GEP transfer file found in uploads." },
+    };
+
+    private static readonly Dictionary<string, string> MultipleGepStatusMessageFormat = new()
+    {
+        { "de", "{0} GEP-Dateien gefunden ({1}), keine eindeutige Zuordnung möglich." },
+        { "fr", "{0} fichiers GEP trouvés ({1}), attribution univoque impossible." },
+        { "it", "{0} file GEP trovati ({1}), attribuzione univoca non possibile." },
+        { "en", "{0} GEP files found ({1}), unambiguous assignment not possible." },
+    };
+
     private static readonly HashSet<string> GepIliModels2020De = new(["VSADSSMINI_2020_LV95"], StringComparer.OrdinalIgnoreCase);
     private static readonly HashSet<string> GepIliModels2020Fr = new(["VSASDEEMINI_2020_LV95"], StringComparer.OrdinalIgnoreCase);
     private static readonly HashSet<string> GepIliModels20201De = new(["VSADSSMINI_2020_1_LV95"], StringComparer.OrdinalIgnoreCase);
@@ -86,12 +112,13 @@ internal sealed class VsaMatcherProcess : IDisposable
 
     /// <summary>
     /// Runs the VSA matcher: identifies input files, extracts metadata, loads resources, and
-    /// provides named output channels for downstream processors.
+    /// provides named output channels for downstream processors. A localized
+    /// <c>status_message</c> summarises the identification result.
     /// </summary>
     /// <param name="uploadFiles">The originally uploaded files (GEP transfer file, optional org table, ZIP).</param>
     /// <param name="unzippedFiles">Files extracted from the GEP checker ZIP by a preceding unzip step.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
-    /// <returns>A dictionary of named outputs for downstream pipeline steps.</returns>
+    /// <returns>A dictionary of named outputs for downstream pipeline steps, including a localized <c>status_message</c>.</returns>
     [PipelineProcessRun]
     public async Task<Dictionary<string, object?>> RunAsync(
         [UploadFiles] IPipelineFileList uploadFiles,
@@ -123,6 +150,24 @@ internal sealed class VsaMatcherProcess : IDisposable
 
         IPipelineFile? errorMatrix = await CopyResourceToPipelineFileAsync(errorMatrixPath, cancellationToken).ConfigureAwait(false);
 
+        var totalCheckerCsvs = checkerCsvsA.Length + checkerCsvsFp.Length + checkerCsvsT.Length;
+        Dictionary<string, string> statusMessage;
+        if (gepMatches.Length == 1)
+        {
+            statusMessage = GepFoundStatusMessageFormat
+                .ToDictionary(msg => msg.Key, msg => string.Format(CultureInfo.InvariantCulture, msg.Value, ModelVersionToString(modelVersion), LanguageToString(language), totalCheckerCsvs));
+        }
+        else if (gepMatches.Length > 1)
+        {
+            var matchDetails = string.Join(", ", gepMatches.Select(m => $"{ModelVersionToString(m.Version)} {LanguageToString(m.Language)}"));
+            statusMessage = MultipleGepStatusMessageFormat
+                .ToDictionary(msg => msg.Key, msg => string.Format(CultureInfo.InvariantCulture, msg.Value, gepMatches.Length, matchDetails));
+        }
+        else
+        {
+            statusMessage = NoGepFoundStatusMessage;
+        }
+
         return new Dictionary<string, object?>
         {
             { "gep", gepMatches.Select(m => m.File).ToArray() },
@@ -135,6 +180,7 @@ internal sealed class VsaMatcherProcess : IDisposable
             { "gpkg_template", gpkgTemplate },
             { "standard_org_table", standardOrgTable },
             { "error_matrix", errorMatrix },
+            { "status_message", statusMessage },
         };
     }
 
