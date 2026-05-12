@@ -1,0 +1,7 @@
+<RunSettings>
+  <RunConfiguration>
+    <EnvironmentVariables>
+      <GPKG_OUTPUT_DIR>../../../gpkg-output</GPKG_OUTPUT_DIR>
+    </EnvironmentVariables>
+  </RunConfiguration>
+</RunSettings>
