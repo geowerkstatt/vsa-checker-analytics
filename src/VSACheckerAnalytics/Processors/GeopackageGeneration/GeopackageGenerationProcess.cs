@@ -5,14 +5,14 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using VsaCheckerAnalytics.Ili2Gpkg;
 
-namespace VsaCheckerAnalytics.Process.VsaGeopackageGeneration;
+namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 
 /// <summary>
 /// Imports the three INTERLIS transfer files (default organisation table, optional user organisation table,
 /// and the GEP/DSS Mini transfer file) into a schema-only input GeoPackage by delegating to
 /// <see cref="IIli2GpkgClient"/>. Produces a single populated GeoPackage as output under the dictionary key <c>gpkg</c>.
 /// </summary>
-public sealed class VsaGeopackageGenerationProcess
+public sealed class GeopackageGenerationProcess
 {
     private const string GeneratedGpkgOutputKey = "generatedGeopackage";
     private const string GeneratedGeopackageName = "generated";
@@ -24,12 +24,12 @@ public sealed class VsaGeopackageGenerationProcess
     private readonly ILogger logger;
 
     /// <summary>
-    /// Initializes a new <see cref="VsaGeopackageGenerationProcess"/>.
+    /// Initializes a new <see cref="GeopackageGenerationProcess"/>.
     /// </summary>
     /// <param name="jobsDirectory">Local path the ili2gpkg worker has mounted as <c>ILI2GPKG_JOBS_DIR</c>.</param>
     /// <param name="pipelineFileManager">Pipeline file manager used to allocate the output GeoPackage.</param>
     /// <param name="logger">Logger.</param>
-    public VsaGeopackageGenerationProcess(
+    public GeopackageGenerationProcess(
         string jobsDirectory,
         IPipelineFileManager pipelineFileManager,
         ILogger logger)

@@ -1,4 +1,4 @@
-﻿namespace VsaCheckerAnalytics.Process.Matcher.VsaMatcher;
+﻿namespace VsaCheckerAnalytics.Processors.VsaMatcher;
 
 /// <summary>
 /// Languages supported by the VSA data models.

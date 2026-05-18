@@ -2,12 +2,13 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Reflection;
 using VsaCheckerAnalytics.Ili2Gpkg;
+using VsaCheckerAnalytics.Processors.GeopackageGeneration;
 using VsaCheckerAnalytics.TestHelpers;
 
-namespace VsaCheckerAnalytics.Process.VsaGeopackageGeneration;
+namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 
 [TestClass]
-public sealed class VsaGeopackageGenerationProcessTest
+public sealed class GeopackageGenerationProcessTest
 {
     private TestFileFactory fileFactory = null!;
     private TestPipelineFileManager fileManager = null!;
@@ -102,14 +103,14 @@ public sealed class VsaGeopackageGenerationProcessTest
         Assert.IsNull(result["generatedGeopackage"]);
     }
 
-    private VsaGeopackageGenerationProcess CreateProcess(IIli2GpkgClient client)
+    private GeopackageGenerationProcess CreateProcess(IIli2GpkgClient client)
     {
-        var process = new VsaGeopackageGenerationProcess(
+        var process = new GeopackageGenerationProcess(
             jobsDirectory: Path.GetTempPath(),
             pipelineFileManager: fileManager,
             logger: NullLogger.Instance);
 
-        typeof(VsaGeopackageGenerationProcess)
+        typeof(GeopackageGenerationProcess)
             .GetField("ili2GpkgClient", BindingFlags.NonPublic | BindingFlags.Instance)!
             .SetValue(process, client);
 

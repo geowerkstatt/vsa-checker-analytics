@@ -1,7 +1,7 @@
 ﻿using Microsoft.Data.Sqlite;
 using System.Diagnostics.CodeAnalysis;
 
-namespace VsaCheckerAnalytics.Process.GeopackageGeneration;
+namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 
 /// <summary>
 /// Creates SQL views for checker CSV union and error matrix join operations.
