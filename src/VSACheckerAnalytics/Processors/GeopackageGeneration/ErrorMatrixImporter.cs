@@ -3,7 +3,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 
-namespace VsaCheckerAnalytics.Process.GeopackageGeneration;
+namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 
 /// <summary>
 /// Imports the error matrix from an Excel file into a SQLite table.

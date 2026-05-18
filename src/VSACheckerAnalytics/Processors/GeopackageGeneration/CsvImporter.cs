@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
-namespace VsaCheckerAnalytics.Process.GeopackageGeneration;
+namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 
 /// <summary>
 /// Imports semicolon-delimited CSV data into SQLite tables.

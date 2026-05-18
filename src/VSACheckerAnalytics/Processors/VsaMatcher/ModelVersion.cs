@@ -1,4 +1,4 @@
-﻿namespace VsaCheckerAnalytics.Process.Matcher.VsaMatcher;
+﻿namespace VsaCheckerAnalytics.Processors.VsaMatcher;
 
 /// <summary>
 /// VSA-DSS Mini data-model versions supported by the pipeline.

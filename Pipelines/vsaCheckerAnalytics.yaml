@@ -3,11 +3,13 @@ processes:
     implementation: Geopilot.Api.Pipeline.Process.Matcher.FileMatcher.FileMatcherProcess
     default_config:
       fileExtensions:
-      - zip
+        - zip
   - id: unzipper
     implementation: Geopilot.Api.Pipeline.Process.Unzip.UnzipProcess
   - id: vsa_matcher
-    implementation: VsaCheckerAnalytics.Process.Matcher.VsaMatcher.VsaMatcherProcess
+    implementation: VsaCheckerAnalytics.Processors.VsaMatcher.VsaMatcherProcess
+  - id: geopackage_generation
+    implementation: VsaCheckerAnalytics.Processors.GeopackageGeneration.GeopackageGenerationProcess
 pipelines:
   - id: vsa_checker_analytics
     display_name:
@@ -146,3 +148,37 @@ pipelines:
                   en: "Exactly one error matrix file is required"
                   fr: "Un fichier de matrice d'erreurs est requis"
                   it: "È necessario un file matrice degli errori"
+      - id: geopackage_generation
+        display_name:
+          de: GeoPackage Erstellung
+          en: GeoPackage Generation
+          fr: GeoPackage Generation
+          it: GeoPackage Generation
+        process_id: geopackage_generation
+        input:
+          - from: vsa_matcher
+            take: gpkg_template
+            as: geoPackages
+          - from: vsa_matcher
+            take: gep
+            as: dssMiniXtfs
+          - from: vsa_matcher
+            take: standard_org_table
+            as: defaultOrgsXtfs
+          - from: vsa_matcher
+            take: user_org_table
+            as: userOrgsXtfs
+        output:
+          - take: generatedGeopackage
+            as: generatedGeopackage
+            action:
+              - Download
+        conditions:
+          post:
+            fail_conditions:
+              - expression: "[geopackage_generation.generatedGeopackage] == null"
+                message:
+                  de: "Der Import der Daten in das GeoPackage ist fehlgeschlagen"
+                  en: "The import of the data into the GeoPackage has failed"
+                  fr: "L'importation des données dans le GeoPackage a échoué"
+                  it: "L'importazione dei dati nel GeoPackage non è andata a buon fine"

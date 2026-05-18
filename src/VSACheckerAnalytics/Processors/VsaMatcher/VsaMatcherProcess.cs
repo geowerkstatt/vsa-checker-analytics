@@ -6,7 +6,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
-namespace VsaCheckerAnalytics.Process.Matcher.VsaMatcher;
+namespace VsaCheckerAnalytics.Processors.VsaMatcher;
 
 /// <summary>
 /// Routes input files by semantic role, extracts metadata from the GEP transfer file,

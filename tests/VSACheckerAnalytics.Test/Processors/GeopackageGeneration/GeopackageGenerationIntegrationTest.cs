@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Globalization;
 using System.Text;
 
-namespace VsaCheckerAnalytics.Process.GeopackageGeneration;
+namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 
 [TestClass]
 public class GeopackageGenerationIntegrationTest
@@ -124,7 +124,7 @@ public class GeopackageGenerationIntegrationTest
     }
 
     private static string GetTestdataPath(string fileName)
-        => Path.Combine(AppContext.BaseDirectory, "Process", "Testdata", fileName);
+        => Path.Combine(AppContext.BaseDirectory, "Testdata", fileName);
 
 #pragma warning disable CA2100
     private static int GetRowCount(SqliteConnection connection, string tableOrView)

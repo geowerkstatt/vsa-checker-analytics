@@ -2,9 +2,8 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Globalization;
 using System.Text;
-using VsaCheckerAnalytics.Process.GeopackageGeneration;
 
-namespace VsaCheckerAnalytics.Process.GeopackageGeneration;
+namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 
 [TestClass]
 public class ViewCreatorTest

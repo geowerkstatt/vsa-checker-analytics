@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Reflection;
 using VsaCheckerAnalytics.TestHelpers;
 
-namespace VsaCheckerAnalytics.Process.Matcher.VsaMatcher;
+namespace VsaCheckerAnalytics.Processors.VsaMatcher;
 
 [TestClass]
 public sealed class VsaMatcherProcessTest
