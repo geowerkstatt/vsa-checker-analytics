@@ -20,16 +20,12 @@ the same process.
 
 The `RunAsync` method receives four collections:
 
-| Parameter         | Source       | Description                                                                          |
-|-------------------|--------------|--------------------------------------------------------------------------------------|
-| `geoPackages`     | VSA Matcher  | Schema-only GeoPackage template (`gpkg_template`), matching the GEP model version.  |
-| `dssMiniXtfs`     | VSA Matcher  | The GEP / DSS Mini INTERLIS transfer file (`gep`).                                  |
-| `defaultOrgsXtfs` | VSA Matcher  | Standard organisation table from the VSA repository (`standard_org_table`).         |
-| `userOrgsXtfs`    | VSA Matcher  | Optional user organisation table from the upload (`user_org_table`). May be empty.  |
-
-A `Pre-Condition` ensures that the mandatory inputs (`geoPackages`,
-`dssMiniXtfs`, `defaultOrgsXtfs`) are present; otherwise the pipeline
-fails fast before any `ili2gpkg` invocation.
+| Parameter         | Source       | Type             | Description                                                                          |
+|-------------------|--------------|------------------|--------------------------------------------------------------------------------------|
+| `geoPackage`      | VSA Matcher  | `IPipelineFile`  | Schema-only GeoPackage template (`gpkg_template`), matching the GEP model version.   |
+| `dssMiniXtf`      | VSA Matcher  | `IPipelineFile`  | The GEP / DSS Mini INTERLIS transfer file (`gep`).                                   |
+| `defaultOrgsXtf`  | VSA Matcher  | `IPipelineFile`  | Standard organisation table from the VSA repository (`standard_org_table`).          |
+| `userOrgsXtf`     | VSA Matcher  | `IPipelineFile?` | Optional user organisation table from the upload (`user_org_table`). May be empty.   |
 
 ## Output
 

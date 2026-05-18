@@ -26,10 +26,10 @@ injected automatically by the framework.
 
 The `RunAsync` method receives two collections:
 
-| Parameter       | Source             | Description                                                        |
-|-----------------|--------------------|--------------------------------------------------------------------|
-| `uploadFiles`   | User upload        | The originally uploaded files (GEP transfer file, optional organisation table, ZIP). |
-| `unzippedFiles` | ZIP Unpacker       | Files extracted from the GEP checker ZIP by the preceding unzip step. 3*3 files, 9 in total: CSV, XTF, and Log for each of the three VSA check classes (a, FP, T). |
+| Parameter       | Source             | Type                 | Description                                                        |
+|-----------------|--------------------|----------------------|--------------------------------------------------------------------|
+| `uploadFiles`   | User upload        | `IPipelineFileList`  | The originally uploaded files (GEP transfer file, optional organisation table, ZIP). |
+| `unzippedFiles` | ZIP Unpacker       | `IPipelineFile[]`    | Files extracted from the GEP checker ZIP by the preceding unzip step. 3*3 files, 9 in total: CSV, XTF, and Log for each of the three VSA check classes (a, FP, T). |
 
 ## Outputs
 
