@@ -7,9 +7,9 @@ processes:
   - id: unzipper
     implementation: Geopilot.Api.Pipeline.Process.Unzip.UnzipProcess
   - id: vsa_matcher
-    implementation: VsaCheckerAnalytics.Process.Matcher.VsaMatcher.VsaMatcherProcess
+    implementation: VsaCheckerAnalytics.Processors.VsaMatcher.VsaMatcherProcess
   - id: geopackage_generation
-    implementation: VsaCheckerAnalytics.Process.VsaGeopackageGeneration.VsaGeopackageGenerationProcess
+    implementation: VsaCheckerAnalytics.Processors.GeopackageGeneration.GeopackageGenerationProcess
 pipelines:
   - id: vsa_checker_analytics
     display_name:
