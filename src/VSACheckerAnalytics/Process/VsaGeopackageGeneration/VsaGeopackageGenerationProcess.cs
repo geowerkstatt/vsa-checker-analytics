@@ -3,7 +3,6 @@ using Geopilot.PipelineCore.Pipeline;
 using Geopilot.PipelineCore.Pipeline.Process;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using System.Threading;
 using VsaCheckerAnalytics.Ili2Gpkg;
 
 namespace VsaCheckerAnalytics.Process.VsaGeopackageGeneration;
@@ -13,7 +12,7 @@ namespace VsaCheckerAnalytics.Process.VsaGeopackageGeneration;
 /// and the GEP/DSS Mini transfer file) into a schema-only input GeoPackage by delegating to
 /// <see cref="IIli2GpkgClient"/>. Produces a single populated GeoPackage as output under the dictionary key <c>gpkg</c>.
 /// </summary>
-public sealed class VsaGeopackageGenerationProcess : IDisposable
+public sealed class VsaGeopackageGenerationProcess
 {
     private const string GeneratedGpkgOutputKey = "generatedGeopackage";
     private const string GeneratedGeopackageName = "generated";
@@ -23,9 +22,6 @@ public sealed class VsaGeopackageGenerationProcess : IDisposable
 #pragma warning restore CA1859 // Use concrete types when possible for improved performance
     private readonly IPipelineFileManager pipelineFileManager;
     private readonly ILogger logger;
-    private readonly string workDir;
-
-    private bool disposed;
 
     /// <summary>
     /// Initializes a new <see cref="VsaGeopackageGenerationProcess"/>.
@@ -46,13 +42,7 @@ public sealed class VsaGeopackageGenerationProcess : IDisposable
             JobsDirectory = jobsDirectory,
         };
         this.ili2GpkgClient = new Ili2GpkgClient(options, this.logger);
-
-        workDir = Path.Combine(Path.GetTempPath(), "vsa-gpkg-import-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(workDir);
     }
-
-    /// <summary>Internal accessor exposing the per-instance scratch directory for tests.</summary>
-    internal string WorkDirectory => workDir;
 
     /// <summary>
     /// Imports the three transfer files into <paramref name="geoPackages"/> in the order
@@ -81,7 +71,6 @@ public sealed class VsaGeopackageGenerationProcess : IDisposable
         ArgumentNullException.ThrowIfNull(geoPackage);
         ArgumentNullException.ThrowIfNull(dssMiniXtf);
         ArgumentNullException.ThrowIfNull(defaultOrgsXtf);
-        ObjectDisposedException.ThrowIf(disposed, this);
 
         var outputGpkg = await CreateGpkgWithImports(geoPackage, dssMiniXtf, defaultOrgsXtf, userOrgsXtf, cancellationToken);
 
@@ -91,31 +80,6 @@ public sealed class VsaGeopackageGenerationProcess : IDisposable
         };
     }
 
-    /// <inheritdoc/>
-    public void Dispose()
-    {
-        if (disposed)
-        {
-            return;
-        }
-
-        try
-        {
-            if (Directory.Exists(workDir))
-            {
-                Directory.Delete(workDir, recursive: true);
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            logger.LogDebug(ex, "Failed to clean up VsaGeopackageImportProcessor work directory <{WorkDir}>.", workDir);
-        }
-        finally
-        {
-            disposed = true;
-        }
-    }
-
     private async Task<IPipelineFile?> CreateGpkgWithImports(
         IPipelineFile geoPackage,
         IPipelineFile dssMiniXtf,
@@ -123,13 +87,6 @@ public sealed class VsaGeopackageGenerationProcess : IDisposable
         IPipelineFile? userOrgsXtf,
         CancellationToken cancellationToken)
     {
-        var workingGpkgPath = await CopyPipelineFileToWorkdir(geoPackage, "input.gpkg", cancellationToken).ConfigureAwait(false);
-        var defaultOrgsPath = await CopyPipelineFileToWorkdir(defaultOrgsXtf, "defaultOrgs.xtf", cancellationToken).ConfigureAwait(false);
-        var dssMiniPath = await CopyPipelineFileToWorkdir(dssMiniXtf, "dssMini.xtf", cancellationToken).ConfigureAwait(false);
-        string? userOrgsPath = userOrgsXtf is null
-            ? null
-            : await CopyPipelineFileToWorkdir(userOrgsXtf, "userOrgs.xtf", cancellationToken).ConfigureAwait(false);
-
         var args = new Ili2GpkgArgs
         {
             SkipReferenceErrors = true,
@@ -138,16 +95,31 @@ public sealed class VsaGeopackageGenerationProcess : IDisposable
             ImportTid = true,
         };
 
+        var steps = new List<(string Label, IPipelineFile Xtf)>
+        {
+            ("defaultOrgs", defaultOrgsXtf),
+        };
+        if (userOrgsXtf is not null)
+        {
+            steps.Add(("userOrgs", userOrgsXtf));
+        }
+
+        steps.Add(("dssMini", dssMiniXtf));
+
+        var current = geoPackage;
         try
         {
-            await ImportOrThrowAsync(workingGpkgPath, defaultOrgsPath, "defaultOrgs", args, cancellationToken).ConfigureAwait(false);
-
-            if (userOrgsPath is not null)
+            for (var i = 0; i < steps.Count; i++)
             {
-                await ImportOrThrowAsync(workingGpkgPath, userOrgsPath, "userOrgs", args, cancellationToken).ConfigureAwait(false);
-            }
+                var (label, xtf) = steps[i];
+                var isFinal = i == steps.Count - 1;
+                var next = isFinal
+                    ? pipelineFileManager.GeneratePipelineFile(GeneratedGeopackageName, "gpkg")
+                    : pipelineFileManager.GeneratePipelineFile($"gpkg-step-{label}", "gpkg");
 
-            await ImportOrThrowAsync(workingGpkgPath, dssMiniPath, "dssMini", args, cancellationToken).ConfigureAwait(false);
+                await RunImportStepAsync(current, xtf, next, label, args, cancellationToken).ConfigureAwait(false);
+                current = next;
+            }
         }
         catch (InvalidOperationException ex)
         {
@@ -155,59 +127,32 @@ public sealed class VsaGeopackageGenerationProcess : IDisposable
             return null;
         }
 
-        var outputGpkg = pipelineFileManager.GeneratePipelineFile(GeneratedGeopackageName, "gpkg");
-        await using (var src = new FileStream(workingGpkgPath, FileMode.Open, FileAccess.Read, FileShare.Read))
-        await using (var dst = outputGpkg.OpenWriteFileStream())
-        {
-            await src.CopyToAsync(dst, cancellationToken).ConfigureAwait(false);
-        }
-
-        logger.LogInformation("VsaGeopackageImportProcessor produced populated GeoPackage <{FileName}>.", outputGpkg.OriginalFileName);
-
-        return outputGpkg;
+        logger.LogInformation("VsaGeopackageImportProcessor produced populated GeoPackage <{FileName}>.", current.OriginalFileName);
+        return current;
     }
 
-    private async Task<string> CopyPipelineFileToWorkdir(IPipelineFile file, string localName, CancellationToken cancellationToken)
+    private async Task RunImportStepAsync(
+        IPipelineFile gpkgIn,
+        IPipelineFile xtfIn,
+        IPipelineFile gpkgOut,
+        string label,
+        Ili2GpkgArgs args,
+        CancellationToken cancellationToken)
     {
-        var localPath = Path.Combine(workDir, localName);
-        await using var src = file.OpenReadFileStream();
-        await using var dst = new FileStream(localPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-        await src.CopyToAsync(dst, cancellationToken).ConfigureAwait(false);
-        await dst.FlushAsync(cancellationToken).ConfigureAwait(false);
-        return localPath;
-    }
+        logger.LogDebug("Starting ili2gpkg import <{Label}>.", label);
 
-    private async Task ImportOrThrowAsync(string geoPackagePath, string transferFilePath, string label, Ili2GpkgArgs args, CancellationToken cancellationToken)
-    {
-        var logPath = Path.Combine(workDir, $"{label}.log");
-        logger.LogDebug("Starting ili2gpkg import <{Label}> into <{Gpkg}>.", label, geoPackagePath);
+        await using var gpkgInStream = gpkgIn.OpenReadFileStream();
+        await using var xtfInStream = xtfIn.OpenReadFileStream();
+        await using var gpkgOutStream = gpkgOut.OpenWriteFileStream();
 
-        var success = await ili2GpkgClient
-            .ImportToGeoPackageAsync(geoPackagePath, transferFilePath, logPath, args, cancellationToken)
+        var result = await ili2GpkgClient
+            .ImportToGeoPackageAsync(gpkgInStream, xtfInStream, gpkgOutStream, args, cancellationToken)
             .ConfigureAwait(false);
 
-        if (!success)
+        if (!result.Success)
         {
-            var detail = await TryReadLogAsync(logPath).ConfigureAwait(false);
             throw new InvalidOperationException(
-                $"ili2gpkg import '{label}' failed. See log <{logPath}>.{(detail is null ? string.Empty : Environment.NewLine + detail)}");
-        }
-    }
-
-    private static async Task<string?> TryReadLogAsync(string logPath)
-    {
-        try
-        {
-            if (!File.Exists(logPath))
-            {
-                return null;
-            }
-
-            return await File.ReadAllTextAsync(logPath).ConfigureAwait(false);
-        }
-        catch (IOException)
-        {
-            return null;
+                $"ili2gpkg import '{label}' failed.{(string.IsNullOrEmpty(result.Log) ? string.Empty : Environment.NewLine + result.Log)}");
         }
     }
 }

@@ -37,17 +37,21 @@ public sealed class VsaGeopackageGenerationProcessTest
         {
             OnInvocation = inv =>
             {
-                Assert.IsTrue(File.Exists(inv.GeoPackagePath), $"GeoPackage path should exist when client is invoked: {inv.GeoPackagePath}");
-                Assert.IsTrue(File.Exists(inv.TransferFilePath), $"Transfer file path should exist when client is invoked: {inv.TransferFilePath}");
+                Assert.IsGreaterThan(0, inv.GeoPackageText.Length, "GeoPackage stream should not be empty when client is invoked.");
+                Assert.IsGreaterThan(0, inv.TransferFileText.Length, "Transfer file stream should not be empty when client is invoked.");
             },
         };
-        using var process = CreateProcess(fake);
+        var process = CreateProcess(fake);
 
         var result = await process.RunAsync([gpkg], [dssMini], [defaultOrgs], [null], CancellationToken.None);
 
         Assert.HasCount(2, fake.Invocations);
-        Assert.AreEqual("defaultOrgs.xtf", Path.GetFileName(fake.Invocations[0].TransferFilePath));
-        Assert.AreEqual("dssMini.xtf", Path.GetFileName(fake.Invocations[1].TransferFilePath));
+        Assert.AreEqual("default-bytes", fake.Invocations[0].TransferFileText);
+        Assert.AreEqual("dss-bytes", fake.Invocations[1].TransferFileText);
+
+        // First import reads the original gpkg; second reads the output of the first.
+        Assert.AreEqual("gpkg-bytes", fake.Invocations[0].GeoPackageText);
+        Assert.AreEqual("populated-gpkg", fake.Invocations[1].GeoPackageText);
 
         foreach (var inv in fake.Invocations)
         {
@@ -72,22 +76,15 @@ public sealed class VsaGeopackageGenerationProcessTest
         var defaultOrgs = fileFactory.CreateFile("defaultOrgs.xtf", "default-bytes");
         var userOrgs = fileFactory.CreateFile("userOrgs.xtf", "user-bytes");
 
-        var fake = new FakeIli2GpkgClient
-        {
-            OnInvocation = inv =>
-            {
-                Assert.IsTrue(File.Exists(inv.GeoPackagePath), $"GeoPackage path should exist when client is invoked: {inv.GeoPackagePath}");
-                Assert.IsTrue(File.Exists(inv.TransferFilePath), $"Transfer file path should exist when client is invoked: {inv.TransferFilePath}");
-            },
-        };
-        using var process = CreateProcess(fake);
+        var fake = new FakeIli2GpkgClient();
+        var process = CreateProcess(fake);
 
         await process.RunAsync([gpkg], [dssMini], [defaultOrgs], [userOrgs], CancellationToken.None);
 
         Assert.HasCount(3, fake.Invocations);
-        Assert.AreEqual("defaultOrgs.xtf", Path.GetFileName(fake.Invocations[0].TransferFilePath));
-        Assert.AreEqual("userOrgs.xtf", Path.GetFileName(fake.Invocations[1].TransferFilePath));
-        Assert.AreEqual("dssMini.xtf", Path.GetFileName(fake.Invocations[2].TransferFilePath));
+        Assert.AreEqual("default-bytes", fake.Invocations[0].TransferFileText);
+        Assert.AreEqual("user-bytes", fake.Invocations[1].TransferFileText);
+        Assert.AreEqual("dss-bytes", fake.Invocations[2].TransferFileText);
     }
 
     [TestMethod]
@@ -98,7 +95,7 @@ public sealed class VsaGeopackageGenerationProcessTest
         var defaultOrgs = fileFactory.CreateFile("defaultOrgs.xtf", "default-bytes");
 
         var fake = new FakeIli2GpkgClient { ResultSelector = _ => false };
-        using var process = CreateProcess(fake);
+        var process = CreateProcess(fake);
 
         var result = await process.RunAsync([gpkg], [dssMini], [defaultOrgs], [null], CancellationToken.None);
 

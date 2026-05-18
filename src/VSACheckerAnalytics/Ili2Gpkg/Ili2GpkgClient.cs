@@ -41,16 +41,16 @@ public sealed class Ili2GpkgClient : IIli2GpkgClient
     }
 
     /// <inheritdoc />
-    public async Task<bool> ImportToGeoPackageAsync(
-        string geoPackagePath,
-        string transferFilePath,
-        string logFilePath,
+    public async Task<Ili2GpkgImportResult> ImportToGeoPackageAsync(
+        Stream geoPackageInput,
+        Stream transferFileInput,
+        Stream geoPackageOutput,
         Ili2GpkgArgs args,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(geoPackagePath);
-        ArgumentException.ThrowIfNullOrWhiteSpace(transferFilePath);
-        ArgumentException.ThrowIfNullOrWhiteSpace(logFilePath);
+        ArgumentNullException.ThrowIfNull(geoPackageInput);
+        ArgumentNullException.ThrowIfNull(transferFileInput);
+        ArgumentNullException.ThrowIfNull(geoPackageOutput);
         ArgumentNullException.ThrowIfNull(args);
 
         Directory.CreateDirectory(options.JobsDirectory);
@@ -75,8 +75,8 @@ public sealed class Ili2GpkgClient : IIli2GpkgClient
         {
             logger.LogDebug("Submitting ili2gpkg import job {JobId} in {JobDir}.", jobId, jobDir);
 
-            await CopyFileAsync(geoPackagePath, jobDbFile, token).ConfigureAwait(false);
-            await CopyFileAsync(transferFilePath, jobDataFile, token).ConfigureAwait(false);
+            await WriteStreamToFileAsync(geoPackageInput, jobDbFile, token).ConfigureAwait(false);
+            await WriteStreamToFileAsync(transferFileInput, jobDataFile, token).ConfigureAwait(false);
 
             var payload = new ArgsPayload
             {
@@ -106,25 +106,25 @@ public sealed class Ili2GpkgClient : IIli2GpkgClient
 
             if (File.Exists(jobSuccessLog))
             {
-                File.Copy(jobSuccessLog, logFilePath, overwrite: true);
-                File.Copy(jobDbFile, geoPackagePath, overwrite: true);
+                await using var src = new FileStream(jobDbFile, FileMode.Open, FileAccess.Read, FileShare.Read);
+                await src.CopyToAsync(geoPackageOutput, token).ConfigureAwait(false);
+
+                var log = await File.ReadAllTextAsync(jobSuccessLog, token).ConfigureAwait(false);
                 logger.LogDebug("ili2gpkg import job {JobId} succeeded.", jobId);
-                return true;
+                return new Ili2GpkgImportResult(true, log);
             }
 
             if (File.Exists(jobErrorLog))
             {
-                File.Copy(jobErrorLog, logFilePath, overwrite: true);
-                logger.LogWarning("ili2gpkg import job {JobId} failed; see {LogFilePath}.", jobId, logFilePath);
-                return false;
+                var log = await File.ReadAllTextAsync(jobErrorLog, token).ConfigureAwait(false);
+                logger.LogWarning("ili2gpkg import job {JobId} failed.", jobId);
+                return new Ili2GpkgImportResult(false, log);
             }
 
             logger.LogWarning("ili2gpkg import job {JobId} produced no log file.", jobId);
-            await File.WriteAllTextAsync(
-                logFilePath,
-                $"ili2gpkg worker reported completion for job {jobId} but produced neither success.log nor error.log.",
-                token).ConfigureAwait(false);
-            return false;
+            return new Ili2GpkgImportResult(
+                false,
+                $"ili2gpkg worker reported completion for job {jobId} but produced neither success.log nor error.log.");
         }
         finally
         {
@@ -139,11 +139,10 @@ public sealed class Ili2GpkgClient : IIli2GpkgClient
         }
     }
 
-    private static async Task CopyFileAsync(string source, string destination, CancellationToken token)
+    private static async Task WriteStreamToFileAsync(Stream source, string destination, CancellationToken token)
     {
-        await using var src = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read);
         await using var dst = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-        await src.CopyToAsync(dst, token).ConfigureAwait(false);
+        await source.CopyToAsync(dst, token).ConfigureAwait(false);
         await dst.FlushAsync(token).ConfigureAwait(false);
     }
 
