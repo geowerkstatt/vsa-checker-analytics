@@ -45,29 +45,24 @@ public sealed class GeopackageGenerationProcess
     }
 
     /// <summary>
-    /// Imports the three transfer files into <paramref name="geoPackages"/> in the order
+    /// Imports the three transfer files into <paramref name="geoPackage"/> in the order
     /// defaultOrgs → (userOrgs if present) → dssMini, then returns the populated GeoPackage as a fresh
     /// <see cref="IPipelineFile"/> under the key <c>gpkg</c>.
     /// </summary>
-    /// <param name="geoPackages">The schema-only input GeoPackage that the transfer files are imported into.</param>
-    /// <param name="dssMiniXtfs">The GEP/DSS Mini INTERLIS transfer file.</param>
-    /// <param name="defaultOrgsXtfs">The standard organisation table INTERLIS transfer file.</param>
-    /// <param name="userOrgsXtfs">Optional user organisation table INTERLIS transfer file.</param>
+    /// <param name="geoPackage">The schema-only input GeoPackage that the transfer files are imported into.</param>
+    /// <param name="dssMiniXtf">The GEP/DSS Mini INTERLIS transfer file.</param>
+    /// <param name="defaultOrgsXtf">The standard organisation table INTERLIS transfer file.</param>
+    /// <param name="userOrgsXtf">Optional user organisation table INTERLIS transfer file.</param>
     /// <param name="cancellationToken">Cancellation token forwarded to the ili2gpkg client.</param>
     /// <returns>A dictionary with a single entry, <c>gpkg</c>, holding the populated GeoPackage.</returns>
     [PipelineProcessRun]
     public async Task<Dictionary<string, object?>> RunAsync(
-        IPipelineFile[] geoPackages,
-        IPipelineFile[] dssMiniXtfs,
-        IPipelineFile[] defaultOrgsXtfs,
-        IPipelineFile?[] userOrgsXtfs,
+        IPipelineFile geoPackage,
+        IPipelineFile dssMiniXtf,
+        IPipelineFile defaultOrgsXtf,
+        IPipelineFile? userOrgsXtf,
         CancellationToken cancellationToken = default)
     {
-        var geoPackage = geoPackages.FirstOrDefault();
-        var dssMiniXtf = dssMiniXtfs.FirstOrDefault();
-        var defaultOrgsXtf = defaultOrgsXtfs.FirstOrDefault();
-        var userOrgsXtf = userOrgsXtfs.FirstOrDefault();
-
         ArgumentNullException.ThrowIfNull(geoPackage);
         ArgumentNullException.ThrowIfNull(dssMiniXtf);
         ArgumentNullException.ThrowIfNull(defaultOrgsXtf);

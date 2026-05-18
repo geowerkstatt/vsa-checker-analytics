@@ -44,7 +44,7 @@ public sealed class GeopackageGenerationProcessTest
         };
         var process = CreateProcess(fake);
 
-        var result = await process.RunAsync([gpkg], [dssMini], [defaultOrgs], [null], CancellationToken.None);
+        var result = await process.RunAsync(gpkg, dssMini, defaultOrgs, null, CancellationToken.None);
 
         Assert.HasCount(2, fake.Invocations);
         Assert.AreEqual("default-bytes", fake.Invocations[0].TransferFileText);
@@ -80,7 +80,7 @@ public sealed class GeopackageGenerationProcessTest
         var fake = new FakeIli2GpkgClient();
         var process = CreateProcess(fake);
 
-        await process.RunAsync([gpkg], [dssMini], [defaultOrgs], [userOrgs], CancellationToken.None);
+        await process.RunAsync(gpkg, dssMini, defaultOrgs, userOrgs, CancellationToken.None);
 
         Assert.HasCount(3, fake.Invocations);
         Assert.AreEqual("default-bytes", fake.Invocations[0].TransferFileText);
@@ -98,7 +98,7 @@ public sealed class GeopackageGenerationProcessTest
         var fake = new FakeIli2GpkgClient { ResultSelector = _ => false };
         var process = CreateProcess(fake);
 
-        var result = await process.RunAsync([gpkg], [dssMini], [defaultOrgs], [null], CancellationToken.None);
+        var result = await process.RunAsync(gpkg, dssMini, defaultOrgs, null, CancellationToken.None);
 
         Assert.IsNull(result["generatedGeopackage"]);
     }
