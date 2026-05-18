@@ -135,6 +135,8 @@ Der VSA-Matcher enthält eine Liste von Post-Conditions, welche prüfen ob alle 
 
 ### Geopackage Generation (Aggregation)
 
+> Detaillierte technische Dokumentation (Konfiguration, Ein-/Ausgaben, etc.): [vsa-geopackage-generation.md](vsa-geopackage-generation.md)
+
 Erzeugt aus dem Output des VSA Matcher ein aggregiertes GeoPackage. Dieses GPKG ist Eingabe für zwei nachgelagerte Prozessoren ([Network Topology](#network-topology) und [Excel Mapper](#excel-mapper)) — beide arbeiten auf dem gleichen aggregierten Stand, weil die Excel-Reports keine berechnete Netztopologie benötigen.
 
 Die Aggregation umfasst drei Hauptschritte:
