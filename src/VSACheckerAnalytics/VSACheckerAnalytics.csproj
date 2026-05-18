@@ -13,10 +13,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="GeoWerkstatt.Geopilot.PipelineCore" Version="1.1.305">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.7" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
