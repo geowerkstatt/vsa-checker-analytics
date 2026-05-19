@@ -158,16 +158,31 @@ pipelines:
         input:
           - from: vsa_matcher
             take: gpkg_template
-            as: geoPackages
+            as: geoPackage
           - from: vsa_matcher
             take: gep
-            as: dssMiniXtfs
+            as: dssMiniXtf
           - from: vsa_matcher
             take: standard_org_table
-            as: defaultOrgsXtfs
+            as: defaultOrgsXtf
           - from: vsa_matcher
             take: user_org_table
-            as: userOrgsXtfs
+            as: userOrgsXtf
+          - from: vsa_matcher
+            take: checker_csv_t
+            as: checkerCsvT
+          - from: vsa_matcher
+            take: checker_csv_a
+            as: checkerCsvA
+          - from: vsa_matcher
+            take: checker_csv_fp
+            as: checkerCsvFp
+          - from: vsa_matcher
+            take: error_matrix
+            as: errorMatrix
+          - from: vsa_matcher
+            take: language
+            as: language
         output:
           - take: generatedGeopackage
             as: generatedGeopackage

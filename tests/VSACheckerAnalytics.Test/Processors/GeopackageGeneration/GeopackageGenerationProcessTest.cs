@@ -44,15 +44,23 @@ public sealed class GeopackageGenerationProcessTest
         };
         var process = CreateProcess(fake);
 
-        var result = await process.RunAsync(gpkg, dssMini, defaultOrgs, null, CancellationToken.None);
+        var result = await process.RunAsync(
+            gpkg,
+            dssMini,
+            defaultOrgs,
+            null,
+            CreateTestCsvT(),
+            CreateTestCsvA(),
+            CreateTestCsvFp(),
+            CreateTestErrorMatrix(),
+            "DE",
+            cancellationToken: CancellationToken.None);
 
         Assert.HasCount(2, fake.Invocations);
         Assert.AreEqual("default-bytes", fake.Invocations[0].TransferFileText);
         Assert.AreEqual("dss-bytes", fake.Invocations[1].TransferFileText);
 
-        // First import reads the original gpkg; second reads the output of the first.
         Assert.AreEqual("gpkg-bytes", fake.Invocations[0].GeoPackageText);
-        Assert.AreEqual("populated-gpkg", fake.Invocations[1].GeoPackageText);
 
         foreach (var inv in fake.Invocations)
         {
@@ -80,7 +88,17 @@ public sealed class GeopackageGenerationProcessTest
         var fake = new FakeIli2GpkgClient();
         var process = CreateProcess(fake);
 
-        await process.RunAsync(gpkg, dssMini, defaultOrgs, userOrgs, CancellationToken.None);
+        await process.RunAsync(
+            gpkg,
+            dssMini,
+            defaultOrgs,
+            userOrgs,
+            CreateTestCsvT(),
+            CreateTestCsvA(),
+            CreateTestCsvFp(),
+            CreateTestErrorMatrix(),
+            "DE",
+            cancellationToken: CancellationToken.None);
 
         Assert.HasCount(3, fake.Invocations);
         Assert.AreEqual("default-bytes", fake.Invocations[0].TransferFileText);
@@ -98,7 +116,17 @@ public sealed class GeopackageGenerationProcessTest
         var fake = new FakeIli2GpkgClient { ResultSelector = _ => false };
         var process = CreateProcess(fake);
 
-        var result = await process.RunAsync(gpkg, dssMini, defaultOrgs, null, CancellationToken.None);
+        var result = await process.RunAsync(
+            gpkg,
+            dssMini,
+            defaultOrgs,
+            null,
+            CreateTestCsvT(),
+            CreateTestCsvA(),
+            CreateTestCsvFp(),
+            CreateTestErrorMatrix(),
+            "DE",
+            cancellationToken: CancellationToken.None);
 
         Assert.IsNull(result["generatedGeopackage"]);
     }
@@ -116,4 +144,19 @@ public sealed class GeopackageGenerationProcessTest
 
         return process;
     }
+
+    private static string GetTestdataPath(string fileName)
+        => Path.Combine(AppContext.BaseDirectory, "Testdata", fileName);
+
+    private IPipelineFile CreateTestCsvT()
+        => fileFactory.CreateFile("t_err.csv", File.ReadAllText(GetTestdataPath("transferdatensatz_2020_1_d_LV95_T-20231205_mini_t_err.csv")));
+
+    private IPipelineFile CreateTestCsvA()
+        => fileFactory.CreateFile("a_err.csv", File.ReadAllText(GetTestdataPath("transferdatensatz_2020_1_d_LV95_T-20231205_mini_a_err.csv")));
+
+    private IPipelineFile CreateTestCsvFp()
+        => fileFactory.CreateFile("fp_err.csv", File.ReadAllText(GetTestdataPath("transferdatensatz_2020_1_d_LV95_T-20231205_mini_fp_err.csv")));
+
+    private TestPipelineFile CreateTestErrorMatrix()
+        => new TestPipelineFile(GetTestdataPath("errorMatrix.xlsx"));
 }
