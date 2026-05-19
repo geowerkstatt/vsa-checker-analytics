@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using Microsoft.Data.Sqlite;
+using System.Text;
 using VsaCheckerAnalytics.Ili2Gpkg;
 
 namespace VsaCheckerAnalytics.TestHelpers;
@@ -8,6 +9,27 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
 {
     public sealed record Invocation(string GeoPackageText, string TransferFileText, Ili2GpkgArgs Args);
 
+    private static readonly Lazy<byte[]> MinimalSqliteDb = new(() =>
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"fake-gpkg-{Guid.NewGuid():N}.db");
+        try
+        {
+            using (var conn = new SqliteConnection($"Data Source={path};Pooling=false"))
+            {
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "PRAGMA user_version = 0";
+                cmd.ExecuteNonQuery();
+            }
+
+            return File.ReadAllBytes(path);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    });
+
     private readonly List<Invocation> invocations = new();
 
     public IReadOnlyList<Invocation> Invocations => invocations;
@@ -16,8 +38,8 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
 
     public Action<Invocation>? OnInvocation { get; set; }
 
-    /// <summary>Text written to the output stream when <see cref="ResultSelector"/> returns true. Defaults to a constant marker.</summary>
-    public Func<Invocation, string> OutputSelector { get; set; } = _ => "populated-gpkg";
+    /// <summary>Bytes written to the output stream on success. Defaults to an empty SQLite database.</summary>
+    public Func<Invocation, byte[]> OutputSelector { get; set; } = _ => MinimalSqliteDb.Value;
 
     public async Task<Ili2GpkgImportResult> ImportToGeoPackageAsync(
         Stream geoPackageInput,
@@ -43,8 +65,7 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
         var success = ResultSelector(invocation);
         if (success)
         {
-            var bytes = Encoding.UTF8.GetBytes(OutputSelector(invocation));
-            await geoPackageOutput.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+            await geoPackageOutput.WriteAsync(OutputSelector(invocation), cancellationToken).ConfigureAwait(false);
         }
 
         return new Ili2GpkgImportResult(success, success ? "ok" : "fail");
