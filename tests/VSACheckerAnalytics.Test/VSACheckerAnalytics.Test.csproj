@@ -12,6 +12,7 @@
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.7" />
+    <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="MSTest" Version="4.0.1" />
     <PackageReference Include="GeoWerkstatt.Geopilot.PipelineCore" Version="1.2.0-preview.324" />
     <PackageReference Include="GeoWerkstatt.Geopilot.Pipeline" Version="1.0.0-preview.326" />
