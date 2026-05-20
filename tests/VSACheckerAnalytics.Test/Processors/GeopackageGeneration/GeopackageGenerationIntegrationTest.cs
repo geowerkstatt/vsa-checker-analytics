@@ -66,6 +66,10 @@ public class GeopackageGenerationIntegrationTest
             viewCreator.CreateCheckerOrphansView(
                 "v_checker_orphans", "v_checker_csv_all", "v_checker_errors");
 
+            var materializer = new ErrorDataMaterializer(connection, NullLogger.Instance);
+            materializer.CreateBuildView("v_ca_error_data_build", "v_checker_errors", "DE");
+            await materializer.MaterializeAsync("v_ca_error_data_build", CancellationToken.None);
+
             Assert.AreEqual(686, GetRowCount(connection, "checker_csv_t"));
             Assert.AreEqual(552, GetRowCount(connection, "checker_csv_a"));
             Assert.AreEqual(473, GetRowCount(connection, "checker_csv_fp"));
@@ -97,11 +101,36 @@ public class GeopackageGenerationIntegrationTest
             Assert.DoesNotContain("class_de", errorsViewColumns);
             Assert.DoesNotContain("class_fr", errorsViewColumns);
 
+            var errorDataCount = GetRowCount(connection, "ca_error_data");
+            var errorObjectCount = GetRowCount(connection, "ca_error_object");
+            Assert.AreEqual(errorsCount, errorDataCount, "ca_error_data should contain one row per checker error.");
+            Assert.IsGreaterThan(0, errorObjectCount, "ca_error_object should contain aggregated rows.");
+            Assert.IsLessThanOrEqualTo(errorDataCount, errorObjectCount, "ca_error_object groups errors, so it must have fewer or equal rows.");
+
+            var errorDataColumns = GetColumnNames(connection, "ca_error_data");
+            Assert.Contains("tid", errorDataColumns);
+            Assert.Contains("check_type", errorDataColumns);
+            Assert.Contains("errorid", errorDataColumns);
+            Assert.Contains("error", errorDataColumns);
+            Assert.Contains("funktionhierarchisch", errorDataColumns);
+            Assert.Contains("eigentuemer", errorDataColumns);
+            Assert.Contains("wk", errorDataColumns);
+            Assert.Contains("gep", errorDataColumns);
+            Assert.Contains("recommendation", errorDataColumns);
+
+            var errorObjectColumns = GetColumnNames(connection, "ca_error_object");
+            Assert.Contains("tid", errorObjectColumns);
+            Assert.Contains("class", errorObjectColumns);
+            Assert.Contains("count_error", errorObjectColumns);
+            Assert.Contains("wk_max", errorObjectColumns);
+            Assert.Contains("gep_max", errorObjectColumns);
+
             var indexes = GetIndexNames(connection);
             Assert.Contains("ix_checker_csv_t_errorid_model_class", indexes);
             Assert.Contains("ix_checker_csv_a_errorid_model_class", indexes);
             Assert.Contains("ix_checker_csv_fp_errorid_model_class", indexes);
             Assert.Contains("ix_error_matrix_cid_model_class_de", indexes);
+            Assert.Contains("ix_ca_error_data_tid_class", indexes);
 
             var outputDir = Environment.GetEnvironmentVariable("GPKG_OUTPUT_DIR");
             if (!string.IsNullOrEmpty(outputDir))

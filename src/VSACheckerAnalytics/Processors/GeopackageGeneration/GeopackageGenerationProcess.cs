@@ -98,7 +98,7 @@ public sealed class GeopackageGenerationProcess
         {
             outputGpkg = await ImportCheckerCsvsAsync(outputGpkg, checkerCsvT, checkerCsvA, checkerCsvFp, cancellationToken);
             outputGpkg = await ImportErrorMatrixAsync(outputGpkg, errorMatrix, cancellationToken);
-            outputGpkg = await CreateAnalyticalViewsAsync(outputGpkg, language, cancellationToken);
+            outputGpkg = await CreateAnalyticsAsync(outputGpkg, language, cancellationToken);
         }
 
         return new Dictionary<string, object?>
@@ -230,7 +230,7 @@ public sealed class GeopackageGenerationProcess
         return target;
     }
 
-    private async Task<IPipelineFile> CreateAnalyticalViewsAsync(
+    private async Task<IPipelineFile> CreateAnalyticsAsync(
         IPipelineFile sourceGpkg,
         string language,
         CancellationToken cancellationToken)
@@ -248,7 +248,11 @@ public sealed class GeopackageGenerationProcess
         viewCreator.CreateCheckerErrorsView("v_checker_errors", "v_checker_csv_all", "error_matrix", language);
         viewCreator.CreateCheckerOrphansView("v_checker_orphans", "v_checker_csv_all", "v_checker_errors");
 
-        logger.LogInformation("Created analytical views in GeoPackage.");
+        var materializer = new ErrorDataMaterializer(connection, logger);
+        materializer.CreateBuildView("v_ca_error_data_build", "v_checker_errors", language);
+        await materializer.MaterializeAsync("v_ca_error_data_build", cancellationToken);
+
+        logger.LogInformation("Created analytics in GeoPackage.");
         return target;
     }
 
