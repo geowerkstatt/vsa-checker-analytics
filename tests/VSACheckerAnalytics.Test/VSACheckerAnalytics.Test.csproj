@@ -13,8 +13,9 @@
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.7" />
     <PackageReference Include="MSTest" Version="4.0.1" />
-    <PackageReference Include="GeoWerkstatt.Geopilot.PipelineCore" Version="1.1.305" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
+    <PackageReference Include="GeoWerkstatt.Geopilot.PipelineCore" Version="1.2.0-preview.324" />
+    <PackageReference Include="GeoWerkstatt.Geopilot.Pipeline" Version="1.0.0-preview.326" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
   </ItemGroup>
 
   <ItemGroup>

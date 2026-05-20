@@ -1,5 +1,4 @@
-﻿using Geopilot.Api.Pipeline;
-using Geopilot.PipelineCore.Pipeline;
+﻿using Geopilot.PipelineCore.Pipeline;
 using Geopilot.PipelineCore.Pipeline.Process;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
