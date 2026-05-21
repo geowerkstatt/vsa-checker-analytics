@@ -1,5 +1,4 @@
-﻿using Geopilot.Api.Pipeline;
-using Geopilot.PipelineCore.Pipeline;
+﻿using Geopilot.PipelineCore.Pipeline;
 
 namespace VsaCheckerAnalytics.TestHelpers;
 
