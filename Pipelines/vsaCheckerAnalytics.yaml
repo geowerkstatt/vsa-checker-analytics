@@ -10,6 +10,63 @@ processes:
     implementation: VsaCheckerAnalytics.Processors.VsaMatcher.VsaMatcherProcess
   - id: geopackage_generation
     implementation: VsaCheckerAnalytics.Processors.GeopackageGeneration.GeopackageGenerationProcess
+  - id: error_overview_export
+    implementation: VsaCheckerAnalytics.Processors.ErrorOverviewExport.ErrorOverviewExportProcess
+    default_config:
+      errorDataSheet: "Error Data"
+      errorDataAttributeMapping:
+        recommendation_detail: Recommendation Detail
+        recommendation: Recommendation
+        gep: GEP
+        wk: WK
+        module: Modul
+        model: Modell
+        category: Kategorie
+        status: Status
+        eigentuemer: Eigentümer
+        funktionhierarchisch: Funktionhierarchisch
+        detail: Detail
+        error: Fehlertyp
+        errorid: Fehler-ID
+        class: Klasse
+        topic: Thema
+        check_type: Prüftyp
+        tid: TID
+        fid: FID
+      errorDataColumnMapping:
+        recommendation_detail: A
+        recommendation: B
+        gep: C
+        wk: D
+        module: E
+        model: F
+        category: G
+        status: H
+        eigentuemer: I
+        funktionhierarchisch: J
+        detail: K
+        error: L
+        errorid: M
+        class: N
+        topic: O
+        check_type: P
+        tid: Q
+        fid: R
+      errorObjectSheet: "Error Object"
+      errorObjectAttributeMapping:
+        gep_max: GEP Maximum
+        wk_max: WK Maximum
+        count_error: Anzahl Fehler
+        class: Klasse
+        tid: TID
+        fid: FID
+      errorObjectColumnMapping:
+        gep_max: A
+        wk_max: B
+        count_error: C
+        class: D
+        tid: E
+        fid: F
 pipelines:
   - id: vsa_checker_analytics
     display_name:
@@ -51,6 +108,8 @@ pipelines:
         output:
           - take: extracted_files
             as: gep_checker_files
+            action:
+              - Download
           - take: status_message
             as: status_message
             action:
@@ -77,10 +136,16 @@ pipelines:
             as: user_org_table
           - take: checker_csv_a
             as: checker_csv_a
+            action:
+              - Download
           - take: checker_csv_fp
             as: checker_csv_fp
+            action:
+              - Download
           - take: checker_csv_t
             as: checker_csv_t
+            action:
+              - Download
           - take: gpkg_template
             as: gpkg_template
             action:
@@ -197,3 +262,19 @@ pipelines:
                   en: "The import of the data into the GeoPackage has failed"
                   fr: "L'importation des données dans le GeoPackage a échoué"
                   it: "L'importazione dei dati nel GeoPackage non è andata a buon fine"
+      - id: error_overview_export
+        display_name:
+          de: Fehlerübersicht Export
+          en: Error Overview Export
+          fr: Export de l'aperçu des erreurs
+          it: Esportazione panoramica degli errori
+        process_id: error_overview_export
+        input:
+          - from: geopackage_generation
+            take: generatedGeopackage
+            as: geopackage
+        output:
+          - take: error_overview
+            as: errorOverview
+            action:
+              - Download

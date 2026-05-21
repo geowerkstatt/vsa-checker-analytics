@@ -177,6 +177,12 @@ Erzeugt aus dem aggregierten GPKG drei XLSX-Tabellen:
 - **Haltung** - Tabellarische Darstellung der Haltungen (Rohrleitungen) und aller Fehler, die mit ihnen assoziiert sind mit einer Übersichtsstatistik.
 - **Knoten** - Tabellarische Darstellung der Knoten (Schächte, Sonderbauwerke) und aller Fehler, die mit ihnen assoziiert sind mit einer Übersichtsstatistik.
 
+#### Error Overview Export (Fehlerübersicht)
+
+> Detaillierte technische Dokumentation (Konfiguration, Ein-/Ausgaben, Mapping-Validierung): [error-overview-export.md](error-overview-export.md)
+
+Liest `ca_error_data` und `ca_error_object` aus dem aggregierten GeoPackage und exportiert sie in eine Excel-Arbeitsmappe mit zwei Sheets. Sheet-Namen, Spalten-Positionen (Excel-Buchstaben) und Header-Bezeichnungen sind vollständig über die Pipeline-YAML konfigurierbar. Die `attributeMapping` und `columnMapping` je Sheet müssen denselben Key-Set definieren; bei Abweichung wird ein Startup-Fehler ausgelöst.
+
 ### ZIP Packer
 
 > Generischer geopilot-Built-In, der mehrere Eingabedateien zu einem ZIP bündelt. Wird im VSA-Plugin nur konfiguriert, nicht implementiert.
