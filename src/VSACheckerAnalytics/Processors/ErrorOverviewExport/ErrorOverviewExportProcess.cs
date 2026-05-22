@@ -9,14 +9,18 @@ using System.Diagnostics.CodeAnalysis;
 namespace VsaCheckerAnalytics.Processors.ErrorOverviewExport;
 
 /// <summary>
-/// Exports error overview data from a GeoPackage's <c>ca_error_data</c> and
-/// <c>ca_error_object</c> tables into an Excel workbook with configurable
-/// sheet names and column mappings.
+/// Exports analytical data from a GeoPackage into a single Excel workbook.
+/// Produces four sheets: error data (<c>ca_error_data</c>), error objects
+/// (<c>ca_error_object</c>), conduit statistics (<c>ca_leitung</c>), and
+/// node statistics (<c>ca_knoten</c>). Sheet names, column positions, and
+/// display headers are fully driven by pipeline YAML configuration.
 /// </summary>
 public sealed class ErrorOverviewExportProcess
 {
     private const string ErrorDataTable = "ca_error_data";
     private const string ErrorObjectTable = "ca_error_object";
+    private const string LeitungTable = "ca_leitung";
+    private const string KnotenTable = "ca_knoten";
 
     private sealed record ExcelColumn(string Name, string Attribute);
 
@@ -24,6 +28,8 @@ public sealed class ErrorOverviewExportProcess
 
     private readonly ExcelSheet errorDataSheet;
     private readonly ExcelSheet errorObjectSheet;
+    private readonly ExcelSheet leitungSheet;
+    private readonly ExcelSheet knotenSheet;
     private readonly IPipelineFileManager pipelineFileManager;
     private readonly ILogger logger;
 
@@ -36,6 +42,12 @@ public sealed class ErrorOverviewExportProcess
     /// <param name="errorObjectSheet">Sheet name for <c>ca_error_object</c>.</param>
     /// <param name="errorObjectAttributeMapping">Maps attribute keys to Excel header display names for error objects.</param>
     /// <param name="errorObjectColumnMapping">Maps attribute keys to Excel column letters for error objects.</param>
+    /// <param name="leitungSheet">Sheet name for <c>ca_leitung</c>.</param>
+    /// <param name="leitungAttributeMapping">Maps attribute keys to Excel header display names for conduit statistics.</param>
+    /// <param name="leitungColumnMapping">Maps attribute keys to Excel column letters for conduit statistics.</param>
+    /// <param name="knotenSheet">Sheet name for <c>ca_knoten</c>.</param>
+    /// <param name="knotenAttributeMapping">Maps attribute keys to Excel header display names for node statistics.</param>
+    /// <param name="knotenColumnMapping">Maps attribute keys to Excel column letters for node statistics.</param>
     /// <param name="pipelineFileManager">Pipeline file manager for output file allocation.</param>
     /// <param name="logger">Logger.</param>
     public ErrorOverviewExportProcess(
@@ -45,6 +57,12 @@ public sealed class ErrorOverviewExportProcess
         string errorObjectSheet,
         IDictionary<string, string> errorObjectAttributeMapping,
         IDictionary<string, string> errorObjectColumnMapping,
+        string leitungSheet,
+        IDictionary<string, string> leitungAttributeMapping,
+        IDictionary<string, string> leitungColumnMapping,
+        string knotenSheet,
+        IDictionary<string, string> knotenAttributeMapping,
+        IDictionary<string, string> knotenColumnMapping,
         IPipelineFileManager pipelineFileManager,
         ILogger logger)
     {
@@ -52,21 +70,28 @@ public sealed class ErrorOverviewExportProcess
         ArgumentNullException.ThrowIfNull(errorDataColumnMapping);
         ArgumentNullException.ThrowIfNull(errorObjectAttributeMapping);
         ArgumentNullException.ThrowIfNull(errorObjectColumnMapping);
+        ArgumentNullException.ThrowIfNull(leitungAttributeMapping);
+        ArgumentNullException.ThrowIfNull(leitungColumnMapping);
+        ArgumentNullException.ThrowIfNull(knotenAttributeMapping);
+        ArgumentNullException.ThrowIfNull(knotenColumnMapping);
 
         this.pipelineFileManager = pipelineFileManager ?? throw new ArgumentNullException(nameof(pipelineFileManager));
         this.logger = logger ?? NullLogger.Instance;
 
         this.errorDataSheet = BuildSheetConfig(ErrorDataTable, errorDataSheet, errorDataAttributeMapping, errorDataColumnMapping);
         this.errorObjectSheet = BuildSheetConfig(ErrorObjectTable, errorObjectSheet, errorObjectAttributeMapping, errorObjectColumnMapping);
+        this.leitungSheet = BuildSheetConfig(LeitungTable, leitungSheet, leitungAttributeMapping, leitungColumnMapping);
+        this.knotenSheet = BuildSheetConfig(KnotenTable, knotenSheet, knotenAttributeMapping, knotenColumnMapping);
     }
 
     /// <summary>
-    /// Reads <c>ca_error_data</c> and <c>ca_error_object</c> from the
-    /// <paramref name="geopackage"/> and exports them to an Excel workbook.
+    /// Reads <c>ca_error_data</c>, <c>ca_error_object</c>, <c>ca_leitung</c>,
+    /// and <c>ca_knoten</c> from the <paramref name="geopackage"/> and exports
+    /// them to a single Excel workbook.
     /// </summary>
-    /// <param name="geopackage">GeoPackage containing the materialized error tables.</param>
+    /// <param name="geopackage">GeoPackage containing the materialized analytical tables.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A dictionary with the exported Excel file under <c>errorOverview</c>.</returns>
+    /// <returns>A dictionary with the exported Excel file under <c>error_overview</c>.</returns>
     [PipelineProcessRun]
     public async Task<Dictionary<string, object?>> RunAsync(IPipelineFile geopackage, CancellationToken cancellationToken = default)
     {
@@ -84,6 +109,10 @@ public sealed class ErrorOverviewExportProcess
         ExportSheet(workbook, errorDataSheet, connection);
         cancellationToken.ThrowIfCancellationRequested();
         ExportSheet(workbook, errorObjectSheet, connection);
+        cancellationToken.ThrowIfCancellationRequested();
+        ExportSheet(workbook, leitungSheet, connection);
+        cancellationToken.ThrowIfCancellationRequested();
+        ExportSheet(workbook, knotenSheet, connection);
 
         var outputFile = pipelineFileManager.GeneratePipelineFile("errorOverview", "xlsx");
         await using var writeStream = outputFile.OpenWriteFileStream();

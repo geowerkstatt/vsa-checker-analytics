@@ -48,6 +48,44 @@ public sealed class ErrorOverviewExportProcessTest
         { "gep_max", "E" },
     };
 
+    private static readonly Dictionary<string, string> LeitungAttributeMapping = new()
+    {
+        { "tid", "TID" },
+        { "bezeichnung", "Bezeichnung" },
+        { "baujahr", "Baujahr" },
+        { "status", "Status" },
+        { "eigentuemer", "Eigentümer" },
+        { "baujahr_klasse", "Baujahr Klasse" },
+    };
+
+    private static readonly Dictionary<string, string> LeitungColumnMapping = new()
+    {
+        { "tid", "A" },
+        { "bezeichnung", "B" },
+        { "baujahr", "C" },
+        { "status", "D" },
+        { "eigentuemer", "E" },
+        { "baujahr_klasse", "F" },
+    };
+
+    private static readonly Dictionary<string, string> KnotenAttributeMapping = new()
+    {
+        { "tid", "TID" },
+        { "bezeichnung", "Bezeichnung" },
+        { "baujahr", "Baujahr" },
+        { "funktion", "Funktion" },
+        { "eigentuemer", "Eigentümer" },
+    };
+
+    private static readonly Dictionary<string, string> KnotenColumnMapping = new()
+    {
+        { "tid", "A" },
+        { "bezeichnung", "B" },
+        { "baujahr", "C" },
+        { "funktion", "D" },
+        { "eigentuemer", "E" },
+    };
+
     private string inputDirectory = null!;
     private TestPipelineFileManager fileManager = null!;
 
@@ -82,7 +120,7 @@ public sealed class ErrorOverviewExportProcessTest
     }
 
     [TestMethod]
-    public async Task RunAsync_PopulatedGeoPackage_ExportsBothSheetsWithHeaders()
+    public async Task RunAsync_PopulatedGeoPackage_ExportsAllSheetsWithHeaders()
     {
         var geopackage = CreateTestGeoPackage(SeedStandardData);
         var process = CreateProcess();
@@ -90,7 +128,7 @@ public sealed class ErrorOverviewExportProcessTest
         var result = await process.RunAsync(geopackage);
 
         using var workbook = OpenOutputWorkbook(result);
-        Assert.AreEqual(2, workbook.Worksheets.Count);
+        Assert.AreEqual(4, workbook.Worksheets.Count);
 
         var dataSheet = workbook.Worksheet("Error Data");
         Assert.AreEqual("TID", dataSheet.Cell("A1").GetString());
@@ -106,6 +144,21 @@ public sealed class ErrorOverviewExportProcessTest
         Assert.AreEqual("Anzahl Fehler", objectSheet.Cell("C1").GetString());
         Assert.AreEqual("WK Maximum", objectSheet.Cell("D1").GetString());
         Assert.AreEqual("GEP Maximum", objectSheet.Cell("E1").GetString());
+
+        var leitungSheet = workbook.Worksheet("Haltung");
+        Assert.AreEqual("TID", leitungSheet.Cell("A1").GetString());
+        Assert.AreEqual("Bezeichnung", leitungSheet.Cell("B1").GetString());
+        Assert.AreEqual("Baujahr", leitungSheet.Cell("C1").GetString());
+        Assert.AreEqual("Status", leitungSheet.Cell("D1").GetString());
+        Assert.AreEqual("Eigentümer", leitungSheet.Cell("E1").GetString());
+        Assert.AreEqual("Baujahr Klasse", leitungSheet.Cell("F1").GetString());
+
+        var knotenSheet = workbook.Worksheet("Knoten");
+        Assert.AreEqual("TID", knotenSheet.Cell("A1").GetString());
+        Assert.AreEqual("Bezeichnung", knotenSheet.Cell("B1").GetString());
+        Assert.AreEqual("Baujahr", knotenSheet.Cell("C1").GetString());
+        Assert.AreEqual("Funktion", knotenSheet.Cell("D1").GetString());
+        Assert.AreEqual("Eigentümer", knotenSheet.Cell("E1").GetString());
     }
 
     [TestMethod]
@@ -129,6 +182,18 @@ public sealed class ErrorOverviewExportProcessTest
         var objectSheet = workbook.Worksheet("Error Object");
         Assert.AreEqual("LT001", objectSheet.Cell("A2").GetString());
         Assert.AreEqual("Leitung", objectSheet.Cell("B2").GetString());
+
+        var leitungSheet = workbook.Worksheet("Haltung");
+        Assert.AreEqual("LT-001", leitungSheet.Cell("A2").GetString());
+        Assert.AreEqual("W7-W6", leitungSheet.Cell("B2").GetString());
+        Assert.AreEqual("in_Betrieb", leitungSheet.Cell("D2").GetString());
+        Assert.AreEqual("1990-1999", leitungSheet.Cell("F2").GetString());
+
+        var knotenSheet = workbook.Worksheet("Knoten");
+        Assert.AreEqual("KN-001", knotenSheet.Cell("A2").GetString());
+        Assert.AreEqual("S7", knotenSheet.Cell("B2").GetString());
+        Assert.AreEqual("Kontrollschacht", knotenSheet.Cell("D2").GetString());
+        Assert.AreEqual("Gemeinde Aarau", knotenSheet.Cell("E2").GetString());
     }
 
     [TestMethod]
@@ -151,6 +216,14 @@ public sealed class ErrorOverviewExportProcessTest
         Assert.AreEqual(2, objectSheet.Cell("C2").GetValue<int>());
         Assert.AreEqual(2, objectSheet.Cell("D2").GetValue<int>());
         Assert.AreEqual(2, objectSheet.Cell("E2").GetValue<int>());
+
+        var leitungSheet = workbook.Worksheet("Haltung");
+        Assert.AreEqual(XLDataType.Number, leitungSheet.Cell("C2").DataType);
+        Assert.AreEqual(1995, leitungSheet.Cell("C2").GetValue<int>());
+
+        var knotenSheet = workbook.Worksheet("Knoten");
+        Assert.AreEqual(XLDataType.Number, knotenSheet.Cell("C2").DataType);
+        Assert.AreEqual(1990, knotenSheet.Cell("C2").GetValue<int>());
     }
 
     [TestMethod]
@@ -191,6 +264,14 @@ public sealed class ErrorOverviewExportProcessTest
         var objectSheet = workbook.Worksheet("Error Object");
         Assert.AreEqual("TID", objectSheet.Cell("A1").GetString());
         Assert.IsTrue(objectSheet.Cell("A2").IsEmpty());
+
+        var leitungSheet = workbook.Worksheet("Haltung");
+        Assert.AreEqual("TID", leitungSheet.Cell("A1").GetString());
+        Assert.IsTrue(leitungSheet.Cell("A2").IsEmpty());
+
+        var knotenSheet = workbook.Worksheet("Knoten");
+        Assert.AreEqual("TID", knotenSheet.Cell("A1").GetString());
+        Assert.IsTrue(knotenSheet.Cell("A2").IsEmpty());
     }
 
     private ErrorOverviewExportProcess CreateProcess(
@@ -204,6 +285,12 @@ public sealed class ErrorOverviewExportProcessTest
             errorObjectSheet: "Error Object",
             errorObjectAttributeMapping: ObjectAttributeMapping,
             errorObjectColumnMapping: ObjectColumnMapping,
+            leitungSheet: "Haltung",
+            leitungAttributeMapping: LeitungAttributeMapping,
+            leitungColumnMapping: LeitungColumnMapping,
+            knotenSheet: "Knoten",
+            knotenAttributeMapping: KnotenAttributeMapping,
+            knotenColumnMapping: KnotenColumnMapping,
             pipelineFileManager: fileManager,
             logger: NullLogger.Instance);
     }
@@ -228,7 +315,17 @@ public sealed class ErrorOverviewExportProcessTest
             CREATE TABLE ca_error_object (
                 fid INTEGER NOT NULL PRIMARY KEY,
                 tid TEXT, class TEXT,
-                count_error INTEGER, wk_max INTEGER, gep_max INTEGER)
+                count_error INTEGER, wk_max INTEGER, gep_max INTEGER);
+
+            CREATE TABLE ca_leitung (
+                fid INTEGER NOT NULL PRIMARY KEY,
+                tid TEXT, bezeichnung TEXT, baujahr INTEGER,
+                status TEXT, eigentuemer TEXT, baujahr_klasse TEXT);
+
+            CREATE TABLE ca_knoten (
+                fid INTEGER NOT NULL PRIMARY KEY,
+                tid TEXT, bezeichnung TEXT, baujahr INTEGER,
+                funktion TEXT, eigentuemer TEXT)
             """;
         ExecuteNonQuery(connection, createSchema);
 
@@ -245,7 +342,15 @@ public sealed class ErrorOverviewExportProcessTest
                    ('LT001', 'Leitung', 'a_001', 2, 1, 'Fehler DE 2');
 
             INSERT INTO ca_error_object (tid, class, count_error, wk_max, gep_max)
-            VALUES ('LT001', 'Leitung', 2, 2, 2)
+            VALUES ('LT001', 'Leitung', 2, 2, 2);
+
+            INSERT INTO ca_leitung (tid, bezeichnung, baujahr, status, eigentuemer, baujahr_klasse)
+            VALUES ('LT-001', 'W7-W6', 1995, 'in_Betrieb', 'Gemeinde Aarau', '1990-1999'),
+                   ('LT-002', '50.14-50.13', 2015, 'in_Betrieb', 'Kanton Aargau', '2010-2019');
+
+            INSERT INTO ca_knoten (tid, bezeichnung, baujahr, funktion, eigentuemer)
+            VALUES ('KN-001', 'S7', 1990, 'Kontrollschacht', 'Gemeinde Aarau'),
+                   ('KN-002', 'S8', 2005, 'Einlaufschacht', 'Kanton Aargau')
             """;
         ExecuteNonQuery(connection, sql);
     }

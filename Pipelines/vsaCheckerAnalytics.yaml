@@ -67,6 +67,162 @@ processes:
         class: D
         tid: E
         fid: F
+      leitungSheet: "Haltung"
+      leitungAttributeMapping:
+        tid: TID
+        baujahr: Baujahr
+        baulicherzustand: Baulicher Zustand
+        bemerkung: Bemerkung
+        bezeichnung: Bezeichnung
+        finanzierung: Finanzierung
+        funktionhierarchisch: Funktionhierarchisch
+        funktionhydraulisch: Funktionhydraulisch
+        hoehengenauigkeit_nach: Höhengenauigkeit nach
+        hoehengenauigkeit_von: Höhengenauigkeit von
+        hydr_belastung_ist: Hydr. Belastung Ist
+        kote_nach: Kote nach
+        kote_von: Kote von
+        laengeeffektiv: Länge effektiv
+        lagebestimmung: Lagebestimmung
+        leckschutz: Leckschutz
+        lichte_breite: Lichte Breite
+        lichte_hoehe: Lichte Höhe
+        material: Material
+        nutzungsart_geplant: Nutzungsart geplant
+        nutzungsart_ist: Nutzungsart Ist
+        obj_id_abwasserbauwerk: OBJ_ID Abwasserbauwerk
+        obj_id_nachhaltungspunkt: OBJ_ID Nachhaltungspunkt
+        obj_id_vonhaltungspunkt: OBJ_ID Vonhaltungspunkt
+        profiltyp: Profiltyp
+        reliner_art: Reliner Art
+        reliner_nennweite: Reliner Nennweite
+        sanierungsbedarf: Sanierungsbedarf
+        status: Status
+        wandrauhigkeit: Wandrauhigkeit
+        wbw_basisjahr: WBW Basisjahr
+        wbw_bauart: WBW Bauart
+        wiederbeschaffungswert: Wiederbeschaffungswert
+        zustandserhebung_jahr: Zustandserhebung Jahr
+        betreiber: Betreiber
+        eigentuemer: Eigentümer
+        knoten_nachref: Knoten nach
+        knoten_vonref: Knoten von
+        leitung_nachref: Leitung nach
+        rohrprofilref: Rohrprofil
+        datenherr: Datenherr
+        datenlieferant: Datenlieferant
+        letzte_aenderung: Letzte Änderung
+        funktionhierarchisch_klasse: Funktionhierarchisch Klasse
+        baujahr_klasse: Baujahr Klasse
+      leitungColumnMapping:
+        tid: A
+        baujahr: B
+        baulicherzustand: C
+        bemerkung: D
+        bezeichnung: E
+        finanzierung: F
+        funktionhierarchisch: G
+        funktionhydraulisch: H
+        hoehengenauigkeit_nach: I
+        hoehengenauigkeit_von: J
+        hydr_belastung_ist: K
+        kote_nach: L
+        kote_von: M
+        laengeeffektiv: N
+        lagebestimmung: O
+        leckschutz: P
+        lichte_breite: Q
+        lichte_hoehe: R
+        material: S
+        nutzungsart_geplant: T
+        nutzungsart_ist: U
+        obj_id_abwasserbauwerk: V
+        obj_id_nachhaltungspunkt: W
+        obj_id_vonhaltungspunkt: X
+        profiltyp: Y
+        reliner_art: Z
+        reliner_nennweite: AA
+        sanierungsbedarf: AB
+        status: AC
+        wandrauhigkeit: AD
+        wbw_basisjahr: AE
+        wbw_bauart: AF
+        wiederbeschaffungswert: AG
+        zustandserhebung_jahr: AH
+        betreiber: AI
+        eigentuemer: AJ
+        knoten_nachref: AK
+        knoten_vonref: AL
+        leitung_nachref: AM
+        rohrprofilref: AN
+        datenherr: AO
+        datenlieferant: AP
+        letzte_aenderung: AQ
+        funktionhierarchisch_klasse: AR
+        baujahr_klasse: AS
+      knotenSheet: "Knoten"
+      knotenAttributeMapping:
+        tid: TID
+        ara_nr: ARA Nr.
+        baujahr: Baujahr
+        baulicherzustand: Baulicher Zustand
+        bemerkung: Bemerkung
+        bezeichnung: Bezeichnung
+        deckelkote: Deckelkote
+        dimension1: Dimension 1
+        dimension2: Dimension 2
+        finanzierung: Finanzierung
+        funktion: Funktion
+        funktionhierarchisch: Funktionhierarchisch
+        lagegenauigkeit: Lagegenauigkeit
+        nutzungsart_geplant: Nutzungsart geplant
+        nutzungsart_ist: Nutzungsart Ist
+        obj_id_abwasserbauwerk: OBJ_ID Abwasserbauwerk
+        obj_id_deckel: OBJ_ID Deckel
+        rueckstaukote_ist: Rückstaukote Ist
+        sanierungsbedarf: Sanierungsbedarf
+        sohlenkote: Sohlenkote
+        status: Status
+        symbolori: Symbolorientierung
+        zugaenglichkeit: Zugänglichkeit
+        zustandserhebung_jahr: Zustandserhebung Jahr
+        betreiber: Betreiber
+        eigentuemer: Eigentümer
+        datenherr: Datenherr
+        datenlieferant: Datenlieferant
+        letzte_aenderung: Letzte Änderung
+        baujahr_klasse: Baujahr Klasse
+      knotenColumnMapping:
+        tid: A
+        ara_nr: B
+        baujahr: C
+        baulicherzustand: D
+        bemerkung: E
+        bezeichnung: F
+        deckelkote: G
+        dimension1: H
+        dimension2: I
+        finanzierung: J
+        funktion: K
+        funktionhierarchisch: L
+        lagegenauigkeit: M
+        nutzungsart_geplant: N
+        nutzungsart_ist: O
+        obj_id_abwasserbauwerk: P
+        obj_id_deckel: Q
+        rueckstaukote_ist: R
+        sanierungsbedarf: S
+        sohlenkote: T
+        status: U
+        symbolori: V
+        zugaenglichkeit: W
+        zustandserhebung_jahr: X
+        betreiber: Y
+        eigentuemer: Z
+        datenherr: AA
+        datenlieferant: AB
+        letzte_aenderung: AC
+        baujahr_klasse: AD
 pipelines:
   - id: vsa_checker_analytics
     display_name:
