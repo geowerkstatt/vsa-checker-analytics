@@ -250,6 +250,10 @@ public sealed class GeopackageGenerationProcess
         var materializer = new ErrorDataMaterializer(connection, logger);
         materializer.CreateBuildView("v_ca_error_data_build", "v_checker_errors", language);
         await materializer.MaterializeAsync("v_ca_error_data_build", cancellationToken);
+        materializer.CreateLeitungBuildView("v_ca_leitung_build");
+        await materializer.MaterializeLeitungAsync("v_ca_leitung_build", cancellationToken);
+        materializer.CreateKnotenBuildView("v_ca_knoten_build");
+        await materializer.MaterializeKnotenAsync("v_ca_knoten_build", cancellationToken);
 
         logger.LogInformation("Created analytics in GeoPackage.");
         return target;

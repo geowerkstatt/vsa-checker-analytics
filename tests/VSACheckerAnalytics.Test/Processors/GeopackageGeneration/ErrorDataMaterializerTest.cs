@@ -230,11 +230,433 @@ public class ErrorDataMaterializerTest
         cmd.ExecuteNonQuery();
     }
 
+    [TestMethod]
+    public async Task MaterializeLeitung_CreatesBuildView_InGeoPackage()
+    {
+        using var connection = await SetUpAndMaterializeLeitungAsync();
+
+        var viewSql = QueryString(
+            connection,
+            "SELECT sql FROM sqlite_master WHERE type = 'view' AND name = 'v_ca_leitung_build'");
+
+        Assert.IsNotNull(viewSql);
+        StringAssert.Contains(viewSql, "funktionhierarchisch_klasse");
+        StringAssert.Contains(viewSql, "baujahr_klasse");
+    }
+
+    [TestMethod]
+    public async Task MaterializeLeitung_PopulatesCaLeitung_WithCorrectRowCount()
+    {
+        using var connection = await SetUpAndMaterializeLeitungAsync();
+
+        var count = QueryLong(connection, "SELECT COUNT(*) FROM ca_leitung");
+
+        Assert.AreEqual(3L, count);
+    }
+
+    [TestMethod]
+    public async Task MaterializeLeitung_ResolvesOrganisationRefs_ToNames()
+    {
+        using var connection = await SetUpAndMaterializeLeitungAsync();
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT betreiber, eigentuemer, datenherr, datenlieferant FROM ca_leitung WHERE tid = 'LT-001'";
+        using var reader = cmd.ExecuteReader();
+
+        Assert.IsTrue(reader.Read());
+        Assert.AreEqual("Gemeinde Aarau", reader.GetString(0));
+        Assert.AreEqual("Kanton Aargau", reader.GetString(1));
+        Assert.AreEqual("Gemeinde Aarau", reader.GetString(2));
+        Assert.AreEqual("Kanton Aargau", reader.GetString(3));
+    }
+
+    [TestMethod]
+    public async Task MaterializeLeitung_ResolvesKnotenRefs_ToTids()
+    {
+        using var connection = await SetUpAndMaterializeLeitungAsync();
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT knoten_nachref, knoten_vonref FROM ca_leitung WHERE tid = 'LT-001'";
+        using var reader = cmd.ExecuteReader();
+
+        Assert.IsTrue(reader.Read());
+        Assert.AreEqual("KN-002", reader.GetString(0));
+        Assert.AreEqual("KN-001", reader.GetString(1));
+    }
+
+    [TestMethod]
+    public async Task MaterializeLeitung_ResolvesSelfRef_ToTid()
+    {
+        using var connection = await SetUpAndMaterializeLeitungAsync();
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT leitung_nachref FROM ca_leitung WHERE tid = 'LT-001'";
+        var value = cmd.ExecuteScalar();
+
+        Assert.AreEqual("LT-002", value);
+    }
+
+    [TestMethod]
+    public async Task MaterializeLeitung_ComputesFunktionhierarchischKlasse_FromPrefix()
+    {
+        using var connection = await SetUpAndMaterializeLeitungAsync();
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT funktionhierarchisch_klasse FROM ca_leitung ORDER BY tid";
+        using var reader = cmd.ExecuteReader();
+
+        Assert.IsTrue(reader.Read());
+        Assert.AreEqual("PAA", reader.GetString(0));
+
+        Assert.IsTrue(reader.Read());
+        Assert.AreEqual("SAA", reader.GetString(0));
+
+        Assert.IsTrue(reader.Read());
+        Assert.IsTrue(reader.IsDBNull(0));
+    }
+
+    [TestMethod]
+    public async Task MaterializeLeitung_ComputesBaujahrKlasse_AsDecadeRange()
+    {
+        using var connection = await SetUpAndMaterializeLeitungAsync();
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT baujahr_klasse FROM ca_leitung ORDER BY tid";
+        using var reader = cmd.ExecuteReader();
+
+        Assert.IsTrue(reader.Read());
+        Assert.AreEqual("1990-1999", reader.GetString(0));
+
+        Assert.IsTrue(reader.Read());
+        Assert.AreEqual("2010-2019", reader.GetString(0));
+
+        Assert.IsTrue(reader.Read());
+        Assert.IsTrue(reader.IsDBNull(0));
+    }
+
+    [TestMethod]
+    public async Task MaterializeLeitung_PreservesScalarAttributes()
+    {
+        using var connection = await SetUpAndMaterializeLeitungAsync();
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT bezeichnung, status, material, lichte_hoehe, kote_von FROM ca_leitung WHERE tid = 'LT-001'";
+        using var reader = cmd.ExecuteReader();
+
+        Assert.IsTrue(reader.Read());
+        Assert.AreEqual("W7-W6", reader.GetString(0));
+        Assert.AreEqual("in_Betrieb", reader.GetString(1));
+        Assert.AreEqual("Beton_Spezialbeton", reader.GetString(2));
+        Assert.AreEqual(400L, reader.GetInt64(3));
+        Assert.AreEqual(472.37, reader.GetDouble(4));
+    }
+
+    [TestMethod]
+    public async Task MaterializeLeitung_SetsNullRefs_WhenNoMatch()
+    {
+        using var connection = await SetUpAndMaterializeLeitungAsync();
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT betreiber, eigentuemer, knoten_nachref, knoten_vonref, leitung_nachref, rohrprofilref FROM ca_leitung WHERE tid = 'LT-003'";
+        using var reader = cmd.ExecuteReader();
+
+        Assert.IsTrue(reader.Read());
+        for (var i = 0; i < reader.FieldCount; i++)
+        {
+            Assert.IsTrue(reader.IsDBNull(i), $"Column {reader.GetName(i)} should be NULL.");
+        }
+    }
+
+    [TestMethod]
+    public async Task MaterializeLeitung_IsIdempotent_OnReRun()
+    {
+        using var connection = CreateOpenConnection();
+        CreateLeitungTestSchema(connection);
+        SeedLeitungTestData(connection);
+
+        var materializer = new ErrorDataMaterializer(connection, NullLogger.Instance);
+        materializer.CreateLeitungBuildView("v_ca_leitung_build");
+
+        await materializer.MaterializeLeitungAsync("v_ca_leitung_build", CancellationToken.None);
+        await materializer.MaterializeLeitungAsync("v_ca_leitung_build", CancellationToken.None);
+
+        var count = QueryLong(connection, "SELECT COUNT(*) FROM ca_leitung");
+
+        Assert.AreEqual(3L, count);
+    }
+
+    [TestMethod]
+    public async Task MaterializeKnoten_CreatesBuildView_InGeoPackage()
+    {
+        using var connection = await SetUpAndMaterializeKnotenAsync();
+
+        var viewSql = QueryString(
+            connection,
+            "SELECT sql FROM sqlite_master WHERE type = 'view' AND name = 'v_ca_knoten_build'");
+
+        Assert.IsNotNull(viewSql);
+        StringAssert.Contains(viewSql, "baujahr_klasse");
+    }
+
+    [TestMethod]
+    public async Task MaterializeKnoten_PopulatesCaKnoten_WithCorrectRowCount()
+    {
+        using var connection = await SetUpAndMaterializeKnotenAsync();
+
+        var count = QueryLong(connection, "SELECT COUNT(*) FROM ca_knoten");
+
+        Assert.AreEqual(3L, count);
+    }
+
+    [TestMethod]
+    public async Task MaterializeKnoten_ResolvesOrganisationRefs_ToNames()
+    {
+        using var connection = await SetUpAndMaterializeKnotenAsync();
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT betreiber, eigentuemer, datenherr, datenlieferant FROM ca_knoten WHERE tid = 'KN-001'";
+        using var reader = cmd.ExecuteReader();
+
+        Assert.IsTrue(reader.Read());
+        Assert.AreEqual("Gemeinde Aarau", reader.GetString(0));
+        Assert.AreEqual("Kanton Aargau", reader.GetString(1));
+        Assert.AreEqual("Gemeinde Aarau", reader.GetString(2));
+        Assert.AreEqual("Kanton Aargau", reader.GetString(3));
+    }
+
+    [TestMethod]
+    public async Task MaterializeKnoten_ComputesBaujahrKlasse_AsDecadeRange()
+    {
+        using var connection = await SetUpAndMaterializeKnotenAsync();
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT baujahr_klasse FROM ca_knoten ORDER BY tid";
+        using var reader = cmd.ExecuteReader();
+
+        Assert.IsTrue(reader.Read());
+        Assert.AreEqual("1990-1999", reader.GetString(0));
+
+        Assert.IsTrue(reader.Read());
+        Assert.AreEqual("2010-2019", reader.GetString(0));
+
+        Assert.IsTrue(reader.Read());
+        Assert.IsTrue(reader.IsDBNull(0));
+    }
+
+    [TestMethod]
+    public async Task MaterializeKnoten_PreservesScalarAttributes()
+    {
+        using var connection = await SetUpAndMaterializeKnotenAsync();
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT bezeichnung, status, funktion, deckelkote, sohlenkote, dimension1 FROM ca_knoten WHERE tid = 'KN-001'";
+        using var reader = cmd.ExecuteReader();
+
+        Assert.IsTrue(reader.Read());
+        Assert.AreEqual("S1", reader.GetString(0));
+        Assert.AreEqual("in_Betrieb", reader.GetString(1));
+        Assert.AreEqual("Pumpwerk", reader.GetString(2));
+        Assert.AreEqual(501.02, reader.GetDouble(3));
+        Assert.AreEqual(498.50, reader.GetDouble(4));
+        Assert.AreEqual(600L, reader.GetInt64(5));
+    }
+
+    [TestMethod]
+    public async Task MaterializeKnoten_SetsNullRefs_WhenNoMatch()
+    {
+        using var connection = await SetUpAndMaterializeKnotenAsync();
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT betreiber, eigentuemer, datenherr, datenlieferant FROM ca_knoten WHERE tid = 'KN-003'";
+        using var reader = cmd.ExecuteReader();
+
+        Assert.IsTrue(reader.Read());
+        for (var i = 0; i < reader.FieldCount; i++)
+        {
+            Assert.IsTrue(reader.IsDBNull(i), $"Column {reader.GetName(i)} should be NULL.");
+        }
+    }
+
+    [TestMethod]
+    public async Task MaterializeKnoten_IsIdempotent_OnReRun()
+    {
+        using var connection = CreateOpenConnection();
+        CreateKnotenTestSchema(connection);
+        SeedKnotenTestData(connection);
+
+        var materializer = new ErrorDataMaterializer(connection, NullLogger.Instance);
+        materializer.CreateKnotenBuildView("v_ca_knoten_build");
+
+        await materializer.MaterializeKnotenAsync("v_ca_knoten_build", CancellationToken.None);
+        await materializer.MaterializeKnotenAsync("v_ca_knoten_build", CancellationToken.None);
+
+        var count = QueryLong(connection, "SELECT COUNT(*) FROM ca_knoten");
+
+        Assert.AreEqual(3L, count);
+    }
+
+    private static async Task<SqliteConnection> SetUpAndMaterializeKnotenAsync()
+    {
+        var connection = CreateOpenConnection();
+        CreateKnotenTestSchema(connection);
+        SeedKnotenTestData(connection);
+
+        var materializer = new ErrorDataMaterializer(connection, NullLogger.Instance);
+        materializer.CreateKnotenBuildView("v_ca_knoten_build");
+        await materializer.MaterializeKnotenAsync("v_ca_knoten_build", CancellationToken.None);
+
+        return connection;
+    }
+
+    private static void CreateKnotenTestSchema(SqliteConnection connection)
+    {
+        var sql = """
+            CREATE TABLE knoten (
+                T_Id INTEGER PRIMARY KEY, T_Ili_Tid TEXT,
+                ara_nr INTEGER, baujahr INTEGER, baulicherzustand TEXT,
+                bemerkung TEXT, bezeichnung TEXT,
+                deckelkote REAL, dimension1 INTEGER, dimension2 INTEGER,
+                finanzierung TEXT, funktion TEXT, funktionhierarchisch TEXT,
+                lagegenauigkeit TEXT,
+                nutzungsart_geplant TEXT, nutzungsart_ist TEXT,
+                obj_id_abwasserbauwerk TEXT, obj_id_deckel TEXT,
+                rueckstaukote_ist REAL, sanierungsbedarf TEXT, sohlenkote REAL,
+                astatus TEXT, symbolori REAL, zugaenglichkeit TEXT,
+                zustandserhebung_jahr INTEGER,
+                betreiberref INTEGER, eigentuemerref INTEGER,
+                datenherrref INTEGER, datenlieferantref INTEGER,
+                letzte_aenderung TEXT);
+
+            CREATE TABLE organisation (
+                T_Id INTEGER PRIMARY KEY, bezeichnung TEXT);
+            """;
+        ExecuteNonQuery(connection, sql);
+    }
+
+    private static void SeedKnotenTestData(SqliteConnection connection)
+    {
+        var sql = """
+            INSERT INTO organisation (T_Id, bezeichnung)
+            VALUES (100, 'Gemeinde Aarau'), (101, 'Kanton Aargau');
+
+            INSERT INTO knoten (
+                T_Id, T_Ili_Tid, baujahr, bezeichnung, funktion, funktionhierarchisch,
+                astatus, deckelkote, sohlenkote, dimension1,
+                betreiberref, eigentuemerref, datenherrref, datenlieferantref)
+            VALUES
+                (1, 'KN-001', 1995, 'S1', 'Pumpwerk', 'SAA',
+                 'in_Betrieb', 501.02, 498.50, 600,
+                 100, 101, 100, 101),
+                (2, 'KN-002', 2015, 'S2', 'Einlaufschacht', 'PAA',
+                 'in_Betrieb', 502.09, NULL, NULL,
+                 100, 101, 100, 101),
+                (3, 'KN-003', NULL, 'unbekannt', NULL, NULL,
+                 NULL, NULL, NULL, NULL,
+                 NULL, NULL, NULL, NULL);
+            """;
+        ExecuteNonQuery(connection, sql);
+    }
+
+    private static async Task<SqliteConnection> SetUpAndMaterializeLeitungAsync()
+    {
+        var connection = CreateOpenConnection();
+        CreateLeitungTestSchema(connection);
+        SeedLeitungTestData(connection);
+
+        var materializer = new ErrorDataMaterializer(connection, NullLogger.Instance);
+        materializer.CreateLeitungBuildView("v_ca_leitung_build");
+        await materializer.MaterializeLeitungAsync("v_ca_leitung_build", CancellationToken.None);
+
+        return connection;
+    }
+
+    private static void CreateLeitungTestSchema(SqliteConnection connection)
+    {
+        var sql = """
+            CREATE TABLE leitung (
+                T_Id INTEGER PRIMARY KEY, T_Ili_Tid TEXT,
+                baujahr INTEGER, baulicherzustand TEXT, bemerkung TEXT, bezeichnung TEXT,
+                finanzierung TEXT, funktionhierarchisch TEXT, funktionhydraulisch TEXT,
+                hoehengenauigkeit_nach TEXT, hoehengenauigkeit_von TEXT,
+                hydr_belastung_ist INTEGER, kote_nach REAL, kote_von REAL,
+                laengeeffektiv REAL, lagebestimmung TEXT, leckschutz TEXT,
+                lichte_breite INTEGER, lichte_hoehe INTEGER, material TEXT,
+                nutzungsart_geplant TEXT, nutzungsart_ist TEXT,
+                obj_id_abwasserbauwerk TEXT, obj_id_nachhaltungspunkt TEXT, obj_id_vonhaltungspunkt TEXT,
+                profiltyp TEXT, reliner_art TEXT, reliner_nennweite INTEGER,
+                sanierungsbedarf TEXT, astatus TEXT, wandrauhigkeit REAL,
+                wbw_basisjahr INTEGER, wbw_bauart TEXT, wiederbeschaffungswert REAL,
+                zustandserhebung_jahr INTEGER,
+                betreiberref INTEGER, eigentuemerref INTEGER,
+                knoten_nachref INTEGER, knoten_vonref INTEGER,
+                leitung_nachref INTEGER, rohrprofilref INTEGER,
+                datenherrref INTEGER, datenlieferantref INTEGER,
+                letzte_aenderung TEXT);
+
+            CREATE TABLE knoten (
+                T_Id INTEGER PRIMARY KEY, T_Ili_Tid TEXT);
+
+            CREATE TABLE organisation (
+                T_Id INTEGER PRIMARY KEY, bezeichnung TEXT);
+
+            CREATE TABLE rohrprofil (
+                T_Id INTEGER PRIMARY KEY, bezeichnung TEXT);
+            """;
+        ExecuteNonQuery(connection, sql);
+    }
+
+    private static void SeedLeitungTestData(SqliteConnection connection)
+    {
+        var sql = """
+            INSERT INTO organisation (T_Id, bezeichnung)
+            VALUES (100, 'Gemeinde Aarau'), (101, 'Kanton Aargau');
+
+            INSERT INTO knoten (T_Id, T_Ili_Tid)
+            VALUES (10, 'KN-001'), (11, 'KN-002');
+
+            INSERT INTO rohrprofil (T_Id, bezeichnung)
+            VALUES (50, 'DN400');
+
+            INSERT INTO leitung (
+                T_Id, T_Ili_Tid, baujahr, bezeichnung, funktionhierarchisch,
+                astatus, material, lichte_hoehe, kote_von,
+                betreiberref, eigentuemerref, knoten_nachref, knoten_vonref,
+                leitung_nachref, rohrprofilref, datenherrref, datenlieferantref)
+            VALUES
+                (1, 'LT-001', 1995, 'W7-W6', 'PAA.Sammelkanal',
+                 'in_Betrieb', 'Beton_Spezialbeton', 400, 472.37,
+                 100, 101, 11, 10, 2, 50, 100, 101),
+                (2, 'LT-002', 2015, '50.14-50.13', 'SAA.Strassenentwaesserung',
+                 'in_Betrieb', 'Kunststoff', 250, NULL,
+                 100, 101, 10, 11, NULL, NULL, 100, 101),
+                (3, 'LT-003', NULL, 'unbekannt', NULL,
+                 NULL, NULL, NULL, NULL,
+                 NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+            """;
+        ExecuteNonQuery(connection, sql);
+    }
+
     [SuppressMessage("Security", "CA2100", Justification = "Test queries use hardcoded SQL, not user input.")]
     private static long QueryLong(SqliteConnection connection, string sql)
     {
         using var cmd = connection.CreateCommand();
         cmd.CommandText = sql;
         return (long)(cmd.ExecuteScalar() ?? 0L);
+    }
+
+    [SuppressMessage("Security", "CA2100", Justification = "Test queries use hardcoded SQL, not user input.")]
+    private static string? QueryString(SqliteConnection connection, string sql)
+    {
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = sql;
+        return cmd.ExecuteScalar() as string;
+    }
+
+    [SuppressMessage("Security", "CA2100", Justification = "Test queries use hardcoded SQL, not user input.")]
+    private static void ExecuteNonQuery(SqliteConnection connection, string sql)
+    {
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.ExecuteNonQuery();
     }
 }
