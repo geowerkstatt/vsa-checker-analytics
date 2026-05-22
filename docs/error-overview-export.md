@@ -2,7 +2,8 @@
 
 The Error Overview Export process reads the materialized error tables from the
 GeoPackage produced by [Geopackage Generation](vsa-geopackage-generation.md)
-and exports them to an Excel workbook (XLSX) with two configurable sheets.
+and exports them to an Excel workbook (XLSX) with two configurable data sheets
+and optional pivot table overview sheets for WK and GEP priorities.
 
 This processor implements the "Fehlerübersicht" part of the
 [Excel Mapper](architektur.md#excel-mapper) described in the architecture.
@@ -22,12 +23,27 @@ changes to the Excel layout do not require code changes.
 | `errorObjectSheet`             | `string`                   | Excel sheet name for the `ca_error_object` export.               |
 | `errorObjectAttributeMapping`  | `IDictionary<string,string>` | Maps attribute keys to display names for the object sheet.       |
 | `errorObjectColumnMapping`     | `IDictionary<string,string>` | Maps the same attribute keys to column letters for the object sheet. |
+| `overviewWkSheet`              | `string?`                  | Sheet name for the WK pivot overview. `null` to skip.            |
+| `overviewGepSheet`             | `string?`                  | Sheet name for the GEP pivot overview. `null` to skip.           |
+| `overviewRowFields`            | `IList<string>?`           | Attribute keys for pivot row fields (after the priority field).  |
+| `overviewFilterFields`         | `IList<string>?`           | Attribute keys for pivot report filter fields.                   |
+| `overviewValueField`           | `string?`                  | Attribute key for the pivot count value field.                   |
+| `overviewValueName`            | `string?`                  | Display name for the pivot value column.                         |
 
 ### Mapping validation
 
 The `attributeMapping` and `columnMapping` for each sheet must define exactly
 the same set of keys. A mismatch (key present in one but not the other) causes
 an `ArgumentException` at construction time, listing the mismatched keys.
+
+### Pivot overview validation
+
+When either `overviewWkSheet` or `overviewGepSheet` is set, all remaining
+`overview*` parameters must be provided. Each attribute key in
+`overviewRowFields`, `overviewFilterFields`, and `overviewValueField` must
+exist in `errorDataAttributeMapping`; a missing key causes an
+`ArgumentException` at construction time. The WK sheet uses the `wk` attribute
+as its first row field, the GEP sheet uses `gep`.
 
 ## Inputs
 
@@ -52,4 +68,9 @@ an `ArgumentException` at construction time, listing the mismatched keys.
      columns) and written starting at row 2.
    - Cell values preserve their SQLite type: integers and doubles remain
      numeric in Excel, text remains text, NULL cells are left blank.
-3. The workbook is saved via ClosedXML to a pipeline output file.
+3. If configured, pivot table overview sheets are created. Each sheet contains
+   a ClosedXML pivot table that references the error data sheet's used range.
+   The pivot groups errors by priority level (WK or GEP), class, and error
+   type, with configurable report filters and a count aggregation. Column A
+   is set to width 105 and column B to width 13.
+4. The workbook is saved via ClosedXML to a pipeline output file.

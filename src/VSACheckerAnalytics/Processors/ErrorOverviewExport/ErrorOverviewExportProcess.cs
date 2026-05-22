@@ -22,8 +22,18 @@ public sealed class ErrorOverviewExportProcess
 
     private sealed record ExcelSheet(string TableName, string Name, Dictionary<string, ExcelColumn> ColumnsMapping);
 
+    private sealed record PivotSheetConfig(
+        string SheetName,
+        string PriorityFieldName,
+        IReadOnlyList<string> RowFieldNames,
+        IReadOnlyList<string> FilterFieldNames,
+        string ValueFieldName,
+        string ValueDisplayName);
+
     private readonly ExcelSheet errorDataSheet;
     private readonly ExcelSheet errorObjectSheet;
+    private readonly PivotSheetConfig? overviewWkConfig;
+    private readonly PivotSheetConfig? overviewGepConfig;
     private readonly IPipelineFileManager pipelineFileManager;
     private readonly ILogger logger;
 
@@ -36,6 +46,12 @@ public sealed class ErrorOverviewExportProcess
     /// <param name="errorObjectSheet">Sheet name for <c>ca_error_object</c>.</param>
     /// <param name="errorObjectAttributeMapping">Maps attribute keys to Excel header display names for error objects.</param>
     /// <param name="errorObjectColumnMapping">Maps attribute keys to Excel column letters for error objects.</param>
+    /// <param name="overviewWkSheet">Sheet name for the WK pivot overview, or <c>null</c> to skip.</param>
+    /// <param name="overviewGepSheet">Sheet name for the GEP pivot overview, or <c>null</c> to skip.</param>
+    /// <param name="overviewRowFields">Attribute keys for additional pivot row fields (after the priority field).</param>
+    /// <param name="overviewFilterFields">Attribute keys for pivot report filter fields.</param>
+    /// <param name="overviewValueField">Attribute key for the pivot count value field.</param>
+    /// <param name="overviewValueName">Display name for the pivot value column.</param>
     /// <param name="pipelineFileManager">Pipeline file manager for output file allocation.</param>
     /// <param name="logger">Logger.</param>
     public ErrorOverviewExportProcess(
@@ -45,6 +61,12 @@ public sealed class ErrorOverviewExportProcess
         string errorObjectSheet,
         IDictionary<string, string> errorObjectAttributeMapping,
         IDictionary<string, string> errorObjectColumnMapping,
+        string? overviewWkSheet,
+        string? overviewGepSheet,
+        IList<string>? overviewRowFields,
+        IList<string>? overviewFilterFields,
+        string? overviewValueField,
+        string? overviewValueName,
         IPipelineFileManager pipelineFileManager,
         ILogger logger)
     {
@@ -58,11 +80,44 @@ public sealed class ErrorOverviewExportProcess
 
         this.errorDataSheet = BuildSheetConfig(ErrorDataTable, errorDataSheet, errorDataAttributeMapping, errorDataColumnMapping);
         this.errorObjectSheet = BuildSheetConfig(ErrorObjectTable, errorObjectSheet, errorObjectAttributeMapping, errorObjectColumnMapping);
+
+        if (overviewWkSheet is not null || overviewGepSheet is not null)
+        {
+            ArgumentNullException.ThrowIfNull(overviewRowFields);
+            ArgumentNullException.ThrowIfNull(overviewFilterFields);
+            ArgumentNullException.ThrowIfNull(overviewValueField);
+            ArgumentNullException.ThrowIfNull(overviewValueName);
+
+            if (overviewWkSheet is not null)
+            {
+                overviewWkConfig = BuildPivotConfig(
+                    overviewWkSheet,
+                    "wk",
+                    overviewRowFields,
+                    overviewFilterFields,
+                    overviewValueField,
+                    overviewValueName,
+                    errorDataAttributeMapping);
+            }
+
+            if (overviewGepSheet is not null)
+            {
+                overviewGepConfig = BuildPivotConfig(
+                    overviewGepSheet,
+                    "gep",
+                    overviewRowFields,
+                    overviewFilterFields,
+                    overviewValueField,
+                    overviewValueName,
+                    errorDataAttributeMapping);
+            }
+        }
     }
 
     /// <summary>
     /// Reads <c>ca_error_data</c> and <c>ca_error_object</c> from the
     /// <paramref name="geopackage"/> and exports them to an Excel workbook.
+    /// When configured, adds pivot table overview sheets for WK and GEP priorities.
     /// </summary>
     /// <param name="geopackage">GeoPackage containing the materialized error tables.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
@@ -84,6 +139,20 @@ public sealed class ErrorOverviewExportProcess
         ExportSheet(workbook, errorDataSheet, connection);
         cancellationToken.ThrowIfCancellationRequested();
         ExportSheet(workbook, errorObjectSheet, connection);
+
+        var dataRange = workbook.Worksheet(errorDataSheet.Name).RangeUsed();
+        if (dataRange is not null)
+        {
+            if (overviewWkConfig is not null)
+            {
+                CreateOverviewSheet(workbook, dataRange, overviewWkConfig);
+            }
+
+            if (overviewGepConfig is not null)
+            {
+                CreateOverviewSheet(workbook, dataRange, overviewGepConfig);
+            }
+        }
 
         var outputFile = pipelineFileManager.GeneratePipelineFile("errorOverview", "xlsx");
         await using var writeStream = outputFile.OpenWriteFileStream();
@@ -133,6 +202,35 @@ public sealed class ErrorOverviewExportProcess
         }
 
         return new ExcelSheet(tableName, sheetName, columns);
+    }
+
+    private static PivotSheetConfig BuildPivotConfig(
+        string sheetName,
+        string priorityAttributeKey,
+        IList<string> rowFields,
+        IList<string> filterFields,
+        string valueField,
+        string valueName,
+        IDictionary<string, string> attributeMapping)
+    {
+        string ResolveDisplayName(string key)
+        {
+            if (!attributeMapping.TryGetValue(key, out var name))
+            {
+                throw new ArgumentException(
+                    $"Overview attribute key '{key}' not found in error data attribute mapping for sheet '{sheetName}'.");
+            }
+
+            return name;
+        }
+
+        return new PivotSheetConfig(
+            sheetName,
+            ResolveDisplayName(priorityAttributeKey),
+            rowFields.Select(ResolveDisplayName).ToList(),
+            filterFields.Select(ResolveDisplayName).ToList(),
+            ResolveDisplayName(valueField),
+            valueName);
     }
 
     [SuppressMessage("Security", "CA2100", Justification = "Column and table names are internal pipeline constants, not user input.")]
@@ -188,6 +286,31 @@ public sealed class ErrorOverviewExportProcess
         worksheet.SheetView.FreezeRows(1);
 
         logger.LogDebug("Exported {RowCount} rows to sheet '{SheetName}'.", rowNumber - 2, sheetConfig.Name);
+    }
+
+    private static void CreateOverviewSheet(XLWorkbook workbook, IXLRange sourceRange, PivotSheetConfig config)
+    {
+        var worksheet = workbook.AddWorksheet(config.SheetName);
+        var pivotTable = worksheet.PivotTables.Add(config.SheetName, worksheet.Cell("A1"), sourceRange);
+
+        pivotTable.RowLabels.Add(config.PriorityFieldName);
+        foreach (var field in config.RowFieldNames)
+        {
+            pivotTable.RowLabels.Add(field);
+        }
+
+        foreach (var field in config.FilterFieldNames)
+        {
+            pivotTable.ReportFilters.Add(field);
+        }
+
+        pivotTable.Values.Add(config.ValueFieldName, config.ValueDisplayName)
+            .SummaryFormula = XLPivotSummary.Count;
+
+        pivotTable.SetLayout(XLPivotLayout.Compact);
+
+        worksheet.Column("A").Width = 105;
+        worksheet.Column("B").Width = 13;
     }
 
     private static SqliteConnection OpenGeoPackage(string path)

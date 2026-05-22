@@ -18,6 +18,11 @@ public sealed class ErrorOverviewExportProcessTest
         { "wk", "WK" },
         { "gep", "GEP" },
         { "error", "Fehler" },
+        { "check_type", "Prueftyp" },
+        { "funktionhierarchisch", "Funktionhierarchisch" },
+        { "eigentuemer", "Eigentuemer" },
+        { "status", "Status" },
+        { "fid", "FID" },
     };
 
     private static readonly Dictionary<string, string> DataColumnMapping = new()
@@ -28,6 +33,11 @@ public sealed class ErrorOverviewExportProcessTest
         { "wk", "D" },
         { "gep", "E" },
         { "error", "F" },
+        { "check_type", "G" },
+        { "funktionhierarchisch", "H" },
+        { "eigentuemer", "I" },
+        { "status", "J" },
+        { "fid", "K" },
     };
 
     private static readonly Dictionary<string, string> ObjectAttributeMapping = new()
@@ -193,10 +203,66 @@ public sealed class ErrorOverviewExportProcessTest
         Assert.IsTrue(objectSheet.Cell("A2").IsEmpty());
     }
 
+    [TestMethod]
+    public async Task RunAsync_WithPivotConfig_CreatesOverviewSheets()
+    {
+        var geopackage = CreateTestGeoPackage(SeedStandardData);
+        var process = CreateProcess(overviewWkSheet: "Uebersicht_WK", overviewGepSheet: "Uebersicht_GEP");
+
+        var result = await process.RunAsync(geopackage);
+
+        using var workbook = OpenOutputWorkbook(result);
+        Assert.AreEqual(4, workbook.Worksheets.Count);
+        Assert.IsTrue(workbook.Worksheet("Uebersicht_WK").PivotTables.Contains("Uebersicht_WK"));
+        Assert.IsTrue(workbook.Worksheet("Uebersicht_GEP").PivotTables.Contains("Uebersicht_GEP"));
+    }
+
+    [TestMethod]
+    public async Task RunAsync_WithOnlyWkPivot_CreatesSingleOverviewSheet()
+    {
+        var geopackage = CreateTestGeoPackage(SeedStandardData);
+        var process = CreateProcess(overviewWkSheet: "Uebersicht_WK");
+
+        var result = await process.RunAsync(geopackage);
+
+        using var workbook = OpenOutputWorkbook(result);
+        Assert.AreEqual(3, workbook.Worksheets.Count);
+        Assert.IsTrue(workbook.Worksheet("Uebersicht_WK").PivotTables.Contains("Uebersicht_WK"));
+    }
+
+    [TestMethod]
+    public void Constructor_PivotFieldNotInAttributeMapping_ThrowsArgumentException()
+    {
+        var ex = Assert.ThrowsExactly<ArgumentException>(() => new ErrorOverviewExportProcess(
+            errorDataSheet: "Error Data",
+            errorDataAttributeMapping: DataAttributeMapping,
+            errorDataColumnMapping: DataColumnMapping,
+            errorObjectSheet: "Error Object",
+            errorObjectAttributeMapping: ObjectAttributeMapping,
+            errorObjectColumnMapping: ObjectColumnMapping,
+            overviewWkSheet: "WK",
+            overviewGepSheet: null,
+            overviewRowFields: new List<string> { "nonexistent" },
+            overviewFilterFields: OverviewFilterFields,
+            overviewValueField: "fid",
+            overviewValueName: "Count",
+            pipelineFileManager: fileManager,
+            logger: NullLogger.Instance));
+
+        StringAssert.Contains(ex.Message, "nonexistent");
+    }
+
+    private static readonly List<string> OverviewRowFields = ["class", "error"];
+
+    private static readonly List<string> OverviewFilterFields = ["check_type", "funktionhierarchisch", "eigentuemer", "status"];
+
     private ErrorOverviewExportProcess CreateProcess(
         Dictionary<string, string>? dataAttributeMapping = null,
-        Dictionary<string, string>? dataColumnMapping = null)
+        Dictionary<string, string>? dataColumnMapping = null,
+        string? overviewWkSheet = null,
+        string? overviewGepSheet = null)
     {
+        var hasOverview = overviewWkSheet is not null || overviewGepSheet is not null;
         return new ErrorOverviewExportProcess(
             errorDataSheet: "Error Data",
             errorDataAttributeMapping: dataAttributeMapping ?? DataAttributeMapping,
@@ -204,6 +270,12 @@ public sealed class ErrorOverviewExportProcessTest
             errorObjectSheet: "Error Object",
             errorObjectAttributeMapping: ObjectAttributeMapping,
             errorObjectColumnMapping: ObjectColumnMapping,
+            overviewWkSheet: overviewWkSheet,
+            overviewGepSheet: overviewGepSheet,
+            overviewRowFields: hasOverview ? OverviewRowFields : null,
+            overviewFilterFields: hasOverview ? OverviewFilterFields : null,
+            overviewValueField: hasOverview ? "fid" : null,
+            overviewValueName: hasOverview ? "Anzahl Fehler" : null,
             pipelineFileManager: fileManager,
             logger: NullLogger.Instance);
     }

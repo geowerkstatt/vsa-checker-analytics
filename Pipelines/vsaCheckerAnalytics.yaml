@@ -67,6 +67,18 @@ processes:
         class: D
         tid: E
         fid: F
+      overviewWkSheet: "Uebersicht_WK"
+      overviewGepSheet: "Uebersicht_GEP"
+      overviewRowFields:
+        - "class"
+        - "error"
+      overviewFilterFields:
+        - "check_type"
+        - "funktionhierarchisch"
+        - "eigentuemer"
+        - "status"
+      overviewValueField: "fid"
+      overviewValueName: "Anzahl Fehler"
 pipelines:
   - id: vsa_checker_analytics
     display_name:
