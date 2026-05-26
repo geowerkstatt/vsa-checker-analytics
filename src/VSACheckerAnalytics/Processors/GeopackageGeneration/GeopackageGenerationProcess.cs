@@ -119,6 +119,7 @@ public sealed class GeopackageGenerationProcess
             SkipGeometryErrors = true,
             DisableValidation = true,
             ImportTid = true,
+            StrokeArcs = true,
         };
 
         var steps = new List<(string Label, IPipelineFile Xtf)>
