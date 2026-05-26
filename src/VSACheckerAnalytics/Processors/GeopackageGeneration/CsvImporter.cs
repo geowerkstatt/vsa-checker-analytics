@@ -59,17 +59,28 @@ internal sealed class CsvImporter
         }
 
         var headerColumns = headerLine.Split(Delimiter).Select(c => c.Trim()).ToArray();
-        if (!headerColumns.SequenceEqual(columns))
+
+        var columnIndexes = new int[columns.Length];
+        var missing = new List<string>();
+        for (var i = 0; i < columns.Length; i++)
         {
-            logger.LogWarning(
-                "CSV header in '{TableName}' does not match expected columns. Expected: [{Expected}], Actual: [{Actual}].",
-                tableName,
-                string.Join(", ", columns),
-                string.Join(", ", headerColumns));
+            var index = Array.IndexOf(headerColumns, columns[i]);
+            if (index < 0)
+            {
+                missing.Add(columns[i]);
+            }
+
+            columnIndexes[i] = index;
+        }
+
+        if (missing.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"CSV header in '{tableName}' is missing required column(s): [{string.Join(", ", missing)}]. Actual header: [{string.Join(", ", headerColumns)}].");
         }
 
         CreateTable(tableName, columns);
-        await InsertRowsAsync(reader, tableName, columns, cancellationToken).ConfigureAwait(false);
+        await InsertRowsAsync(reader, tableName, columns, columnIndexes, headerColumns.Length, cancellationToken).ConfigureAwait(false);
 
         if (indexColumns is { Length: > 0 })
         {
@@ -98,7 +109,7 @@ internal sealed class CsvImporter
     }
 
     [SuppressMessage("Security", "CA2100", Justification = "Table and column names are application-defined constants, not user input.")]
-    private async Task InsertRowsAsync(StreamReader reader, string tableName, string[] columns, CancellationToken cancellationToken)
+    private async Task InsertRowsAsync(StreamReader reader, string tableName, string[] columns, int[] columnIndexes, int expectedFieldCount, CancellationToken cancellationToken)
     {
         using var transaction = connection.BeginTransaction();
         using var command = connection.CreateCommand();
@@ -135,14 +146,14 @@ internal sealed class CsvImporter
             }
 
             var values = line.Split(Delimiter);
-            if (values.Length != columns.Length)
+            if (values.Length < expectedFieldCount)
             {
                 logger.LogWarning(
-                    "CSV row {LineNumber} in '{TableName}' has {ActualFields} field(s), expected {ExpectedFields}. Skipping row. Raw: {RawLine}",
+                    "CSV row {LineNumber} in '{TableName}' has {ActualFields} field(s), expected at least {ExpectedFields}. Skipping row. Raw: {RawLine}",
                     lineNumber,
                     tableName,
                     values.Length,
-                    columns.Length,
+                    expectedFieldCount,
                     line.Length > 200 ? string.Concat(line.AsSpan(0, 200), "…") : line);
                 skippedRows++;
                 continue;
@@ -150,7 +161,8 @@ internal sealed class CsvImporter
 
             for (var i = 0; i < parameters.Length; i++)
             {
-                parameters[i].Value = string.IsNullOrEmpty(values[i]) ? DBNull.Value : values[i];
+                var value = values[columnIndexes[i]];
+                parameters[i].Value = string.IsNullOrEmpty(value) ? DBNull.Value : value;
             }
 
             command.ExecuteNonQuery();

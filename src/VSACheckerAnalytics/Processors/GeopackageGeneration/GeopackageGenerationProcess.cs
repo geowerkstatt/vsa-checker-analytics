@@ -19,7 +19,7 @@ public sealed class GeopackageGenerationProcess
     private const string GeneratedGeopackageName = "generated";
 
     private static readonly string[] CsvColumns =
-        ["Module", "ErrorId", "Category", "Group", "Description", "Model", "Topic", "Bid", "Class", "Tid", "Line", "CharPos", "Geom1", "Geom2", "UserAttributes", "Profiles"];
+        ["Module", "ErrorId", "Category", "Description", "Model", "Topic", "Bid", "Class", "Tid", "Line", "CharPos", "Geom1", "Geom2", "UserAttributes", "Profiles"];
 
     private static readonly string[] ErrorMatrixColumns =
         ["cid", "ccat", "cmsg_de", "cmsg_fr", "class_de", "class_fr", "checkmodel", "model", "prio_uc", "prio_gsp", "sub_project_gsp_de", "sub_project_gsp_fr", "required_action_de", "required_action_fr", "action_context_de", "action_context_fr"];
