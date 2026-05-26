@@ -43,4 +43,10 @@ public sealed class Ili2GpkgArgs
     /// Maps to the ili2gpkg option <c>--importTid</c>.
     /// </summary>
     public bool ImportTid { get; set; }
+
+    /// <summary>
+    /// Strokes arcs on data import.
+    /// Maps to the ili2gpkg option <c>--strokeArcs</c>.
+    /// </summary>
+    public bool StrokeArcs { get; set; }
 }
