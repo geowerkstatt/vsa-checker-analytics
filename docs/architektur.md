@@ -161,6 +161,8 @@ Die Aggregation umfasst drei Hauptschritte:
 
 ### Network Topology
 
+> Detaillierte technische Dokumentation (Konfiguration, Ein-/Ausgaben, etc.): [network-topology-patcher.md](network-topology-patcher.md)
+
 Komplettiert falls notwendig die Netztopologie und gibt dieses vervollständigte Geopackage als Output weiter. Die Topologie wird anhand der bestehenden Geometrien und der Referenzen in den Daten berechnet. Dabei werden folgende Schritte durchgeführt:
 
 1. Mit Leitungen nicht topologisch verbundene, aber von ihnen referenzierende Netzknoten identifizieren (Start- bzw. Endpunkt Leitung nicht lagegleich mit referenziertem "von-" bzw. "nach-Knoten" mit geringer Toleranz).
