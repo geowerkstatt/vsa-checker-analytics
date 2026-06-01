@@ -117,26 +117,6 @@ public class ViewCreatorTest
     }
 
     [TestMethod]
-    public async Task CreateCheckerOrphansView_ReturnsUnmatchedRows()
-    {
-        using var connection = CreateOpenConnection();
-        await SeedCsvTables(connection);
-        SeedErrorMatrix(connection);
-        CreateUnionView(connection);
-
-        var viewCreator = new ViewCreator(connection);
-        viewCreator.CreateCheckerErrorsView("v_checker_errors", "v_checker_csv_all", "error_matrix", "DE");
-        viewCreator.CreateCheckerOrphansView("v_checker_orphans", "v_checker_csv_all", "v_checker_errors");
-
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM \"v_checker_orphans\"";
-        Assert.AreEqual(1, Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture));
-
-        command.CommandText = "SELECT \"ErrorId\" FROM \"v_checker_orphans\"";
-        Assert.AreEqual("FP1", command.ExecuteScalar());
-    }
-
-    [TestMethod]
     public async Task CreateCheckerErrorsView_ExcludesJoinKeysAndUnusedClassFromErrorMatrix()
     {
         using var connection = CreateOpenConnection();

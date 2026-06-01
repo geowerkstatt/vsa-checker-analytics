@@ -74,13 +74,12 @@ join index on (`cid`, `model`, `class_de`).
 
 ## Analytics
 
-Three analytical views are created first:
+Two analytical views are created first:
 
 1. `v_checker_csv_all` unions the three checker CSV tables with a
    `source` column (`T`, `A`, `FP`).
 2. `v_checker_errors` joins the union view with the error matrix,
    enriching each CSV row with localized descriptions and priorities.
-3. `v_checker_orphans` captures CSV rows that had no error matrix match.
 
 Then `ErrorDataMaterializer` materializes two tables from the errors
 view:
