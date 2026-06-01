@@ -198,7 +198,7 @@ public sealed class NetworkTopologyPatcherTest
     }
 
     [TestMethod]
-    public void ComputeLeitungEdgesSkipsConnectorsWhenKnotenHaveInvalidFunktion()
+    public void ComputeLeitungEdgesMergesConnectorsButSkipsExtraEdgesWhenKnotenHaveInvalidFunktion()
     {
         var verlauf = Factory.CreateLineString(new[] { new Coordinate(5, 0), new Coordinate(15, 0) });
         var row = new LeitungRow(Tid: 1, VonRef: 1, NachRef: 2, Verlauf: verlauf);
@@ -210,14 +210,15 @@ public sealed class NetworkTopologyPatcherTest
 
         var result = NetworkTopologyPatcher.ComputeLeitungEdges(row, knotenIndex, Factory);
 
-        Assert.AreSame(verlauf, result.NetworkEdge.Geom);
-        Assert.AreEqual(0d, result.NetworkEdge.DiffStart);
-        Assert.AreEqual(0d, result.NetworkEdge.DiffEnd);
+        Assert.AreEqual(5d, result.NetworkEdge.DiffStart);
+        Assert.AreEqual(5d, result.NetworkEdge.DiffEnd);
+        Assert.AreEqual(new Coordinate(0, 0), result.NetworkEdge.Geom.StartPoint.Coordinate);
+        Assert.AreEqual(new Coordinate(20, 0), result.NetworkEdge.Geom.EndPoint.Coordinate);
         Assert.IsEmpty(result.ExtraEdges);
     }
 
     [TestMethod]
-    public void ComputeLeitungEdgesReturnsUnalteredLeitungWhenKnotenHasNullFunktion()
+    public void ComputeLeitungEdgesMergesConnectorsButSkipsExtraEdgesWhenKnotenHasNullFunktion()
     {
         var verlauf = Factory.CreateLineString(new[] { new Coordinate(5, 0), new Coordinate(15, 0) });
         var row = new LeitungRow(Tid: 1, VonRef: 1, NachRef: 2, Verlauf: verlauf);
@@ -229,8 +230,33 @@ public sealed class NetworkTopologyPatcherTest
 
         var result = NetworkTopologyPatcher.ComputeLeitungEdges(row, knotenIndex, Factory);
 
-        Assert.AreSame(verlauf, result.NetworkEdge.Geom);
+        Assert.AreEqual(5d, result.NetworkEdge.DiffStart);
+        Assert.AreEqual(5d, result.NetworkEdge.DiffEnd);
+        Assert.AreEqual(new Coordinate(0, 0), result.NetworkEdge.Geom.StartPoint.Coordinate);
+        Assert.AreEqual(new Coordinate(20, 0), result.NetworkEdge.Geom.EndPoint.Coordinate);
         Assert.IsEmpty(result.ExtraEdges);
+    }
+
+    [TestMethod]
+    public void ComputeLeitungEdgesMergesBothConnectorsButOnlyEmitsExtraEdgeForValidFunktion()
+    {
+        var verlauf = Factory.CreateLineString(new[] { new Coordinate(5, 0), new Coordinate(15, 0) });
+        var row = new LeitungRow(Tid: 1, VonRef: 1, NachRef: 2, Verlauf: verlauf);
+        var knotenIndex = new Dictionary<long, KnotenInfo>
+        {
+            [1] = new KnotenInfo(new Coordinate(0, 0), "Pumpwerk"),
+            [2] = new KnotenInfo(new Coordinate(20, 0), "Leitungsknoten"),
+        };
+
+        var result = NetworkTopologyPatcher.ComputeLeitungEdges(row, knotenIndex, Factory);
+
+        Assert.AreEqual(5d, result.NetworkEdge.DiffStart);
+        Assert.AreEqual(5d, result.NetworkEdge.DiffEnd);
+        Assert.AreEqual(new Coordinate(0, 0), result.NetworkEdge.Geom.StartPoint.Coordinate);
+        Assert.AreEqual(new Coordinate(20, 0), result.NetworkEdge.Geom.EndPoint.Coordinate);
+        Assert.HasCount(1, result.ExtraEdges);
+        Assert.AreEqual(new Coordinate(0, 0), result.ExtraEdges[0].Geom.StartPoint.Coordinate);
+        Assert.AreEqual(new Coordinate(5, 0), result.ExtraEdges[0].Geom.EndPoint.Coordinate);
     }
 
     [TestMethod]

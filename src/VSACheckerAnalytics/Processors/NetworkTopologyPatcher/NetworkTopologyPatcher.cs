@@ -23,9 +23,10 @@ internal sealed class NetworkTopologyPatcher
     internal const int Srid = 2056;
 
     /// <summary>
-    /// Knoten <c>funktion</c> values that are considered valid connector targets. Connectors from
-    /// <c>leitung</c> endpoints are only created when the referenced Knoten's <c>funktion</c>
-    /// is in this set. Otherwise the verlauf endpoint is kept as-is on that side.
+    /// Knoten <c>funktion</c> values that are considered valid connector targets. Connector
+    /// segments for <c>leitung</c> endpoints are always merged into <c>ca_topo_network_edges</c>
+    /// when the referenced Knoten resolves; this allow-list only gates whether the connector
+    /// is additionally emitted as a separate feature in <c>ca_topo_extra_edges</c>.
     /// </summary>
     internal static readonly IReadOnlySet<string> ValidConnectorFunktionen = new HashSet<string>(StringComparer.Ordinal)
     {
@@ -292,11 +293,12 @@ internal sealed class NetworkTopologyPatcher
 
     /// <summary>
     /// Looks at the referenced Knoten of the Leitung and builds connector segments if required.
-    /// A connector on a given side is only built when the referenced Knoten resolves AND its
-    /// <c>funktion</c> is in <see cref="ValidConnectorFunktionen"/>; otherwise the verlauf
+    /// A connector on a given side is built whenever the referenced Knoten resolves and the gap
+    /// to the verlauf endpoint is at least <see cref="MinConnectorLength"/>; otherwise the verlauf
     /// endpoint is kept as-is on that side.
-    /// The created connector segments, or extra segments, are returned at <see cref="ComputedEdges.ExtraEdges"/>.
-    /// A complete Leitung, consisting of the original Leitung and the extra segments merged into it, is also returned at <see cref="ComputedEdges.NetworkEdge"/>.
+    /// The connector is always merged into <see cref="ComputedEdges.NetworkEdge"/>, but is only
+    /// emitted as a separate feature in <see cref="ComputedEdges.ExtraEdges"/> when the target
+    /// Knoten's <c>funktion</c> is in <see cref="ValidConnectorFunktionen"/>.
     /// </summary>
     internal static ComputedEdges ComputeLeitungEdges(
         LeitungRow row,
@@ -308,10 +310,10 @@ internal sealed class NetworkTopologyPatcher
         var fromKnoten = ResolveKnoten(knotenIndex, row.VonRef);
         var toKnoten = ResolveKnoten(knotenIndex, row.NachRef);
 
-        var startConnector = fromKnoten is not null && IsValidConnectorTarget(fromKnoten)
+        var startConnector = fromKnoten is not null
             ? BuildConnectorSegment(fromKnoten.Coord, row.Verlauf.StartPoint.Coordinate, geometryFactory)
             : null;
-        var endConnector = toKnoten is not null && IsValidConnectorTarget(toKnoten)
+        var endConnector = toKnoten is not null
             ? BuildConnectorSegment(row.Verlauf.EndPoint.Coordinate, toKnoten.Coord, geometryFactory)
             : null;
 
@@ -321,7 +323,10 @@ internal sealed class NetworkTopologyPatcher
         if (startConnector is not null)
         {
             segments.Add(startConnector);
-            extras.Add(new ExtraEdge(startConnector, row.Tid, row.Tid, startConnector.Length, Linetype));
+            if (IsValidConnectorTarget(fromKnoten!))
+            {
+                extras.Add(new ExtraEdge(startConnector, row.Tid, row.Tid, startConnector.Length, Linetype));
+            }
         }
 
         segments.Add(row.Verlauf);
@@ -329,7 +334,10 @@ internal sealed class NetworkTopologyPatcher
         if (endConnector is not null)
         {
             segments.Add(endConnector);
-            extras.Add(new ExtraEdge(endConnector, row.Tid, row.Tid, endConnector.Length, Linetype));
+            if (IsValidConnectorTarget(toKnoten!))
+            {
+                extras.Add(new ExtraEdge(endConnector, row.Tid, row.Tid, endConnector.Length, Linetype));
+            }
         }
 
         var merged = MergeSegments(segments);

@@ -59,13 +59,15 @@ public sealed class NetworkTopologyPatcherProcessTest
         using var connection = new SqliteConnection($"Data Source={outputPath};Pooling=false");
         connection.Open();
 
-        // 3 valid leitungen (L1–L3) + L4 (null vonref, end connector patched) + L5 (unknown vonref, end connector patched)
-        // + L6 (start patched, end suppressed by funktion) + L7 (both suppressed by funktion) + 1 valid aggregat
-        // = 8 network edges; U2 skipped (unknown ref).
+        // 3 leitungen (L1–L3) + L4 (null vonref, end patched) + L5 (unknown vonref, end patched)
+        // + L6 (both ends patched into network edge) + L7 (both ends patched into network edge)
+        // + 1 valid aggregat = 8 network edges; U2 skipped (unknown ref).
         Assert.AreEqual(8, GetCount(connection, "ca_topo_network_edges"));
 
-        // L3 contributes 2 connectors; L4 contributes 1 (end only, vonref null); L5 contributes 1 (end only,
-        // vonref unknown); L6 contributes 1 (start only); L7 contributes 0; U1 contributes 1. Total 6.
+        // Extra edges are filtered by the allow-list on the target Knoten's funktion:
+        // L3 contributes 2 (both ends Pumpwerk); L4 contributes 1 (end, Pumpwerk); L5 contributes 1
+        // (end, Pumpwerk); L6 contributes 1 (start Pumpwerk; end node has no funktion → suppressed);
+        // L7 contributes 0 (both nodes have no funktion); U1 contributes 1. Total 6.
         Assert.AreEqual(6, GetCount(connection, "ca_topo_extra_edges"));
 
         // L1: exact fit → no extras, diff 0 on both sides
@@ -114,26 +116,27 @@ public sealed class NetworkTopologyPatcherProcessTest
         Assert.AreEqual(2_600_000.0, l5Line.StartPoint.X, 1e-6);
         Assert.AreEqual(2_600_100.0, l5Line.EndPoint.X, 1e-6);
 
-        // L6: start node 5 has a valid funktion (start patched, 10 m connector); end node 6 has no
-        // knoten attribute row → funktion is NULL → end connector suppressed. Merged line spans
-        // node5 → original verlauf end vertex.
+        // L6: start node 5 has Pumpwerk funktion (start patched, 10 m); end node 6 has no knoten
+        // attribute row → funktion is NULL. The end connector is still built and merged into the
+        // network edge (5 m); only its emission as an extra edge is suppressed.
         var l6 = GetNetworkRow(connection, srcTid: 60);
         Assert.AreEqual("topologielinie", l6.Linetype);
         Assert.AreEqual(10.0, l6.DiffStart!.Value, 1e-6);
-        Assert.AreEqual(0.0, l6.DiffEnd);
+        Assert.AreEqual(5.0, l6.DiffEnd!.Value, 1e-6);
         var l6Line = (LineString)GeoPackageGeometryCodec.ReadGeometry(l6.Geom, out _);
         Assert.AreEqual(2_600_400.0, l6Line.StartPoint.X, 1e-6);
-        Assert.AreEqual(2_600_495.0, l6Line.EndPoint.X, 1e-6);
+        Assert.AreEqual(2_600_500.0, l6Line.EndPoint.X, 1e-6);
 
         // L7: neither endpoint has a valid funktion (nodes 6 and 7 have no knoten row) → both
-        // connectors suppressed, verlauf inserted unaltered with diff fields recorded as 0.
+        // connectors are merged into the network edge (so the verlauf is connected to the knoten
+        // coordinates), but neither is emitted as an extra edge.
         var l7 = GetNetworkRow(connection, srcTid: 70);
         Assert.AreEqual("topologielinie", l7.Linetype);
-        Assert.AreEqual(0.0, l7.DiffStart);
-        Assert.AreEqual(0.0, l7.DiffEnd);
+        Assert.AreEqual(10.0, l7.DiffStart!.Value, 1e-6);
+        Assert.AreEqual(5.0, l7.DiffEnd!.Value, 1e-6);
         var l7Line = (LineString)GeoPackageGeometryCodec.ReadGeometry(l7.Geom, out _);
-        Assert.AreEqual(2_600_510.0, l7Line.StartPoint.X, 1e-6);
-        Assert.AreEqual(2_600_595.0, l7Line.EndPoint.X, 1e-6);
+        Assert.AreEqual(2_600_500.0, l7Line.StartPoint.X, 1e-6);
+        Assert.AreEqual(2_600_600.0, l7Line.EndPoint.X, 1e-6);
 
         // GeoPackage feature-layer registration
         Assert.AreEqual(1, GetScalar(connection, "SELECT COUNT(*) FROM gpkg_contents WHERE table_name = 'ca_topo_network_edges' AND data_type = 'features'"));
