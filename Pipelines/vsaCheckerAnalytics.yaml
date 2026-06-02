@@ -67,8 +67,8 @@ processes:
         class: D
         tid: E
         fid: F
-      overviewWkSheet: "Uebersicht_WK"
-      overviewGepSheet: "Uebersicht_GEP"
+      overviewWkSheet: "Uebersicht WK"
+      overviewGepSheet: "Uebersicht GEP"
       overviewRowFields:
         - "class"
         - "error"
