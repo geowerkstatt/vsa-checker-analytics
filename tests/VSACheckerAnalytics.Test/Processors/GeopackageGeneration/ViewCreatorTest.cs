@@ -137,6 +137,66 @@ public class ViewCreatorTest
     }
 
     [TestMethod]
+    public void CreateAdditionalViews_CreatesAllExpectedViews()
+    {
+        using var connection = CreateOpenConnection();
+
+        var viewCreator = new ViewCreator(connection);
+        viewCreator.CreateAdditionalViews();
+
+        var expectedViews = new[]
+        {
+            "v_vsa_knoten",
+            "v_vsa_knoten_abwasserknoten",
+            "v_vsa_knoten_detailgeometrie",
+            "v_vsa_knoten_einleitstelle",
+            "v_vsa_knoten_messstelle",
+            "v_vsa_knoten_normschacht",
+            "v_vsa_knoten_spezialbauwerk",
+            "v_vsa_knoten_text",
+            "v_vsa_knoten_versickerungsanlage",
+            "v_vsa_leitung",
+            "v_vsa_leitung_text",
+            "v_vsa_ueberlauf_foerderaggregat",
+            "v_errorlist_ueberlauf_foerderaggregat_data",
+            "v_errorlist_error_teileinzugsgebiet_data",
+            "v_errorlist_error_knoten_data",
+            "v_errorlist_error_haltung_data",
+            "v_error_ueberlauf_foerderaggregat",
+            "v_error_teileinzugsgebiet",
+            "v_error_sk_trennbauwerk",
+            "v_error_sk_regenueberlaufbecken_kanal",
+            "v_error_sk_regenueberlaufbecken",
+            "v_error_sk_regenueberlauf",
+            "v_error_sk_pumpwerk",
+            "v_error_sk_einleitstelle",
+            "v_error_recommendation_teileinzugsgebiet",
+            "v_error_recommendation_knoten",
+            "v_error_recommendation_haltung",
+            "v_error_knoten",
+            "v_error_haltung",
+            "v_error_error_knoten",
+            "v_error_error_haltung",
+            "v_error_category_knoten",
+            "v_error_category_haltung",
+        };
+
+        var actualViews = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT name FROM sqlite_master WHERE type = 'view'";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            actualViews.Add(reader.GetString(0));
+        }
+
+        foreach (var expected in expectedViews)
+        {
+            Assert.Contains(expected, actualViews, $"Expected view '{expected}' was not created.");
+        }
+    }
+
+    [TestMethod]
     public async Task CreateCheckerErrorsView_ExcludesJoinKeysAndUnusedClassFromErrorMatrix()
     {
         using var connection = CreateOpenConnection();
