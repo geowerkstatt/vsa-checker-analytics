@@ -13,6 +13,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="EmbeddedResources\*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="GeoWerkstatt.Geopilot.PipelineCore" Version="1.2.0-preview.324">
       <Private>false</Private>
