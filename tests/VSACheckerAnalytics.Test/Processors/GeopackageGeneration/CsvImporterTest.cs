@@ -107,17 +107,50 @@ public class CsvImporterTest
     }
 
     [TestMethod]
-    public async Task ImportAsync_MismatchedHeader_LogsWarningAndImports()
+    public async Task ImportAsync_MissingRequiredColumn_Throws()
     {
         using var connection = CreateOpenConnection();
-        var logger = new TestLogger();
-        var importer = new CsvImporter(connection, Encoding.UTF8, logger);
-        using var stream = CreateCsvStream("WRONG;HEADER", "1;2020");
+        var importer = new CsvImporter(connection, Encoding.UTF8, NullLogger.Instance);
+        using var stream = CreateCsvStream("CID", "1");
+
+        var ex = await Assert.ThrowsExactlyAsync<InvalidOperationException>(
+            () => importer.ImportAsync(stream, "test_table", TwoColumns, CancellationToken.None));
+
+        StringAssert.Contains(ex.Message, "model");
+    }
+
+    [TestMethod]
+    public async Task ImportAsync_ExtraColumnInCsv_ImportsRequiredColumns()
+    {
+        using var connection = CreateOpenConnection();
+        var importer = new CsvImporter(connection, Encoding.UTF8, NullLogger.Instance);
+        using var stream = CreateCsvStream("CID;model;extra", "1;2020;junk");
 
         await importer.ImportAsync(stream, "test_table", TwoColumns, CancellationToken.None);
 
-        Assert.AreEqual(1, GetRowCount(connection, "test_table"));
-        Assert.AreEqual(LogLevel.Warning, logger.LastLogLevel);
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT \"CID\", \"model\" FROM \"test_table\"";
+        using var reader = command.ExecuteReader();
+        Assert.IsTrue(reader.Read());
+        Assert.AreEqual("1", reader.GetString(0));
+        Assert.AreEqual("2020", reader.GetString(1));
+    }
+
+    [TestMethod]
+    public async Task ImportAsync_ColumnsInDifferentOrder_ImportsByName()
+    {
+        using var connection = CreateOpenConnection();
+        var importer = new CsvImporter(connection, Encoding.UTF8, NullLogger.Instance);
+        using var stream = CreateCsvStream("model;CID", "2020;1");
+
+        await importer.ImportAsync(stream, "test_table", TwoColumns, CancellationToken.None);
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT \"CID\", \"model\" FROM \"test_table\"";
+        using var reader = command.ExecuteReader();
+        Assert.IsTrue(reader.Read());
+        Assert.AreEqual("1", reader.GetString(0));
+        Assert.AreEqual("2020", reader.GetString(1));
     }
 
     [TestMethod]
@@ -129,7 +162,6 @@ public class CsvImporterTest
         using var stream = CreateCsvStream(
             "CID;model",
             "1;2020",
-            "2;2020;extra",       // too many fields → skipped
             "3",                   // too few fields → skipped
             "4;2020");
 
@@ -137,7 +169,7 @@ public class CsvImporterTest
 
         Assert.AreEqual(2, GetRowCount(connection, "test_table"));
         Assert.AreEqual(LogLevel.Warning, logger.LastLogLevel);
-        Assert.IsGreaterThanOrEqualTo(3, logger.WarningCount); // 2 row warnings + 1 summary
+        Assert.IsGreaterThanOrEqualTo(2, logger.WarningCount); // 1 row warning + 1 summary
     }
 
     [TestMethod]
