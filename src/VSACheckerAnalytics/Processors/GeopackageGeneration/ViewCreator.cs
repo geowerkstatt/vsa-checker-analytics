@@ -106,30 +106,6 @@ internal sealed class ViewCreator
         command.ExecuteNonQuery();
     }
 
-    /// <summary>
-    /// Creates a view that returns all rows from the checker CSV union view that have
-    /// no matching entry in the errors view.
-    /// </summary>
-    /// <param name="viewName">Name of the view to create.</param>
-    /// <param name="unionViewName">Name of the checker CSV union view.</param>
-    /// <param name="errorsViewName">Name of the checker errors view.</param>
-    [SuppressMessage("Security", "CA2100", Justification = "View names are internal pipeline constants, not user input.")]
-    internal void CreateCheckerOrphansView(string viewName, string unionViewName, string errorsViewName)
-    {
-        var sql = $"""
-            CREATE VIEW IF NOT EXISTS "{viewName}" AS
-            SELECT c.*
-            FROM "{unionViewName}" c
-            WHERE NOT EXISTS (
-                SELECT 1 FROM "{errorsViewName}" e WHERE e."t_id" = c."t_id"
-            )
-            """;
-
-        using var command = connection.CreateCommand();
-        command.CommandText = sql;
-        command.ExecuteNonQuery();
-    }
-
     [SuppressMessage("Security", "CA2100", Justification = "Table name is an internal pipeline constant, not user input.")]
     private List<string> GetColumnNames(string tableName)
     {

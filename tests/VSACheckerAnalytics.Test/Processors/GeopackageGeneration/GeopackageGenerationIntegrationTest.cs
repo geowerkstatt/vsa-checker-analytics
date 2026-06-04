@@ -63,9 +63,6 @@ public class GeopackageGenerationIntegrationTest
             viewCreator.CreateCheckerErrorsView(
                 "v_checker_errors", "v_checker_csv_all", "error_matrix", "DE");
 
-            viewCreator.CreateCheckerOrphansView(
-                "v_checker_orphans", "v_checker_csv_all", "v_checker_errors");
-
             var materializer = new ErrorDataMaterializer(connection, NullLogger.Instance);
             materializer.CreateBuildView("v_ca_error_data_build", "v_checker_errors", "DE");
             await materializer.MaterializeAsync("v_ca_error_data_build", CancellationToken.None);
@@ -80,18 +77,7 @@ public class GeopackageGenerationIntegrationTest
             Assert.AreEqual(473, GetCountWhere(connection, "v_checker_csv_all", "source = 'FP'"));
 
             var errorsCount = GetRowCount(connection, "v_checker_errors");
-            var orphansCount = GetRowCount(connection, "v_checker_orphans");
-
-            // Every CSV row must be either matched (errors) or unmatched (orphans), so the sum
-            // is at least the total CSV row count. Duplicate (cid, model, class) entries in the
-            // error matrix multiply matched rows; today this adds exactly 1 row. We leave a
-            // generous upper margin to catch a future explosion in matrix duplicates without
-            // breaking the test for small, expected drift. Once the error matrix is
-            // deduplicated, both bounds can be tightened to AreEqual(1711, ...).
-            Assert.IsGreaterThanOrEqualTo(1711, errorsCount + orphansCount);
-            Assert.IsLessThanOrEqualTo(1711 + 50, errorsCount + orphansCount);
             Assert.IsGreaterThan(0, errorsCount);
-            Assert.IsGreaterThan(0, orphansCount);
 
             var errorsViewColumns = GetColumnNames(connection, "v_checker_errors");
             Assert.Contains("ccat", errorsViewColumns);
