@@ -246,6 +246,7 @@ public sealed class GeopackageGenerationProcess
 
         viewCreator.CreateCheckerErrorsView("v_checker_errors", "v_checker_csv_all", "error_matrix", language);
         viewCreator.CreateCheckerOrphansView("v_checker_orphans", "v_checker_csv_all", "v_checker_errors");
+        viewCreator.CreateAdditionalViews();
 
         var materializer = new ErrorDataMaterializer(connection, logger);
         materializer.CreateBuildView("v_ca_error_data_build", "v_checker_errors", language);

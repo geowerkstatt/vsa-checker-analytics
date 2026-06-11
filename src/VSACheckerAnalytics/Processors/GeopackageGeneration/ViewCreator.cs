@@ -130,6 +130,28 @@ internal sealed class ViewCreator
         command.ExecuteNonQuery();
     }
 
+    /// <summary>
+    /// Executes the embedded <c>AdditionalViews.sql</c> script to create the additional VSA views.
+    /// </summary>
+    [SuppressMessage("Security", "CA2100", Justification = "SQL is loaded from an embedded resource compiled into the assembly, not user input.")]
+    internal void CreateAdditionalViews()
+    {
+        const string resourceName = "VsaCheckerAnalytics.EmbeddedResources.AdditionalViews.sql";
+
+        var assembly = typeof(ViewCreator).Assembly;
+        using var stream = assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException(
+                $"Embedded SQL resource '{resourceName}' not found. Available resources: " +
+                $"[{string.Join(", ", assembly.GetManifestResourceNames())}].");
+
+        using var reader = new StreamReader(stream);
+        var sql = reader.ReadToEnd();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.ExecuteNonQuery();
+    }
+
     [SuppressMessage("Security", "CA2100", Justification = "Table name is an internal pipeline constant, not user input.")]
     private List<string> GetColumnNames(string tableName)
     {
