@@ -1,5 +1,4 @@
-﻿using DocumentFormat.OpenXml.Spreadsheet;
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.Operation.Linemerge;
@@ -16,10 +15,10 @@ namespace VsaCheckerAnalytics.Processors.NetworkTopologyPatcher;
 /// </summary>
 internal sealed class NetworkTopologyPatcher
 {
-    /// <summary>Minimum connector length in metres — shorter connectors are discarded.</summary>
+    /// <summary>Minimum connector length in metres. Shorter connectors are discarded.</summary>
     internal const double MinConnectorLength = 0.10;
 
-    /// <summary>SRID of all processed VSA data — Swiss LV95 (EPSG:2056).</summary>
+    /// <summary>SRID of all processed VSA data, Swiss LV95 (EPSG:2056).</summary>
     internal const int Srid = 2056;
 
     /// <summary>
@@ -225,13 +224,13 @@ internal sealed class NetworkTopologyPatcher
             }
             catch (InvalidDataException ex)
             {
-                logger.LogWarning("knoten_lage T_Id={Tid}: failed to decode geometry blob — skipped ({Message})", tid, ex.Message);
+                logger.LogWarning("knoten_lage T_Id={Tid}: failed to decode geometry blob, skipped ({Message})", tid, ex.Message);
                 continue;
             }
 
             if (geom is not Point point)
             {
-                logger.LogWarning("knoten_lage T_Id={Tid}: geometry is {Type}, expected Point — skipped", tid, geom.GeometryType);
+                logger.LogWarning("knoten_lage T_Id={Tid}: geometry is {Type}, expected Point, skipped", tid, geom.GeometryType);
                 continue;
             }
 
@@ -272,13 +271,13 @@ internal sealed class NetworkTopologyPatcher
             }
             catch (InvalidDataException ex)
             {
-                logger.LogWarning("leitung T_Id={Tid}: failed to decode 'verlauf' — skipped ({Message})", tid, ex.Message);
+                logger.LogWarning("leitung T_Id={Tid}: failed to decode 'verlauf', skipped ({Message})", tid, ex.Message);
                 continue;
             }
 
             if (geom is not LineString line)
             {
-                logger.LogWarning("leitung T_Id={Tid}: 'verlauf' is {Type}, expected LineString — skipped", tid, geom.GeometryType);
+                logger.LogWarning("leitung T_Id={Tid}: 'verlauf' is {Type}, expected LineString, skipped", tid, geom.GeometryType);
                 continue;
             }
 

@@ -10,9 +10,9 @@ namespace VsaCheckerAnalytics.Processors.NetworkTopologyPatcher;
 /// Pipeline process that takes a prepared GeoPackage and produces an enriched copy with
 /// two additional feature layers reconstructing the sewer network topology:
 /// <list type="bullet">
-///   <item><c>ca_topo_network_edges</c> — one continuous line per input edge, joining
+///   <item><c>ca_topo_network_edges</c>: one continuous line per input edge, joining
 ///   the referenced upstream and downstream nodes.</item>
-///   <item><c>ca_topo_extra_edges</c> — only the newly synthesised connector segments
+///   <item><c>ca_topo_extra_edges</c>: only the newly synthesised connector segments
 ///   (plus the pump/weir connectors from <c>ueberlauf_foerderaggregat</c>).</item>
 /// </list>
 /// The input file is left untouched; all writes go into a fresh copy.

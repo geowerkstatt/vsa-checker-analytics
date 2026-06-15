@@ -5,7 +5,7 @@ using System.Buffers.Binary;
 namespace VsaCheckerAnalytics.Processors.NetworkTopologyPatcher;
 
 /// <summary>
-/// Reads and writes GeoPackage Binary (GPB) blobs: an 8–72 byte GPKG header followed by
+/// Reads and writes GeoPackage Binary (GPB) blobs: an 8 to 72 byte GPKG header followed by
 /// standard OGC Well-Known Binary. The header carries the SRS ID (the WKB body does not).
 /// </summary>
 internal static class GeoPackageGeometryCodec
