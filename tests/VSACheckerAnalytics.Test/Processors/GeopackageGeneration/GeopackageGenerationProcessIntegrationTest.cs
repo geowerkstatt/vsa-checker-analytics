@@ -2,6 +2,7 @@
 using Geopilot.Pipeline.Config;
 using Geopilot.Pipeline.Process;
 using Geopilot.PipelineCore.Pipeline;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -99,8 +100,25 @@ public class GeopackageGenerationProcessIntegrationTest
         var gpkgFile = result.StepResult.Outputs["generatedGeopackage"].Data as IPipelineFile;
         Assert.IsNotNull(gpkgFile);
 
-        using var stream = gpkgFile.OpenReadFileStream();
-        Assert.IsGreaterThan(0, stream.Length);
+        string gpkgPath;
+        using (var stream = gpkgFile.OpenReadFileStream())
+        {
+            Assert.IsGreaterThan(0, stream.Length);
+            gpkgPath = stream.Name;
+        }
+
+        // Orphan baseline (drift guard), exercised through the real process: these SK_* checker
+        // errors are matrix-defined under the generic "SK" class, not the specific subclass, so
+        // they do not join and land in ca_error_orphans. If this count changes, the fixtures,
+        // the error matrix, or the join changed.
+        using var connection = new SqliteConnection($"Data Source={gpkgPath};Mode=ReadOnly;Pooling=false");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM ca_error_orphans";
+        Assert.AreEqual(
+            34L,
+            (long)(command.ExecuteScalar() ?? 0L),
+            "Orphan baseline drifted: the fixtures no longer produce 34 SK_* orphans. If you changed the checker CSVs, the error matrix, or the join, update the expected count.");
     }
 
     [TestMethod]
