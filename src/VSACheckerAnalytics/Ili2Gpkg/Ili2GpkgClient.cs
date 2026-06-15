@@ -87,6 +87,7 @@ public sealed class Ili2GpkgClient : IIli2GpkgClient
                 SkipGeometryErrors = args.SkipGeometryErrors,
                 DisableValidation = args.DisableValidation,
                 ImportTid = args.ImportTid,
+                StrokeArcs = args.StrokeArcs,
             };
             await using (var argsStream = new FileStream(jobArgsFile, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
@@ -161,5 +162,7 @@ public sealed class Ili2GpkgClient : IIli2GpkgClient
         public bool DisableValidation { get; set; }
 
         public bool ImportTid { get; set; }
+
+        public bool StrokeArcs { get; set; }
     }
 }

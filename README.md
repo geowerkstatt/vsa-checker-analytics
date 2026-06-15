@@ -7,6 +7,7 @@ A description of the pipeline architecture and a flow chart of the processors ca
 Detailed process documentation:
 
 - [VSA Matcher](docs/vsa-matcher.md) -- configuration, inputs/outputs, file identification and validation rules
+- [Network Topology Patcher](docs/network-topology-patcher.md) -- rekonstruiert die Konnektivität des Abwassernetzes in zwei zusätzlichen GeoPackage-Layern
 
 ## Setup
 
