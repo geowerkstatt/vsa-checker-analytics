@@ -287,8 +287,9 @@ internal sealed class NetworkTopologyPatcher
     }
 
     /// <summary>
-    /// Streams rows from the <c>ueberlauf_foerderaggregat</c> table. Yields nothing when
-    /// the table is absent. Rows with a NULL key are logged and skipped.
+    /// Streams rows from the <c>ueberlauf_foerderaggregat</c> table, which is part of the
+    /// prepared input schema and may be empty (a network without pumps or weirs). Rows with
+    /// a NULL key are skipped.
     /// </summary>
     private IEnumerable<UeberlaufFoerderaggregatRow> ReadUeberlaufFoerderaggregate()
     {
