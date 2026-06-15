@@ -1,4 +1,5 @@
 ﻿using NetTopologySuite.Geometries;
+using NetTopologySuite.IO;
 using System.Buffers.Binary;
 using VsaCheckerAnalytics.Processors.NetworkTopologyPatcher;
 
@@ -94,5 +95,29 @@ public sealed class GeoPackageGeometryCodecTest
         var decoded = GeoPackageGeometryCodec.ReadGeometry(blob, out var srid);
         Assert.AreEqual(2056, srid);
         Assert.IsTrue(decoded.IsEmpty);
+    }
+
+    [TestMethod]
+    public void ReadGeometryParsesBigEndianHeader()
+    {
+        var point = Factory.CreatePoint(new Coordinate(2_600_001.0, 1_200_002.0));
+        var wkb = new WKBWriter(ByteOrder.LittleEndian).Write(point);
+
+        // hand-built GPB with a big-endian header (flags bit 0 = 0), envelope code 0, SRID 2056
+        // written big-endian; the WKB body keeps its own (little-endian) byte order.
+        var blob = new byte[8 + wkb.Length];
+        blob[0] = 0x47; // 'G'
+        blob[1] = 0x50; // 'P'
+        blob[2] = 0x00; // version
+        blob[3] = 0x00; // flags: big-endian header, envelope code 0, non-empty
+        BinaryPrimitives.WriteInt32BigEndian(blob.AsSpan(4, 4), 2056);
+        wkb.CopyTo(blob, 8);
+
+        var decoded = GeoPackageGeometryCodec.ReadGeometry(blob, out var srid);
+
+        Assert.AreEqual(2056, srid);
+        Assert.IsInstanceOfType<Point>(decoded);
+        Assert.AreEqual(2_600_001.0, ((Point)decoded).X, 1e-9);
+        Assert.AreEqual(1_200_002.0, ((Point)decoded).Y, 1e-9);
     }
 }
