@@ -99,6 +99,10 @@ pipelines:
         output:
           - take: matched_files
             as: gep_checker_files
+          - take: status_message
+            as: status_message
+            action:
+              - StatusMessage
         conditions:
           post:
             fail_conditions:
