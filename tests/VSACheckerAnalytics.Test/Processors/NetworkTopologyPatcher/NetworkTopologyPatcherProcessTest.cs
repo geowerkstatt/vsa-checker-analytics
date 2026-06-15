@@ -2,6 +2,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
 using NetTopologySuite.Geometries;
+using System.Buffers.Binary;
 using System.Globalization;
 using VsaCheckerAnalytics.TestHelpers;
 
@@ -217,6 +218,105 @@ public sealed class NetworkTopologyPatcherProcessTest
                 File.Delete(path);
             }
         }
+    }
+
+    [TestMethod]
+    public async Task RunAsyncSkipsLeitungWithUnreadableCurveVerlauf()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"curve-{Guid.NewGuid():N}.gpkg");
+        try
+        {
+            BuildGeoPackageWithCurveVerlauf(path);
+
+            var input = new TestPipelineFile(path);
+            var patcherProcess = new NetworkTopologyPatcherProcess(fileManager, NullLogger.Instance);
+
+            // Must not throw: the unreadable CompoundCurve verlauf is skipped, not fatal.
+            var result = await patcherProcess.RunAsync(input, CancellationToken.None);
+            var output = Assert.IsInstanceOfType<IPipelineFile>(result["patchedGeopackage"]);
+
+            string outputPath;
+            using (var fs = output.OpenReadFileStream())
+            {
+                outputPath = fs.Name;
+            }
+
+            using var connection = new SqliteConnection($"Data Source={outputPath};Pooling=false");
+            connection.Open();
+
+            // The straight leitung (10) is processed; the curve leitung (90) is skipped.
+            Assert.AreEqual(1, GetScalar(connection, "SELECT COUNT(*) FROM ca_topo_network_edges WHERE src_tid = 10"));
+            Assert.AreEqual(0, GetScalar(connection, "SELECT COUNT(*) FROM ca_topo_network_edges WHERE src_tid = 90"));
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    private static void BuildGeoPackageWithCurveVerlauf(string path)
+    {
+        using var connection = new SqliteConnection($"Data Source={path};Pooling=false");
+        connection.Open();
+        MinimalNetworkTopologyGeoPackage.CreateSchema(connection);
+
+        InsertNode(connection, 1, 2_600_000.0, 1_200_000.0, hasDetailgeometrie: true);
+        InsertNode(connection, 2, 2_600_100.0, 1_200_000.0, hasDetailgeometrie: true);
+
+        // Straight verlauf: processed normally.
+        InsertLeitung(connection, 10, 1, 2, new Coordinate(2_600_000.0, 1_200_000.0), new Coordinate(2_600_100.0, 1_200_000.0));
+
+        // verlauf is a CompoundCurve (WKB type 9), which NTS cannot read (as in the host run):
+        // it must be skipped, not crash the whole step.
+        InsertLeitungRawVerlauf(connection, 90, 1, 2, BuildCompoundCurveGpbBlob());
+    }
+
+    private static void InsertLeitungRawVerlauf(SqliteConnection connection, long tid, long? vonRef, long? nachRef, byte[] verlauf)
+    {
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "INSERT INTO leitung (t_id, knoten_vonref, knoten_nachref, verlauf) VALUES (@tid, @von, @nach, @geom)";
+        cmd.Parameters.AddWithValue("@tid", tid);
+        cmd.Parameters.AddWithValue("@von", (object?)vonRef ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@nach", (object?)nachRef ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@geom", verlauf);
+        cmd.ExecuteNonQuery();
+    }
+
+    private static byte[] BuildCompoundCurveGpbBlob()
+    {
+        // WKB: CompoundCurve (type 9) with a single 2-point LineString sub-curve.
+        var wkb = new byte[1 + 4 + 4 + (1 + 4 + 4 + (2 * 16))];
+        var offset = 0;
+        wkb[offset++] = 0x01;
+        BinaryPrimitives.WriteUInt32LittleEndian(wkb.AsSpan(offset), 9u);
+        offset += 4;
+        BinaryPrimitives.WriteUInt32LittleEndian(wkb.AsSpan(offset), 1u);
+        offset += 4;
+        wkb[offset++] = 0x01;
+        BinaryPrimitives.WriteUInt32LittleEndian(wkb.AsSpan(offset), 2u);
+        offset += 4;
+        BinaryPrimitives.WriteUInt32LittleEndian(wkb.AsSpan(offset), 2u);
+        offset += 4;
+        foreach (var (x, y) in new[] { (2_600_000.0, 1_200_000.0), (2_600_100.0, 1_200_000.0) })
+        {
+            BinaryPrimitives.WriteDoubleLittleEndian(wkb.AsSpan(offset), x);
+            offset += 8;
+            BinaryPrimitives.WriteDoubleLittleEndian(wkb.AsSpan(offset), y);
+            offset += 8;
+        }
+
+        // GPB header: 'GP', version 0, flags 0x01 (little-endian, no envelope), SRID 2056.
+        var blob = new byte[8 + wkb.Length];
+        blob[0] = 0x47;
+        blob[1] = 0x50;
+        blob[2] = 0x00;
+        blob[3] = 0x01;
+        BinaryPrimitives.WriteInt32LittleEndian(blob.AsSpan(4, 4), 2056);
+        wkb.CopyTo(blob, 8);
+        return blob;
     }
 
     private static void BuildMinimalGeoPackage(string path)

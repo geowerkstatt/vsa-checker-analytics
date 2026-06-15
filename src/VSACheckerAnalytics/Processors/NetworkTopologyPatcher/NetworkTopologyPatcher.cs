@@ -56,6 +56,7 @@ internal sealed class NetworkTopologyPatcher
     private readonly SqliteConnection connection;
     private readonly ILogger logger;
     private readonly GeometryFactory geometryFactory = NetTopologySuite.NtsGeometryServices.Instance.CreateGeometryFactory();
+    private int skippedVerlaufCount;
 
     internal NetworkTopologyPatcher(SqliteConnection connection, ILogger logger)
     {
@@ -118,10 +119,11 @@ internal sealed class NetworkTopologyPatcher
         TopologyOutputTables.SetLayerExtent(connection, TopologyOutputTables.ExtraEdgesTable, extraExtent);
 
         logger.LogInformation(
-            "Network topology patch complete: {Leitungen} leitung rows + {Aggregate} ueberlauf_foerderaggregat rows processed, {Skipped} leitung rows skipped.",
+            "Network topology patch complete: {Leitungen} leitung rows + {Aggregate} ueberlauf_foerderaggregat rows processed; {MergeSkipped} leitung skipped after merge failure, {VerlaufSkipped} leitung skipped due to unreadable or non-LineString verlauf.",
             leitungCount,
             aggregatCount,
-            skippedCount);
+            skippedCount,
+            skippedVerlaufCount);
     }
 
     [SuppressMessage("Security", "CA2100", Justification = "SQL is built from internal table-name constants, not user input.")]
@@ -272,12 +274,14 @@ internal sealed class NetworkTopologyPatcher
             catch (InvalidDataException ex)
             {
                 logger.LogWarning("leitung T_Id={Tid}: failed to decode 'verlauf', skipped ({Message})", tid, ex.Message);
+                skippedVerlaufCount++;
                 continue;
             }
 
             if (geom is not LineString line)
             {
                 logger.LogWarning("leitung T_Id={Tid}: 'verlauf' is {Type}, expected LineString, skipped", tid, geom.GeometryType);
+                skippedVerlaufCount++;
                 continue;
             }
 

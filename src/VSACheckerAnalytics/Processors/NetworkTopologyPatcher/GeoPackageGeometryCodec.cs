@@ -59,7 +59,16 @@ internal static class GeoPackageGeometryCodec
         Buffer.BlockCopy(blob, wkbOffset, wkb, 0, wkb.Length);
 
         var reader = new WKBReader();
-        var geometry = reader.Read(wkb);
+        Geometry geometry;
+        try
+        {
+            geometry = reader.Read(wkb);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidDataException($"Failed to read the WKB geometry from the GeoPackage blob: {ex.Message}", ex);
+        }
+
         geometry.SRID = srid;
         return geometry;
     }
