@@ -122,8 +122,6 @@ pipelines:
         output:
           - take: extracted_files
             as: gep_checker_files
-            action:
-              - Download
           - take: status_message
             as: status_message
             action:
@@ -150,28 +148,16 @@ pipelines:
             as: user_org_table
           - take: checker_csv_a
             as: checker_csv_a
-            action:
-              - Download
           - take: checker_csv_fp
             as: checker_csv_fp
-            action:
-              - Download
           - take: checker_csv_t
             as: checker_csv_t
-            action:
-              - Download
           - take: gpkg_template
             as: gpkg_template
-            action:
-              - Download
           - take: standard_org_table
             as: standard_org_table
-            action:
-              - Download
           - take: error_matrix
             as: error_matrix
-            action:
-              - Download
           - take: status_message
             as: status_message
             action:
@@ -265,8 +251,6 @@ pipelines:
         output:
           - take: generatedGeopackage
             as: generatedGeopackage
-            action:
-              - Download
         conditions:
           post:
             fail_conditions:
@@ -308,3 +292,12 @@ pipelines:
             as: patchedGeopackage
             action:
               - Download
+        conditions:
+          post:
+            fail_conditions:
+              - expression: "[network_topology_patcher.patchedGeopackage] == null"
+                message:
+                  de: "Die Rekonstruktion der Netzwerktopologie ist fehlgeschlagen"
+                  en: "Network topology reconstruction failed"
+                  fr: "La reconstruction de la topologie du réseau a échoué"
+                  it: "La ricostruzione della topologia di rete non è riuscita"
