@@ -182,6 +182,43 @@ public sealed class NetworkTopologyPatcherProcessTest
         }
     }
 
+    [TestMethod]
+    public async Task RunAsyncSkipsLeitungWhoseGeometryCannotBeMerged()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"merge-fail-{Guid.NewGuid():N}.gpkg");
+        try
+        {
+            BuildMergeFailureGeoPackage(path);
+
+            var input = new TestPipelineFile(path);
+            var patcherProcess = new NetworkTopologyPatcherProcess(fileManager, NullLogger.Instance);
+
+            var result = await patcherProcess.RunAsync(input, CancellationToken.None);
+            var output = Assert.IsInstanceOfType<IPipelineFile>(result["patchedGeopackage"]);
+
+            string outputPath;
+            using (var fs = output.OpenReadFileStream())
+            {
+                outputPath = fs.Name;
+            }
+
+            using var connection = new SqliteConnection($"Data Source={outputPath};Pooling=false");
+            connection.Open();
+
+            // The valid leitung is written; the closed-ring leitung cannot be merged into a single
+            // line and is skipped with a warning instead of aborting the whole run.
+            Assert.AreEqual(1, GetScalar(connection, "SELECT COUNT(*) FROM ca_topo_network_edges WHERE src_tid = 10"));
+            Assert.AreEqual(0, GetScalar(connection, "SELECT COUNT(*) FROM ca_topo_network_edges WHERE src_tid = 80"));
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
     private static void BuildMinimalGeoPackage(string path)
     {
         using var connection = new SqliteConnection($"Data Source={path};Pooling=false");
@@ -229,6 +266,32 @@ public sealed class NetworkTopologyPatcherProcessTest
 
         // U2: references unknown node 999 → must be skipped with warning
         InsertAggregat(connection, 200, 1, 999);
+    }
+
+    private static void BuildMergeFailureGeoPackage(string path)
+    {
+        using var connection = new SqliteConnection($"Data Source={path};Pooling=false");
+        connection.Open();
+        MinimalNetworkTopologyGeoPackage.CreateSchema(connection);
+
+        // Valid pair: leitung 10 fits node 1 to node 2 exactly, so it merges and is written.
+        InsertNode(connection, 1, 2_600_000.0, 1_200_000.0, hasDetailgeometrie: true);
+        InsertNode(connection, 2, 2_600_100.0, 1_200_000.0, hasDetailgeometrie: true);
+        InsertLeitung(connection, 10, 1, 2, new Coordinate(2_600_000.0, 1_200_000.0), new Coordinate(2_600_100.0, 1_200_000.0));
+
+        // Closed-ring verlauf with connectors on both ends: LineMerger yields more than one line,
+        // so MergeSegments throws and the row must be skipped.
+        InsertNode(connection, 8, 2_600_700.0, 1_200_000.0, hasDetailgeometrie: true);
+        InsertNode(connection, 9, 2_600_710.0, 1_200_000.0, hasDetailgeometrie: true);
+        InsertLeitung(
+            connection,
+            80,
+            8,
+            9,
+            new Coordinate(2_600_705.0, 1_200_000.0),
+            new Coordinate(2_600_706.0, 1_200_001.0),
+            new Coordinate(2_600_705.0, 1_200_001.0),
+            new Coordinate(2_600_705.0, 1_200_000.0));
     }
 
     private static void InsertNode(SqliteConnection connection, long tid, double x, double y, bool hasDetailgeometrie)

@@ -80,11 +80,22 @@ internal sealed class NetworkTopologyPatcher
         var extraExtent = new Envelope();
 
         var leitungCount = 0;
+        var skippedCount = 0;
         foreach (var row in ReadLeitungen())
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var computedEdges = ComputeLeitungEdges(row, knotenIndex, geometryFactory);
-            WriteComputedEdgesToGeoPackage(insertNetworkEdgeCommand, insertExtraEdgeCommand, computedEdges, networkExtent, extraExtent);
+            try
+            {
+                var computedEdges = ComputeLeitungEdges(row, knotenIndex, geometryFactory);
+                WriteComputedEdgesToGeoPackage(insertNetworkEdgeCommand, insertExtraEdgeCommand, computedEdges, networkExtent, extraExtent);
+            }
+            catch (InvalidDataException ex)
+            {
+                logger.LogWarning("leitung T_Id={Tid}: topology edge could not be built, skipped ({Message})", row.Tid, ex.Message);
+                skippedCount++;
+                continue;
+            }
+
             leitungCount++;
         }
 
@@ -108,9 +119,10 @@ internal sealed class NetworkTopologyPatcher
         TopologyOutputTables.SetLayerExtent(connection, TopologyOutputTables.ExtraEdgesTable, extraExtent);
 
         logger.LogInformation(
-            "Network topology patch complete: {Leitungen} leitung rows + {Aggregate} ueberlauf_foerderaggregat rows processed.",
+            "Network topology patch complete: {Leitungen} leitung rows + {Aggregate} ueberlauf_foerderaggregat rows processed, {Skipped} leitung rows skipped.",
             leitungCount,
-            aggregatCount);
+            aggregatCount,
+            skippedCount);
     }
 
     [SuppressMessage("Security", "CA2100", Justification = "SQL is built from internal table-name constants, not user input.")]
