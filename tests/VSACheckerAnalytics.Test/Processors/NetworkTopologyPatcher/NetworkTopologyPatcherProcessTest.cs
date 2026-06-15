@@ -151,6 +151,37 @@ public sealed class NetworkTopologyPatcherProcessTest
         Assert.AreEqual(0, GetScalar(inputConnection, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'ca_topo_extra_edges'"));
     }
 
+    [TestMethod]
+    public async Task RunAsyncSetsGpkgContentsExtentFromWrittenGeometries()
+    {
+        var input = new TestPipelineFile(inputGpkgPath);
+        var patcherProcess = new NetworkTopologyPatcherProcess(fileManager, NullLogger.Instance);
+
+        var result = await patcherProcess.RunAsync(input, CancellationToken.None);
+        var output = Assert.IsInstanceOfType<IPipelineFile>(result["patchedGeopackage"]);
+
+        string outputPath;
+        using (var fs = output.OpenReadFileStream())
+        {
+            outputPath = fs.Name;
+        }
+
+        using var connection = new SqliteConnection($"Data Source={outputPath};Pooling=false");
+        connection.Open();
+
+        // The gpkg_contents extent must equal the bounding box of the actually written
+        // geometries (computed from the data, not copied from the leitung placeholder).
+        foreach (var table in new[] { "ca_topo_network_edges", "ca_topo_extra_edges" })
+        {
+            var stored = GetExtent(connection, table);
+            var actual = ComputeGeomBbox(connection, table);
+            Assert.AreEqual(actual.MinX, stored.MinX, 1e-6);
+            Assert.AreEqual(actual.MinY, stored.MinY, 1e-6);
+            Assert.AreEqual(actual.MaxX, stored.MaxX, 1e-6);
+            Assert.AreEqual(actual.MaxY, stored.MaxY, 1e-6);
+        }
+    }
+
     private static void BuildMinimalGeoPackage(string path)
     {
         using var connection = new SqliteConnection($"Data Source={path};Pooling=false");
@@ -261,6 +292,33 @@ public sealed class NetworkTopologyPatcherProcessTest
         return Convert.ToInt32(cmd.ExecuteScalar(), CultureInfo.InvariantCulture);
     }
 
+#pragma warning restore CA2100
+
+    private static (double MinX, double MinY, double MaxX, double MaxY) GetExtent(SqliteConnection connection, string table)
+    {
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT min_x, min_y, max_x, max_y FROM gpkg_contents WHERE table_name = @t";
+        cmd.Parameters.AddWithValue("@t", table);
+        using var reader = cmd.ExecuteReader();
+        Assert.IsTrue(reader.Read(), $"Expected gpkg_contents row for {table}");
+        return (reader.GetDouble(0), reader.GetDouble(1), reader.GetDouble(2), reader.GetDouble(3));
+    }
+
+#pragma warning disable CA2100
+    private static (double MinX, double MinY, double MaxX, double MaxY) ComputeGeomBbox(SqliteConnection connection, string table)
+    {
+        var envelope = new Envelope();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = $"SELECT geom FROM \"{table}\" WHERE geom IS NOT NULL";
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            var geom = GeoPackageGeometryCodec.ReadGeometry((byte[])reader.GetValue(0), out _);
+            envelope.ExpandToInclude(geom.EnvelopeInternal);
+        }
+
+        return (envelope.MinX, envelope.MinY, envelope.MaxX, envelope.MaxY);
+    }
 #pragma warning restore CA2100
 
     private static void AssertNetworkRow(SqliteConnection connection, long srcTid, double? expectedDiffStart, double? expectedDiffEnd, string expectedLinetype)

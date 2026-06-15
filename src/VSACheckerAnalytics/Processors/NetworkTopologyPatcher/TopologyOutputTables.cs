@@ -1,4 +1,5 @@
 ﻿using Microsoft.Data.Sqlite;
+using NetTopologySuite.Geometries;
 using System.Diagnostics.CodeAnalysis;
 
 namespace VsaCheckerAnalytics.Processors.NetworkTopologyPatcher;
@@ -43,9 +44,33 @@ internal static class TopologyOutputTables
         RegisterFeatureTable(connection, ExtraEdgesTable, srid);
     }
 
+    /// <summary>
+    /// Updates the <c>gpkg_contents</c> bounding box of <paramref name="tableName"/> to the
+    /// given <paramref name="extent"/>. No-op when the extent is empty (no features written).
+    /// </summary>
+    internal static void SetLayerExtent(SqliteConnection connection, string tableName, Envelope extent)
+    {
+        if (extent.IsNull)
+        {
+            return;
+        }
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = """
+            UPDATE gpkg_contents SET min_x = @min_x, min_y = @min_y, max_x = @max_x, max_y = @max_y
+            WHERE table_name = @name
+            """;
+        cmd.Parameters.AddWithValue("@name", tableName);
+        cmd.Parameters.AddWithValue("@min_x", extent.MinX);
+        cmd.Parameters.AddWithValue("@min_y", extent.MinY);
+        cmd.Parameters.AddWithValue("@max_x", extent.MaxX);
+        cmd.Parameters.AddWithValue("@max_y", extent.MaxY);
+        cmd.ExecuteNonQuery();
+    }
+
     private static void RegisterFeatureTable(SqliteConnection connection, string tableName, int srid)
     {
-        // gpkg_contents: identify as a feature table.
+        // gpkg_contents: identify as a feature table (extent is set later from the written geometries).
         using (var cmd = connection.CreateCommand())
         {
             cmd.CommandText = """

@@ -98,7 +98,7 @@ Microsoft.Data.Sqlite   →  BLOB zurück in GPKG schreiben
 
 ### GPB-Writer (Schreiben)
 
-1. Header aufbauen: Magic, Version, Flags, SRS ID, Envelope aus Geometry berechnen
+1. Header aufbauen: Magic, Version, Flags, SRS ID, Envelope. Für nicht-leere Geometrien wird ein XY-Envelope (Code 1) aus `geometry.EnvelopeInternal` berechnet und in den Header geschrieben; leere Geometrien erhalten keinen Envelope (Code 0) und das Empty-Flag gesetzt.
 2. Geometrie via NTS `WKBWriter` serialisieren
 3. Header + WKB zusammenfügen → fertiger BLOB
 

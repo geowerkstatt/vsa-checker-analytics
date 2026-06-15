@@ -76,12 +76,15 @@ internal sealed class NetworkTopologyPatcher
         using var insertNetworkEdgeCommand = CreateInsertNetworkCommand();
         using var insertExtraEdgeCommand = CreateInsertExtraCommand();
 
+        var networkExtent = new Envelope();
+        var extraExtent = new Envelope();
+
         var leitungCount = 0;
         foreach (var row in ReadLeitungen())
         {
             cancellationToken.ThrowIfCancellationRequested();
             var computedEdges = ComputeLeitungEdges(row, knotenIndex, geometryFactory);
-            WriteComputedEdgesToGeoPackage(insertNetworkEdgeCommand, insertExtraEdgeCommand, computedEdges);
+            WriteComputedEdgesToGeoPackage(insertNetworkEdgeCommand, insertExtraEdgeCommand, computedEdges, networkExtent, extraExtent);
             leitungCount++;
         }
 
@@ -95,11 +98,14 @@ internal sealed class NetworkTopologyPatcher
                 continue;
             }
 
-            WriteComputedEdgesToGeoPackage(insertNetworkEdgeCommand, insertExtraEdgeCommand, computedEdges);
+            WriteComputedEdgesToGeoPackage(insertNetworkEdgeCommand, insertExtraEdgeCommand, computedEdges, networkExtent, extraExtent);
             aggregatCount++;
         }
 
         await transaction.CommitAsync(cancellationToken);
+
+        TopologyOutputTables.SetLayerExtent(connection, TopologyOutputTables.NetworkEdgesTable, networkExtent);
+        TopologyOutputTables.SetLayerExtent(connection, TopologyOutputTables.ExtraEdgesTable, extraExtent);
 
         logger.LogInformation(
             "Network topology patch complete: {Leitungen} leitung rows + {Aggregate} ueberlauf_foerderaggregat rows processed.",
@@ -143,12 +149,14 @@ internal sealed class NetworkTopologyPatcher
         return command;
     }
 
-    private void WriteComputedEdgesToGeoPackage(SqliteCommand insertNetwork, SqliteCommand insertExtra, ComputedEdges edges)
+    private void WriteComputedEdgesToGeoPackage(SqliteCommand insertNetwork, SqliteCommand insertExtra, ComputedEdges edges, Envelope networkExtent, Envelope extraExtent)
     {
         WriteNetworkEdges(insertNetwork, edges.NetworkEdge);
+        networkExtent.ExpandToInclude(edges.NetworkEdge.Geom.EnvelopeInternal);
         foreach (var extra in edges.ExtraEdges)
         {
             WriteExtraEdges(insertExtra, extra);
+            extraExtent.ExpandToInclude(extra.Geom.EnvelopeInternal);
         }
     }
 

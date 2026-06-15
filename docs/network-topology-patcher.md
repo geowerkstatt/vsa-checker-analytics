@@ -71,7 +71,10 @@ sind in `NetworkTopologyPatcher` fest hinterlegt:
 
 Das Output-GeoPackage enthält zwei neue Feature-Tabellen, die in
 `gpkg_contents` und `gpkg_geometry_columns` registriert werden, damit QGIS sie
-automatisch als darstellbare LineString-Layer erkennt (SRID 2056):
+automatisch als darstellbare LineString-Layer erkennt (SRID 2056). Die
+Layer-Ausdehnung (Bounding-Box in `gpkg_contents`) wird aus den geschriebenen
+Topologie-Geometrien berechnet, damit QGIS auf das tatsächliche Datengebiet
+zoomen kann:
 
 ### `ca_topo_network_edges`
 
