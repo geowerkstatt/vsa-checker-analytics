@@ -251,6 +251,9 @@ public sealed class GeopackageGenerationProcess
         materializer.CreateBuildView("v_ca_error_data_build", "v_checker_errors", language);
         await materializer.MaterializeAsync("v_ca_error_data_build", cancellationToken);
 
+        new OrphanInspector(connection, logger)
+            .MaterializeOrphans("ca_error_orphans", "v_checker_csv_all", "v_checker_errors");
+
         logger.LogInformation("Created analytics in GeoPackage.");
         return target;
     }
