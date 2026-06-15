@@ -59,7 +59,7 @@ public sealed class NetworkTopologyPatcherProcessTest
         using var connection = new SqliteConnection($"Data Source={outputPath};Pooling=false");
         connection.Open();
 
-        // 3 leitungen (L1–L3) + L4 (null vonref, end patched) + L5 (unknown vonref, end patched)
+        // 3 leitungen (L1 to L3) + L4 (null vonref, end patched) + L5 (unknown vonref, end patched)
         // + L6 (both ends patched into network edge) + L7 (both ends patched into network edge)
         // + 1 valid aggregat = 8 network edges; U2 skipped (unknown ref).
         Assert.AreEqual(8, GetCount(connection, "ca_topo_network_edges"));
@@ -144,7 +144,7 @@ public sealed class NetworkTopologyPatcherProcessTest
         Assert.AreEqual(1, GetScalar(connection, "SELECT COUNT(*) FROM gpkg_geometry_columns WHERE table_name = 'ca_topo_network_edges' AND geometry_type_name = 'LINESTRING'"));
         Assert.AreEqual(1, GetScalar(connection, "SELECT COUNT(*) FROM gpkg_geometry_columns WHERE table_name = 'ca_topo_extra_edges' AND geometry_type_name = 'LINESTRING'"));
 
-        // The input gpkg must be left untouched — no output tables in it.
+        // The input gpkg must be left untouched, no output tables in it.
         using var inputConnection = new SqliteConnection($"Data Source={inputGpkgPath};Pooling=false");
         inputConnection.Open();
         Assert.AreEqual(0, GetScalar(inputConnection, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'ca_topo_network_edges'"));
@@ -226,21 +226,21 @@ public sealed class NetworkTopologyPatcherProcessTest
 
         MinimalNetworkTopologyGeoPackage.CreateSchema(connection);
 
-        // Nodes along y=1_200_000, spaced 100 m. Nodes 1–5 have a detailgeometrie (eligible for patching).
+        // Nodes along y=1_200_000, spaced 100 m. Nodes 1 to 5 have a detailgeometrie (eligible for patching).
         InsertNode(connection, 1, 2_600_000.0, 1_200_000.0, hasDetailgeometrie: true);
         InsertNode(connection, 2, 2_600_100.0, 1_200_000.0, hasDetailgeometrie: true);
         InsertNode(connection, 3, 2_600_200.0, 1_200_000.0, hasDetailgeometrie: true);
         InsertNode(connection, 4, 2_600_300.0, 1_200_000.0, hasDetailgeometrie: true);
         InsertNode(connection, 5, 2_600_400.0, 1_200_000.0, hasDetailgeometrie: true);
 
-        // Nodes 6 and 7 have only a lage, no detailgeometrie — connectors to them must be suppressed.
+        // Nodes 6 and 7 have only a lage, no knoten row (funktion NULL), so their connectors are kept in the network edge but not emitted as extra edges.
         InsertNode(connection, 6, 2_600_500.0, 1_200_000.0, hasDetailgeometrie: false);
         InsertNode(connection, 7, 2_600_600.0, 1_200_000.0, hasDetailgeometrie: false);
 
         // L1: perfectly fits node 1 → node 2
         InsertLeitung(connection, 10, 1, 2, new Coordinate(2_600_000.0, 1_200_000.0), new Coordinate(2_600_100.0, 1_200_000.0));
 
-        // L2: start gap 0.05 m — below MinConnectorLength (0.10 m) → no connector
+        // L2: start gap 0.05 m, below MinConnectorLength (0.10 m) → no connector
         InsertLeitung(connection, 20, 3, 4, new Coordinate(2_600_200.05, 1_200_000.0), new Coordinate(2_600_300.0, 1_200_000.0));
 
         // L3: large gap on both sides → start connector 10 m, end connector 5 m
