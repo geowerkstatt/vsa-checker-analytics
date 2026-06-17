@@ -75,6 +75,9 @@ public sealed class GeopackageGenerationProcessTest
         Assert.IsNotNull(output);
         using var stream = output.OpenReadFileStream();
         Assert.IsGreaterThan(0, stream.Length);
+
+        var statusMessage = (LocalizedText)result["status_message"]!;
+        Assert.AreEqual("GeoPackage created and enriched with checker data, error matrix and analysis views.", statusMessage["en"]);
     }
 
     [TestMethod]
@@ -129,6 +132,9 @@ public sealed class GeopackageGenerationProcessTest
             cancellationToken: CancellationToken.None);
 
         Assert.IsNull(result["generatedGeopackage"]);
+
+        var statusMessage = (LocalizedText)result["status_message"]!;
+        Assert.AreEqual("GeoPackage could not be created: INTERLIS import failed.", statusMessage["en"]);
     }
 
     private GeopackageGenerationProcess CreateProcess(IIli2GpkgClient client)

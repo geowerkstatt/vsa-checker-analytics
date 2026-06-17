@@ -56,6 +56,7 @@ as its first row field, the GEP sheet uses `gep`.
 | Key             | Type            | Description                                    |
 |-----------------|-----------------|------------------------------------------------|
 | `errorOverview` | `IPipelineFile` | The generated Excel workbook (`error-overview.xlsx`). |
+| `status_message` | `LocalizedText` | Localized status message reporting the number of exported errors. Surfaced in the UI via the `StatusMessage` output action. |
 
 ## Processing
 

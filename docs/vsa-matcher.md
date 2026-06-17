@@ -47,6 +47,7 @@ The `RunAsync` method receives two collections:
 | `gpkg_template`     | `IPipelineFile?`  | GeoPackage template copied from app resources, matching the model version. Mandatory for further processing, Step Post condition will ensure its presence. |
 | `standard_org_table`| `IPipelineFile?`  | Standard organisation table fetched from the VSA repository, matching the model version. Mandatory for further processing, Step Post condition will ensure its presence. |
 | `error_matrix`      | `IPipelineFile?`  | Error matrix XLSX copied from app resources. Mandatory for further processing, Step Post condition will ensure its presence. |
+| `status_message`    | `LocalizedText`   | Localized status message summarising the identification result (matched model version and language plus the number of checker CSVs found, or a no-GEP / multiple-GEP notice). Surfaced in the UI via the `StatusMessage` output action. |
 
 ## File identification
 

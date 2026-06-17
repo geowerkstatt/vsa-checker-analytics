@@ -31,6 +31,7 @@ populated GeoPackage for the downstream processors.
 | Key                   | Type             | Description                                                                 |
 |-----------------------|------------------|-----------------------------------------------------------------------------|
 | `generatedGeopackage` | `IPipelineFile?` | The populated GeoPackage, named `generated.gpkg`. `null` if any ili2gpkg import step failed. |
+| `status_message`      | `LocalizedText`  | Localized status message: a success summary, or an INTERLIS import-failure notice when `generatedGeopackage` is `null`. Surfaced in the UI via the `StatusMessage` output action. |
 
 ## Interlis-Import
 

@@ -64,7 +64,7 @@ internal sealed class NetworkTopologyPatcher
         this.logger = logger;
     }
 
-    internal async Task RunAsync(CancellationToken cancellationToken)
+    internal async Task<NetworkTopologyResult> RunAsync(CancellationToken cancellationToken)
     {
         TopologyOutputTables.Create(connection, Srid);
 
@@ -124,6 +124,8 @@ internal sealed class NetworkTopologyPatcher
             aggregatCount,
             skippedCount,
             skippedVerlaufCount);
+
+        return new NetworkTopologyResult(leitungCount + aggregatCount, skippedCount + skippedVerlaufCount);
     }
 
     [SuppressMessage("Security", "CA2100", Justification = "SQL is built from internal table-name constants, not user input.")]
@@ -484,3 +486,9 @@ internal sealed record ExtraEdge(
 /// edges.
 /// </summary>
 internal sealed record ComputedEdges(NetworkEdge NetworkEdge, IReadOnlyList<ExtraEdge> ExtraEdges);
+
+/// <summary>
+/// Summary of a topology patch run: how many edges were written to the network table and how
+/// many leitung rows were skipped because their geometry could not be built.
+/// </summary>
+internal sealed record NetworkTopologyResult(int EdgesBuilt, int LeitungenSkipped);

@@ -17,6 +17,23 @@ public sealed class GeopackageGenerationProcess
 {
     private const string GeneratedGpkgOutputKey = "generatedGeopackage";
     private const string GeneratedGeopackageName = "generated";
+    private const string StatusMessageOutputKey = "status_message";
+
+    private static readonly LocalizedText GeneratedStatusMessage = new Dictionary<string, string>
+    {
+        { "de", "GeoPackage erstellt und mit Checker-Daten, Fehlermatrix und Analyse-Views angereichert." },
+        { "fr", "GeoPackage créé et enrichi avec les données du vérificateur, la matrice d'erreurs et les vues d'analyse." },
+        { "it", "GeoPackage creato e arricchito con i dati del controllo, la matrice degli errori e le viste di analisi." },
+        { "en", "GeoPackage created and enriched with checker data, error matrix and analysis views." },
+    };
+
+    private static readonly LocalizedText ImportFailedStatusMessage = new Dictionary<string, string>
+    {
+        { "de", "GeoPackage konnte nicht erstellt werden: INTERLIS-Import fehlgeschlagen." },
+        { "fr", "Le GeoPackage n'a pas pu être créé : l'import INTERLIS a échoué." },
+        { "it", "Impossibile creare il GeoPackage: importazione INTERLIS non riuscita." },
+        { "en", "GeoPackage could not be created: INTERLIS import failed." },
+    };
 
     private static readonly string[] CsvColumns =
         ["Module", "ErrorId", "Category", "Description", "Model", "Topic", "Bid", "Class", "Tid", "Line", "CharPos", "Geom1", "Geom2", "UserAttributes", "Profiles"];
@@ -103,6 +120,7 @@ public sealed class GeopackageGenerationProcess
         return new Dictionary<string, object?>
         {
             { GeneratedGpkgOutputKey, outputGpkg },
+            { StatusMessageOutputKey, outputGpkg is not null ? GeneratedStatusMessage : ImportFailedStatusMessage },
         };
     }
 

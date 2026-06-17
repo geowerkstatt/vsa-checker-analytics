@@ -99,6 +99,9 @@ public sealed class ErrorOverviewExportProcessTest
 
         var result = await process.RunAsync(geopackage);
 
+        var statusMessage = (LocalizedText)result["status_message"]!;
+        Assert.AreEqual("Error overview created: 2 errors exported.", statusMessage["en"]);
+
         using var workbook = OpenOutputWorkbook(result);
         Assert.AreEqual(2, workbook.Worksheets.Count);
 

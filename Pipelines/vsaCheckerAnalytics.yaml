@@ -1,11 +1,11 @@
 processes:
   - id: zip_file_matcher
-    implementation: Geopilot.Api.Pipeline.Process.Matcher.FileMatcher.FileMatcherProcess
+    implementation: Geopilot.Pipeline.Processes.Matcher.FileMatcher.FileMatcherProcess
     default_config:
       fileExtensions:
         - zip
   - id: unzipper
-    implementation: Geopilot.Api.Pipeline.Process.Unzip.UnzipProcess
+    implementation: Geopilot.Pipeline.Processes.Unzip.UnzipProcess
   - id: vsa_matcher
     implementation: VsaCheckerAnalytics.Processors.VsaMatcher.VsaMatcherProcess
   - id: geopackage_generation
@@ -255,6 +255,10 @@ pipelines:
         output:
           - take: generatedGeopackage
             as: generatedGeopackage
+          - take: status_message
+            as: status_message
+            action:
+              - StatusMessage
         conditions:
           post:
             fail_conditions:
@@ -280,6 +284,10 @@ pipelines:
             as: errorOverview
             action:
               - Download
+          - take: status_message
+            as: status_message
+            action:
+              - StatusMessage
       - id: network_topology_patcher
         display_name:
           de: Netzwerktopologie Patcher
@@ -296,6 +304,10 @@ pipelines:
             as: patchedGeopackage
             action:
               - Download
+          - take: status_message
+            as: status_message
+            action:
+              - StatusMessage
         conditions:
           post:
             fail_conditions:
