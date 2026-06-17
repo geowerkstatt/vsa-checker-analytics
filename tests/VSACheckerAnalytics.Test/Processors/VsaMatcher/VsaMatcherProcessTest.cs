@@ -49,7 +49,7 @@ public sealed class VsaMatcherProcessTest
         Assert.AreSame(gepFile, gepFiles.Single());
         Assert.AreEqual("2020", result["model_version"]);
         Assert.AreEqual("DE", result["language"]);
-        var statusMessage = (Dictionary<string, string>)result["status_message"]!;
+        var statusMessage = (LocalizedText)result["status_message"]!;
         Assert.AreEqual("GEP file identified (model 2020, DE), 0 checker CSV(s) found.", statusMessage["en"]);
     }
 
@@ -144,7 +144,7 @@ public sealed class VsaMatcherProcessTest
         Assert.IsNull(result["gpkg_template"]);
         Assert.IsNull(result["standard_org_table"]);
         Assert.IsNotNull(result["error_matrix"]);
-        var statusMessage = (Dictionary<string, string>)result["status_message"]!;
+        var statusMessage = (LocalizedText)result["status_message"]!;
         Assert.AreEqual("Keine GEP-Transferdatei in den hochgeladenen Dateien gefunden.", statusMessage["de"]);
         Assert.AreEqual("Aucun fichier de transfert GEP trouvé dans les fichiers téléchargés.", statusMessage["fr"]);
         Assert.AreEqual("Nessun file di trasferimento GEP trovato nei file caricati.", statusMessage["it"]);
@@ -165,7 +165,7 @@ public sealed class VsaMatcherProcessTest
         Assert.HasCount(2, gepFiles);
         Assert.IsNull(result["model_version"]);
         Assert.IsNull(result["language"]);
-        var statusMessage = (Dictionary<string, string>)result["status_message"]!;
+        var statusMessage = (LocalizedText)result["status_message"]!;
         Assert.AreEqual("2 GEP files found (2020 DE, 2020.1 DE), unambiguous assignment not possible.", statusMessage["en"]);
     }
 
@@ -230,7 +230,7 @@ public sealed class VsaMatcherProcessTest
         Assert.AreSame(csvA, csvsA.Single());
         Assert.AreSame(csvFp, csvsFp.Single());
         Assert.AreSame(csvT, csvsT.Single());
-        var statusMessage = (Dictionary<string, string>)result["status_message"]!;
+        var statusMessage = (LocalizedText)result["status_message"]!;
         Assert.AreEqual("GEP-Datei erkannt (Modell 2020, DE), 3 Checker-CSV(s) gefunden.", statusMessage["de"]);
         Assert.AreEqual("Fichier GEP identifié (modèle 2020, DE), 3 CSV de vérification trouvé(s).", statusMessage["fr"]);
         Assert.AreEqual("File GEP identificato (modello 2020, DE), 3 CSV di verifica trovati.", statusMessage["it"]);
