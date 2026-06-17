@@ -43,4 +43,5 @@ jobs:
           gh release create "v${{ env.VERSION }}" \
             --target ${{ github.sha }} \
             --title "${{ env.VERSION }}" \
+            --generate-notes \
             "VSACheckerAnalytics-v${{ env.VERSION }}.zip"
