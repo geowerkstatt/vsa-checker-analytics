@@ -1,110 +1,110 @@
-# VSA Geopackage Generation Process
+# VSA Geopackage Generation Prozess
 
-The VSA Geopackage Generation process imports the INTERLIS transfer files
-produced by the [VSA Matcher](vsa-matcher.md) into the schema-only
-GeoPackage template, enriches the result with checker CSV data and an
-error matrix, and materializes analytical tables. It emits a single
-populated GeoPackage for the downstream processors.
+Der VSA Geopackage Generation Prozess importiert die vom
+[VSA Matcher](vsa-matcher.md) erzeugten INTERLIS-Transferdateien in das
+schema-only GeoPackage-Template, reichert das Ergebnis mit Checker-CSV-Daten und
+einer Fehlermatrix an und materialisiert analytische Tabellen. Er gibt ein
+einzelnes befülltes GeoPackage für die nachgelagerten Prozessoren aus.
 
-## Configuration
+## Konfiguration
 
-| Parameter             | Type                   | Description                                                                                  |
+| Parameter             | Typ                    | Beschreibung                                                                                  |
 |-----------------------|------------------------|----------------------------------------------------------------------------------------------|
-| `jobsDirectory`       | `string`               | Local path the `ili2gpkg` worker has mounted as `ILI2GPKG_JOBS_DIR`. Used to exchange files between plugin and worker. |
+| `jobsDirectory`       | `string`               | Lokaler Pfad, den der `ili2gpkg`-Worker als `ILI2GPKG_JOBS_DIR` eingehängt hat. Dient dem Dateiaustausch zwischen Plugin und Worker. |
 
 ## Inputs
 
-| Parameter         | Source       | Type             | Description                                                                          |
+| Parameter         | Quelle       | Typ              | Beschreibung                                                                          |
 |-------------------|--------------|------------------|--------------------------------------------------------------------------------------|
-| `geoPackage`      | VSA Matcher  | `IPipelineFile`  | Schema-only GeoPackage template (`gpkg_template`), matching the GEP model version.   |
-| `dssMiniXtf`      | VSA Matcher  | `IPipelineFile`  | The GEP / DSS Mini INTERLIS transfer file (`gep`).                                   |
-| `defaultOrgsXtf`  | VSA Matcher  | `IPipelineFile`  | Standard organisation table from the VSA repository (`standard_org_table`).          |
-| `userOrgsXtf`     | VSA Matcher  | `IPipelineFile?` | Optional user organisation table from the upload (`user_org_table`). May be empty.   |
-| `checkerCsvT`     | VSA Matcher  | `IPipelineFile`  | Checker CSV file for Traegerschaft (T).                                              |
-| `checkerCsvA`     | VSA Matcher  | `IPipelineFile`  | Checker CSV file for ARA (A).                                                        |
-| `checkerCsvFp`    | VSA Matcher  | `IPipelineFile`  | Checker CSV file for Fachpruefungen (FP).                                            |
-| `errorMatrix`     | VSA Matcher  | `IPipelineFile`  | Error matrix XLSX file mapping error IDs to descriptions and priorities.              |
-| `language`        | VSA Matcher  | `string`         | Language code (`DE` or `FR`) for localized error matrix columns.                     |
+| `geoPackage`      | VSA Matcher  | `IPipelineFile`  | Schema-only GeoPackage-Template (`gpkg_template`), passend zur GEP-Modellversion.    |
+| `dssMiniXtf`      | VSA Matcher  | `IPipelineFile`  | Die GEP- bzw. DSS-Mini-INTERLIS-Transferdatei (`gep`).                               |
+| `defaultOrgsXtf`  | VSA Matcher  | `IPipelineFile`  | Standard-Organisationstabelle aus dem VSA-Repository (`standard_org_table`).          |
+| `userOrgsXtf`     | VSA Matcher  | `IPipelineFile?` | Optionale benutzerdefinierte Organisationstabelle aus dem Upload (`user_org_table`). Kann leer sein.   |
+| `checkerCsvT`     | VSA Matcher  | `IPipelineFile`  | Checker-CSV-Datei für Trägerschaft (T).                                              |
+| `checkerCsvA`     | VSA Matcher  | `IPipelineFile`  | Checker-CSV-Datei für ARA (A).                                                       |
+| `checkerCsvFp`    | VSA Matcher  | `IPipelineFile`  | Checker-CSV-Datei für Fachprüfungen (FP).                                            |
+| `errorMatrix`     | VSA Matcher  | `IPipelineFile`  | Fehlermatrix-XLSX-Datei, die Fehler-IDs auf Beschreibungen und Prioritäten abbildet.  |
+| `language`        | VSA Matcher  | `string`         | Sprachcode (`DE` oder `FR`) für die lokalisierten Spalten der Fehlermatrix.          |
 
 ## Output
 
-| Key                   | Type             | Description                                                                 |
+| Key                   | Typ              | Beschreibung                                                                 |
 |-----------------------|------------------|-----------------------------------------------------------------------------|
-| `generatedGeopackage` | `IPipelineFile?` | The populated GeoPackage, named `generated.gpkg`. `null` if any ili2gpkg import step failed. |
-| `status_message`      | `LocalizedText`  | Localized status message: a success summary, or an INTERLIS import-failure notice when `generatedGeopackage` is `null`. Surfaced in the UI via the `StatusMessage` output action. |
+| `generatedGeopackage` | `IPipelineFile?` | Das befüllte GeoPackage mit dem Namen `generated.gpkg`. `null`, wenn ein ili2gpkg-Importschritt fehlgeschlagen ist. |
+| `status_message`      | `LocalizedText`  | Lokalisierte Statusmeldung: eine Erfolgszusammenfassung oder ein Hinweis auf einen fehlgeschlagenen INTERLIS-Import, wenn `generatedGeopackage` `null` ist. Wird über die Output-Action `StatusMessage` in der Oberfläche angezeigt. |
 
 ## Interlis-Import
 
-The three transfer files are imported sequentially into the template
-GeoPackage via `IIli2GpkgClient.ImportToGeoPackageAsync`. Each import
-reads the current GeoPackage stream plus one XTF, and writes the result
-to a freshly allocated pipeline file that becomes the input of the next
-step.
+Die drei Transferdateien werden nacheinander über
+`IIli2GpkgClient.ImportToGeoPackageAsync` in das Template-GeoPackage importiert.
+Jeder Import liest den aktuellen GeoPackage-Stream plus eine XTF und schreibt das
+Ergebnis in eine neu angelegte Pipeline-Datei, die zum Input des nächsten
+Schritts wird.
 
-Import order:
+Import-Reihenfolge:
 
-1. `defaultOrgs` — standard organisation table
-2. `userOrgs` — *only if an upload organisation table is present*
-3. `dssMini` — GEP transfer file
+1. `defaultOrgs`: Standard-Organisationstabelle
+2. `userOrgs`: *nur wenn eine Organisationstabelle aus dem Upload vorhanden ist*
+3. `dssMini`: GEP-Transferdatei
 
-Each import writes to a temporary `gpkg-step-{label}.gpkg` file that
-becomes the input of the next step.
+Jeder Import schreibt in eine temporäre `gpkg-step-{label}.gpkg`-Datei, die zum
+Input des nächsten Schritts wird.
 
-### ili2gpkg arguments
+### ili2gpkg-Argumente
 
-The following `ili2gpkg` flags are set for every import step:
+Die folgenden `ili2gpkg`-Flags werden für jeden Importschritt gesetzt:
 
-| Argument                | Value | Rationale                                                                |
-|-------------------------|-------|--------------------------------------------------------------------------|
-| `--skipReferenceErrors` | on    | Continue when XTF references cannot be resolved.                         |
-| `--skipGeometryErrors`  | on    | Continue when geometry errors are encountered.                           |
-| `--disableValidation`   | on    | INTERLIS validation is the GEP-Checker's responsibility, not ours.       |
-| `--importTid`           | on    | Import the INTERLIS TID into the database (needed for downstream joins). |
+| Argument                | Wert | Begründung                                                               |
+|-------------------------|------|-------------------------------------------------------------------------|
+| `--skipReferenceErrors` | an   | Fortfahren, wenn XTF-Referenzen nicht aufgelöst werden können.           |
+| `--skipGeometryErrors`  | an   | Fortfahren, wenn Geometriefehler auftreten.                             |
+| `--disableValidation`   | an   | Die INTERLIS-Validierung ist Aufgabe des GEP-Checkers, nicht unsere.     |
+| `--importTid`           | an   | Importiert die INTERLIS-TID in die Datenbank (für nachgelagerte Joins erforderlich). |
 
-## Checker CSV Import
+## Checker-CSV-Import
 
-After the INTERLIS import, the three checker CSV files are imported into
-the GeoPackage as tables `checker_csv_t`, `checker_csv_a`, and
-`checker_csv_fp`. The CSV files use Windows-1252 encoding. Join indexes
-are created on (`ErrorId`, `Model`, `Class`) for each table.
+Nach dem INTERLIS-Import werden die drei Checker-CSV-Dateien als Tabellen
+`checker_csv_t`, `checker_csv_a` und `checker_csv_fp` in das GeoPackage
+importiert. Die CSV-Dateien verwenden die Windows-1252-Kodierung. Für jede
+Tabelle werden Join-Indizes auf (`ErrorId`, `Model`, `Class`) erstellt.
 
-## Error Matrix Import
+## Fehlermatrix-Import
 
-The error matrix XLSX is imported into the `error_matrix` table with a
-join index on (`cid`, `model`, `class_de`).
+Die Fehlermatrix-XLSX wird in die Tabelle `error_matrix` importiert, mit einem
+Join-Index auf (`cid`, `model`, `class_de`).
 
 ## Analytics
 
-Two analytical views are created first:
+Zunächst werden zwei analytische Views erstellt:
 
-1. `v_checker_csv_all` unions the three checker CSV tables with a
-   `source` column (`T`, `A`, `FP`).
-2. `v_checker_errors` joins the union view with the error matrix,
-   enriching each CSV row with localized descriptions and priorities.
+1. `v_checker_csv_all` vereinigt die drei Checker-CSV-Tabellen mit einer
+   `source`-Spalte (`T`, `A`, `FP`).
+2. `v_checker_errors` verknüpft den Vereinigungs-View mit der Fehlermatrix und
+   reichert jede CSV-Zeile mit lokalisierten Beschreibungen und Prioritäten an.
 
-Then `ErrorDataMaterializer` materializes two tables from the errors
-view:
+Anschliessend materialisiert `ErrorDataMaterializer` zwei Tabellen aus dem
+Errors-View:
 
-- **`ca_error_data`** contains one row per checker error. Each row
-  carries the error description, priority columns (`wk`, `gep`),
-  recommendation, and (for Leitung and Knoten) enrichment from the
-  feature tables (`funktionhierarchisch`, `eigentuemer`, `status`).
-  Feature classes whose tables are not present in the GeoPackage are
-  handled by a catch-all that sets enrichment columns to NULL.
-- **`ca_error_object`** aggregates `ca_error_data` by (`tid`, `class`)
-  with `COUNT(*)`, `MAX(wk)`, and `MAX(gep)`.
+- **`ca_error_data`** enthält eine Zeile pro Checker-Fehler. Jede Zeile trägt die
+  Fehlerbeschreibung, Prioritätsspalten (`wk`, `gep`), die Empfehlung und (für
+  Leitung und Knoten) die Anreicherung aus den Feature-Tabellen
+  (`funktionhierarchisch`, `eigentuemer`, `status`). Feature-Klassen, deren
+  Tabellen nicht im GeoPackage vorhanden sind, werden von einem Catch-all
+  behandelt, das die Anreicherungsspalten auf NULL setzt.
+- **`ca_error_object`** aggregiert `ca_error_data` nach (`tid`, `class`) mit
+  `COUNT(*)`, `MAX(wk)` und `MAX(gep)`.
 
-The `check_type` column is derived from the CSV `Module` field: `reader`
-becomes `ig`, otherwise the value is the CSV source (`T`, `A`, `FP`).
-The `module` column follows similar logic: `reader` becomes `igcheck`,
-everything else becomes `gep_check`.
+Die `check_type`-Spalte wird aus dem CSV-Feld `Module` abgeleitet: `reader` wird
+zu `ig`, andernfalls ist der Wert die CSV-Quelle (`T`, `A`, `FP`). Die
+`module`-Spalte folgt einer ähnlichen Logik: `reader` wird zu `igcheck`, alles
+andere zu `gep_check`.
 
-The final output is written to `generated.gpkg`.
+Der finale Output wird nach `generated.gpkg` geschrieben.
 
-## Failure behaviour
+## Fehlerverhalten
 
-If any `ili2gpkg` import step reports a non-success result, the process
-logs the worker output at debug level and returns `null` for
-`generatedGeopackage`. The remaining enrichment steps are skipped.
-Downstream processors detect the missing GPKG via their own
-pre-condition and abort the pipeline.
+Wenn ein `ili2gpkg`-Importschritt ein nicht erfolgreiches Ergebnis meldet,
+protokolliert der Prozess die Worker-Ausgabe auf Debug-Level und gibt `null` für
+`generatedGeopackage` zurück. Die verbleibenden Anreicherungsschritte werden
+übersprungen. Nachgelagerte Prozessoren erkennen das fehlende GPKG über ihre
+eigene Pre-Condition und brechen die Pipeline ab.
