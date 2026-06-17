@@ -49,6 +49,9 @@ public sealed class NetworkTopologyPatcherProcessTest
         Assert.IsNotNull(result["patchedGeopackage"]);
         var output = Assert.IsInstanceOfType<IPipelineFile>(result["patchedGeopackage"]);
 
+        var statusMessage = Assert.IsInstanceOfType<LocalizedText>(result["status_message"]);
+        StringAssert.Contains(statusMessage["en"]!, "edges created");
+
         Assert.AreNotSame(input, output, "Process must write to a fresh copy, not mutate the input.");
 
         string outputPath;

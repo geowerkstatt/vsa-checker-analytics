@@ -68,6 +68,7 @@ sind in `NetworkTopologyPatcher` fest hinterlegt:
 | Key                  | Typ             | Beschreibung                                                                                       |
 |----------------------|-----------------|----------------------------------------------------------------------------------------------------|
 | `patchedGeopackage`  | `IPipelineFile` | Eine Kopie des Eingabe-GeoPackages mit den beiden Topologie-Layern.    |
+| `status_message`     | `LocalizedText` | Lokalisierte Statusmeldung mit der Anzahl aufgebauter Kanten und übersprungener Leitungen. Wird über die Output-Action `StatusMessage` in der Oberfläche angezeigt. |
 
 Das Output-GeoPackage enthält zwei neue Feature-Tabellen, die in
 `gpkg_contents` und `gpkg_geometry_columns` registriert werden, damit QGIS sie

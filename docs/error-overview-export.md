@@ -1,76 +1,82 @@
-# Error Overview Export Process
+# Error Overview Export Prozess
 
-The Error Overview Export process reads the materialized error tables from the
-GeoPackage produced by [Geopackage Generation](vsa-geopackage-generation.md)
-and exports them to an Excel workbook (XLSX) with two configurable data sheets
-and optional pivot table overview sheets for WK and GEP priorities.
+Der Error Overview Export Prozess liest die materialisierten Fehlertabellen aus
+dem von der [Geopackage Generation](vsa-geopackage-generation.md) erzeugten
+GeoPackage und exportiert sie in eine Excel-Arbeitsmappe (XLSX) mit zwei
+konfigurierbaren Datenblättern und optionalen Pivot-Übersichtsblättern für die
+WK- und GEP-Prioritäten.
 
-This processor implements the "Fehlerübersicht" part of the
-[Excel Mapper](architektur.md#excel-mapper) described in the architecture.
+Dieser Prozessor implementiert den Teil "Fehlerübersicht" des
+[Excel Mapper](architektur.md#excel-mapper), der in der Architektur beschrieben
+ist.
 
-## Configuration
+## Konfiguration
 
-All configuration parameters are resolved from the pipeline YAML
-(`default_config` / `process_config_overwrites`). Sheet names, column
-positions, and display headers are fully driven by configuration so that
-changes to the Excel layout do not require code changes.
+Alle Konfigurationsparameter werden aus der Pipeline-YAML aufgelöst
+(`default_config` / `process_config_overwrites`). Blattnamen, Spaltenpositionen
+und Anzeige-Header sind vollständig konfigurationsgesteuert, sodass Änderungen am
+Excel-Layout keine Codeänderungen erfordern.
 
-| Parameter                      | Type                       | Description                                                      |
-|--------------------------------|----------------------------|------------------------------------------------------------------|
-| `errorDataSheet`               | `string`                   | Excel sheet name for the `ca_error_data` export.                 |
-| `errorDataAttributeMapping`    | `IDictionary<string,string>` | Maps attribute keys (SQLite column names) to Excel header display names. |
-| `errorDataColumnMapping`       | `IDictionary<string,string>` | Maps the same attribute keys to Excel column letters (A, B, ...). |
-| `errorObjectSheet`             | `string`                   | Excel sheet name for the `ca_error_object` export.               |
-| `errorObjectAttributeMapping`  | `IDictionary<string,string>` | Maps attribute keys to display names for the object sheet.       |
-| `errorObjectColumnMapping`     | `IDictionary<string,string>` | Maps the same attribute keys to column letters for the object sheet. |
-| `overviewWkSheet`              | `string?`                  | Sheet name for the WK pivot overview. `null` to skip.            |
-| `overviewGepSheet`             | `string?`                  | Sheet name for the GEP pivot overview. `null` to skip.           |
-| `overviewRowFields`            | `IList<string>?`           | Attribute keys for pivot row fields (after the priority field).  |
-| `overviewFilterFields`         | `IList<string>?`           | Attribute keys for pivot report filter fields.                   |
-| `overviewValueField`           | `string?`                  | Attribute key for the pivot count value field.                   |
-| `overviewValueName`            | `string?`                  | Display name for the pivot value column.                         |
+| Parameter                      | Typ                          | Beschreibung                                                     |
+|--------------------------------|------------------------------|-----------------------------------------------------------------|
+| `errorDataSheet`               | `string`                     | Excel-Blattname für den `ca_error_data`-Export.                 |
+| `errorDataAttributeMapping`    | `IDictionary<string,string>` | Bildet Attribut-Keys (SQLite-Spaltennamen) auf Excel-Header-Anzeigenamen ab. |
+| `errorDataColumnMapping`       | `IDictionary<string,string>` | Bildet dieselben Attribut-Keys auf Excel-Spaltenbuchstaben ab (A, B, ...). |
+| `errorObjectSheet`             | `string`                     | Excel-Blattname für den `ca_error_object`-Export.               |
+| `errorObjectAttributeMapping`  | `IDictionary<string,string>` | Bildet Attribut-Keys auf Anzeigenamen für das Objektblatt ab.   |
+| `errorObjectColumnMapping`     | `IDictionary<string,string>` | Bildet dieselben Attribut-Keys auf Spaltenbuchstaben für das Objektblatt ab. |
+| `overviewWkSheet`              | `string?`                    | Blattname für die WK-Pivot-Übersicht. `null` zum Überspringen.  |
+| `overviewGepSheet`             | `string?`                    | Blattname für die GEP-Pivot-Übersicht. `null` zum Überspringen. |
+| `overviewRowFields`            | `IList<string>?`             | Attribut-Keys für die Pivot-Zeilenfelder (nach dem Prioritätsfeld). |
+| `overviewFilterFields`         | `IList<string>?`             | Attribut-Keys für die Pivot-Berichtsfilterfelder.               |
+| `overviewValueField`           | `string?`                    | Attribut-Key für das Pivot-Zählwertfeld.                        |
+| `overviewValueName`            | `string?`                    | Anzeigename für die Pivot-Wertespalte.                          |
 
-### Mapping validation
+### Mapping-Validierung
 
-The `attributeMapping` and `columnMapping` for each sheet must define exactly
-the same set of keys. A mismatch (key present in one but not the other) causes
-an `ArgumentException` at construction time, listing the mismatched keys.
+Das `attributeMapping` und das `columnMapping` jedes Blatts müssen exakt
+dieselbe Menge an Keys definieren. Eine Abweichung (Key im einen vorhanden, im
+anderen nicht) führt zur Konstruktionszeit zu einer `ArgumentException`, die die
+abweichenden Keys auflistet.
 
-### Pivot overview validation
+### Pivot-Übersichts-Validierung
 
-When either `overviewWkSheet` or `overviewGepSheet` is set, all remaining
-`overview*` parameters must be provided. Each attribute key in
-`overviewRowFields`, `overviewFilterFields`, and `overviewValueField` must
-exist in `errorDataAttributeMapping`; a missing key causes an
-`ArgumentException` at construction time. The WK sheet uses the `wk` attribute
-as its first row field, the GEP sheet uses `gep`.
+Wenn entweder `overviewWkSheet` oder `overviewGepSheet` gesetzt ist, müssen alle
+übrigen `overview*`-Parameter angegeben werden. Jeder Attribut-Key in
+`overviewRowFields`, `overviewFilterFields` und `overviewValueField` muss in
+`errorDataAttributeMapping` vorhanden sein; ein fehlender Key führt zur
+Konstruktionszeit zu einer `ArgumentException`. Das WK-Blatt verwendet das
+Attribut `wk` als erstes Zeilenfeld, das GEP-Blatt das Attribut `gep`.
 
 ## Inputs
 
-| Parameter    | Source                | Type            | Description                                             |
-|--------------|-----------------------|-----------------|---------------------------------------------------------|
-| `geopackage` | Geopackage Generation | `IPipelineFile` | The populated GeoPackage containing `ca_error_data` and `ca_error_object`. |
+| Parameter    | Quelle                | Typ             | Beschreibung                                            |
+|--------------|-----------------------|-----------------|--------------------------------------------------------|
+| `geopackage` | Geopackage Generation | `IPipelineFile` | Das befüllte GeoPackage mit `ca_error_data` und `ca_error_object`. |
 
 ## Output
 
-| Key             | Type            | Description                                    |
+| Key             | Typ             | Beschreibung                                   |
 |-----------------|-----------------|------------------------------------------------|
-| `errorOverview` | `IPipelineFile` | The generated Excel workbook (`error-overview.xlsx`). |
+| `errorOverview` | `IPipelineFile` | Die erzeugte Excel-Arbeitsmappe (`error-overview.xlsx`). |
+| `status_message` | `LocalizedText` | Lokalisierte Statusmeldung mit der Anzahl exportierter Fehler. Wird über die Output-Action `StatusMessage` in der Oberfläche angezeigt. |
 
-## Processing
+## Verarbeitung
 
-1. The GeoPackage is opened read-only via `Microsoft.Data.Sqlite`.
-2. For each configured sheet (`ca_error_data`, `ca_error_object`):
-   - A worksheet is created with the configured sheet name.
-   - Row 1 is populated with header display names from the attribute mapping,
-     placed in the column positions defined by the column mapping.
-   - All rows from the source table are queried (selecting only the mapped
-     columns) and written starting at row 2.
-   - Cell values preserve their SQLite type: integers and doubles remain
-     numeric in Excel, text remains text, NULL cells are left blank.
-3. If configured, pivot table overview sheets are created. Each sheet contains
-   a ClosedXML pivot table that references the error data sheet's used range.
-   The pivot groups errors by priority level (WK or GEP), class, and error
-   type, with configurable report filters and a count aggregation. Column A
-   is set to width 105 and column B to width 13.
-4. The workbook is saved via ClosedXML to a pipeline output file.
+1. Das GeoPackage wird über `Microsoft.Data.Sqlite` schreibgeschützt geöffnet.
+2. Für jedes konfigurierte Blatt (`ca_error_data`, `ca_error_object`):
+   - Ein Arbeitsblatt wird mit dem konfigurierten Blattnamen erstellt.
+   - Zeile 1 wird mit den Header-Anzeigenamen aus dem Attribut-Mapping befüllt,
+     platziert an den durch das Spalten-Mapping definierten Spaltenpositionen.
+   - Alle Zeilen der Quelltabelle werden abgefragt (nur die gemappten Spalten)
+     und ab Zeile 2 geschrieben.
+   - Zellwerte behalten ihren SQLite-Typ: Ganzzahlen und Gleitkommazahlen
+     bleiben in Excel numerisch, Text bleibt Text, NULL-Zellen bleiben leer.
+3. Falls konfiguriert, werden Pivot-Übersichtsblätter erstellt. Jedes Blatt
+   enthält eine ClosedXML-Pivot-Tabelle, die auf den verwendeten Bereich des
+   Fehlerdatenblatts verweist. Die Pivot-Tabelle gruppiert Fehler nach
+   Prioritätsstufe (WK oder GEP), Klasse und Fehlertyp, mit konfigurierbaren
+   Berichtsfiltern und einer Zählaggregation. Spalte A wird auf Breite 105 und
+   Spalte B auf Breite 13 gesetzt.
+4. Die Arbeitsmappe wird über ClosedXML in eine Pipeline-Output-Datei
+   geschrieben.

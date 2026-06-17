@@ -3,6 +3,7 @@ using Geopilot.PipelineCore.Pipeline.Process;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Globalization;
 
 namespace VsaCheckerAnalytics.Processors.NetworkTopologyPatcher;
 
@@ -21,6 +22,15 @@ public sealed class NetworkTopologyPatcherProcess
 {
     private const string PatchedGpkgOutputKey = "patchedGeopackage";
     private const string PatchedGeopackageName = "gpkg-with-topology";
+    private const string StatusMessageOutputKey = "status_message";
+
+    private static readonly LocalizedText TopologyStatusMessageFormat = new Dictionary<string, string>
+    {
+        { "de", "Netzwerk-Topologie aufgebaut: {0} Kanten erstellt, {1} übersprungen." },
+        { "fr", "Topologie du réseau construite : {0} arêtes créées, {1} ignorées." },
+        { "it", "Topologia di rete costruita: {0} archi creati, {1} ignorati." },
+        { "en", "Network topology built: {0} edges created, {1} skipped." },
+    };
 
     private readonly IPipelineFileManager pipelineFileManager;
     private readonly ILogger logger;
@@ -54,17 +64,22 @@ public sealed class NetworkTopologyPatcherProcess
 
         var (target, path) = await CopyGeoPackageAsync(geoPackage, PatchedGeopackageName, cancellationToken).ConfigureAwait(false);
 
+        NetworkTopologyResult topologyResult;
         using (var connection = OpenGeoPackage(path))
         {
             var patcher = new NetworkTopologyPatcher(connection, logger);
-            await patcher.RunAsync(cancellationToken).ConfigureAwait(false);
+            topologyResult = await patcher.RunAsync(cancellationToken).ConfigureAwait(false);
         }
 
         logger.LogInformation("NetworkTopologyPatcherProcess produced GeoPackage <{FileName}>.", target.OriginalFileName);
 
+        var statusMessage = TopologyStatusMessageFormat
+            .Map(msg => string.Format(CultureInfo.InvariantCulture, msg, topologyResult.EdgesBuilt, topologyResult.LeitungenSkipped));
+
         return new Dictionary<string, object?>
         {
             { PatchedGpkgOutputKey, target },
+            { StatusMessageOutputKey, statusMessage },
         };
     }
 

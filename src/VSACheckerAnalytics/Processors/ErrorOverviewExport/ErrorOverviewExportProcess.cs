@@ -5,6 +5,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 
 namespace VsaCheckerAnalytics.Processors.ErrorOverviewExport;
 
@@ -17,6 +18,15 @@ public sealed class ErrorOverviewExportProcess
 {
     private const string ErrorDataTable = "ca_error_data";
     private const string ErrorObjectTable = "ca_error_object";
+    private const string StatusMessageOutputKey = "status_message";
+
+    private static readonly LocalizedText ErrorOverviewStatusMessageFormat = new Dictionary<string, string>
+    {
+        { "de", "Fehler-Übersicht erstellt: {0} Fehler exportiert." },
+        { "fr", "Aperçu des erreurs créé : {0} erreurs exportées." },
+        { "it", "Panoramica degli errori creata: {0} errori esportati." },
+        { "en", "Error overview created: {0} errors exported." },
+    };
 
     private sealed record ExcelColumn(string Name, string Attribute);
 
@@ -136,9 +146,9 @@ public sealed class ErrorOverviewExportProcess
         using var connection = OpenGeoPackage(gpkgPath);
         using var workbook = new XLWorkbook();
 
-        ExportSheet(workbook, errorDataSheet, connection);
+        var errorCount = ExportSheet(workbook, errorDataSheet, connection);
         cancellationToken.ThrowIfCancellationRequested();
-        ExportSheet(workbook, errorObjectSheet, connection);
+        _ = ExportSheet(workbook, errorObjectSheet, connection);
 
         var dataRange = workbook.Worksheet(errorDataSheet.Name).RangeUsed();
         if (dataRange is not null)
@@ -160,9 +170,13 @@ public sealed class ErrorOverviewExportProcess
 
         logger.LogInformation("Exported error overview to <{FileName}>.", outputFile.OriginalFileName);
 
+        var statusMessage = ErrorOverviewStatusMessageFormat
+            .Map(msg => string.Format(CultureInfo.InvariantCulture, msg, errorCount));
+
         return new Dictionary<string, object?>
         {
             { "error_overview", outputFile },
+            { StatusMessageOutputKey, statusMessage },
         };
     }
 
@@ -234,7 +248,7 @@ public sealed class ErrorOverviewExportProcess
     }
 
     [SuppressMessage("Security", "CA2100", Justification = "Column and table names are internal pipeline constants, not user input.")]
-    private void ExportSheet(XLWorkbook workbook, ExcelSheet sheetConfig, SqliteConnection connection)
+    private int ExportSheet(XLWorkbook workbook, ExcelSheet sheetConfig, SqliteConnection connection)
     {
         var worksheet = workbook.AddWorksheet(sheetConfig.Name);
 
@@ -285,7 +299,9 @@ public sealed class ErrorOverviewExportProcess
         worksheet.RangeUsed()?.SetAutoFilter();
         worksheet.SheetView.FreezeRows(1);
 
-        logger.LogDebug("Exported {RowCount} rows to sheet '{SheetName}'.", rowNumber - 2, sheetConfig.Name);
+        var exportedRowCount = rowNumber - 2;
+        logger.LogDebug("Exported {RowCount} rows to sheet '{SheetName}'.", exportedRowCount, sheetConfig.Name);
+        return exportedRowCount;
     }
 
     private static void CreateOverviewSheet(XLWorkbook workbook, IXLRange sourceRange, PivotSheetConfig config)

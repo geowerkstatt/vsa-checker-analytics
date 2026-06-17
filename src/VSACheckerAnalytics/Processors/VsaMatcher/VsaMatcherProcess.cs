@@ -34,7 +34,7 @@ internal sealed class VsaMatcherProcess : IDisposable
     private const string CheckerCsvPatternT = "_t_err$";
     private static readonly XNamespace Interlis24Namespace = "http://www.interlis.ch/xtf/2.4/INTERLIS";
 
-    private static readonly Dictionary<string, string> GepFoundStatusMessageFormat = new()
+    private static readonly LocalizedText GepFoundStatusMessageFormat = new Dictionary<string, string>()
     {
         { "de", "GEP-Datei erkannt (Modell {0}, {1}), {2} Checker-CSV(s) gefunden." },
         { "fr", "Fichier GEP identifié (modèle {0}, {1}), {2} CSV de vérification trouvé(s)." },
@@ -42,7 +42,7 @@ internal sealed class VsaMatcherProcess : IDisposable
         { "en", "GEP file identified (model {0}, {1}), {2} checker CSV(s) found." },
     };
 
-    private static readonly Dictionary<string, string> NoGepFoundStatusMessage = new()
+    private static readonly LocalizedText NoGepFoundStatusMessage = new Dictionary<string, string>()
     {
         { "de", "Keine GEP-Transferdatei in den hochgeladenen Dateien gefunden." },
         { "fr", "Aucun fichier de transfert GEP trouvé dans les fichiers téléchargés." },
@@ -50,7 +50,7 @@ internal sealed class VsaMatcherProcess : IDisposable
         { "en", "No GEP transfer file found in uploads." },
     };
 
-    private static readonly Dictionary<string, string> MultipleGepStatusMessageFormat = new()
+    private static readonly LocalizedText MultipleGepStatusMessageFormat = new Dictionary<string, string>()
     {
         { "de", "{0} GEP-Dateien gefunden ({1}), keine eindeutige Zuordnung möglich." },
         { "fr", "{0} fichiers GEP trouvés ({1}), attribution univoque impossible." },
@@ -150,17 +150,17 @@ internal sealed class VsaMatcherProcess : IDisposable
         IPipelineFile? errorMatrix = await CopyResourceToPipelineFileAsync(errorMatrixPath, cancellationToken).ConfigureAwait(false);
 
         var totalCheckerCsvs = checkerCsvsA.Length + checkerCsvsFp.Length + checkerCsvsT.Length;
-        Dictionary<string, string> statusMessage;
+        LocalizedText statusMessage;
         if (gepMatches.Length == 1)
         {
             statusMessage = GepFoundStatusMessageFormat
-                .ToDictionary(msg => msg.Key, msg => string.Format(CultureInfo.InvariantCulture, msg.Value, ModelVersionToString(modelVersion), LanguageToString(language), totalCheckerCsvs));
+                .Map(msg => string.Format(CultureInfo.InvariantCulture, msg, ModelVersionToString(modelVersion), LanguageToString(language), totalCheckerCsvs));
         }
         else if (gepMatches.Length > 1)
         {
             var matchDetails = string.Join(", ", gepMatches.Select(m => $"{ModelVersionToString(m.Version)} {LanguageToString(m.Language)}"));
             statusMessage = MultipleGepStatusMessageFormat
-                .ToDictionary(msg => msg.Key, msg => string.Format(CultureInfo.InvariantCulture, msg.Value, gepMatches.Length, matchDetails));
+                .Map(msg => string.Format(CultureInfo.InvariantCulture, msg, gepMatches.Length, matchDetails));
         }
         else
         {

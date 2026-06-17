@@ -15,8 +15,8 @@
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="NetTopologySuite" Version="2.6.0" />
     <PackageReference Include="MSTest" Version="4.0.1" />
-    <PackageReference Include="GeoWerkstatt.Geopilot.PipelineCore" Version="1.2.0-preview.324" />
-    <PackageReference Include="GeoWerkstatt.Geopilot.Pipeline" Version="1.0.0-preview.326" />
+    <PackageReference Include="GeoWerkstatt.Geopilot.PipelineCore" Version="1.3.0" />
+    <PackageReference Include="GeoWerkstatt.Geopilot.Pipeline" Version="1.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
   </ItemGroup>
 
