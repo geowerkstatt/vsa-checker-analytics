@@ -38,4 +38,7 @@ internal sealed class TestPipelineFile : IPipelineFile
 
     /// <summary>Gets or sets the value.</summary>
     public FileStream OpenWriteFileStream() => new(filePath, FileMode.CreateNew, FileAccess.Write);
+
+    /// <inheritdoc/>
+    public string GetLocalPath() => filePath;
 }

@@ -206,9 +206,9 @@ public sealed class GeopackageGenerationProcess
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-        var (target, path) = await CopyGeoPackageAsync(sourceGpkg, "gpkg-with-csvs", cancellationToken);
+        var target = pipelineFileManager.CreateWritableCopy(sourceGpkg, "gpkg-with-csvs");
 
-        using var connection = OpenGeoPackage(path);
+        using var connection = OpenGeoPackage(target.GetLocalPath());
         var csvImporter = new CsvImporter(connection, Encoding.GetEncoding(1252), logger);
 
         await ImportCsvAsync(csvImporter, checkerCsvT, "checker_csv_t", cancellationToken);
@@ -235,9 +235,9 @@ public sealed class GeopackageGenerationProcess
         IPipelineFile errorMatrix,
         CancellationToken cancellationToken)
     {
-        var (target, path) = await CopyGeoPackageAsync(sourceGpkg, "gpkg-with-error-matrix", cancellationToken);
+        var target = pipelineFileManager.CreateWritableCopy(sourceGpkg, "gpkg-with-error-matrix");
 
-        using var connection = OpenGeoPackage(path);
+        using var connection = OpenGeoPackage(target.GetLocalPath());
         var importer = new ErrorMatrixImporter(connection, logger);
 
         await using var stream = errorMatrix.OpenReadFileStream();
@@ -253,9 +253,9 @@ public sealed class GeopackageGenerationProcess
         string language,
         CancellationToken cancellationToken)
     {
-        var (target, path) = await CopyGeoPackageAsync(sourceGpkg, GeneratedGeopackageName, cancellationToken);
+        var target = pipelineFileManager.CreateWritableCopy(sourceGpkg, GeneratedGeopackageName);
 
-        using var connection = OpenGeoPackage(path);
+        using var connection = OpenGeoPackage(target.GetLocalPath());
         var viewCreator = new ViewCreator(connection);
 
         viewCreator.CreateCheckerCsvUnionView(
@@ -275,21 +275,6 @@ public sealed class GeopackageGenerationProcess
 
         logger.LogInformation("Created analytics in GeoPackage.");
         return target;
-    }
-
-    private async Task<(IPipelineFile File, string Path)> CopyGeoPackageAsync(
-        IPipelineFile source, string name, CancellationToken cancellationToken)
-    {
-        var target = pipelineFileManager.GeneratePipelineFile(name, "gpkg");
-        string path;
-        await using (var sourceStream = source.OpenReadFileStream())
-        await using (var targetStream = target.OpenWriteFileStream())
-        {
-            path = targetStream.Name;
-            await sourceStream.CopyToAsync(targetStream, cancellationToken).ConfigureAwait(false);
-        }
-
-        return (target, path);
     }
 
     private static SqliteConnection OpenGeoPackage(string path)
