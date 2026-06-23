@@ -137,11 +137,7 @@ public sealed class ErrorOverviewExportProcess
     {
         ArgumentNullException.ThrowIfNull(geopackage);
 
-        string gpkgPath;
-        await using (var stream = geopackage.OpenReadFileStream())
-        {
-            gpkgPath = stream.Name;
-        }
+        var gpkgPath = geopackage.GetLocalPath();
 
         using var connection = OpenGeoPackage(gpkgPath);
         using var workbook = new XLWorkbook();

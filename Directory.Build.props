@@ -20,4 +20,13 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      Force SQLitePCLRaw above the transitive 2.1.11 that Microsoft.Data.Sqlite still pins.
+      2.1.11 bundles a SQLite older than 3.50.2 and is flagged by CVE-2025-6965 (NU1903);
+      the 3.0.x line bundles a patched SQLite. Pinned centrally so both projects pick it up.
+    -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+  </ItemGroup>
+
 </Project>

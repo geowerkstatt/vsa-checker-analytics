@@ -32,6 +32,17 @@ internal sealed class TestPipelineFileManager : IPipelineFileManager, IDisposabl
         return GeneratePipelineFile(originalFileName, fileExtension);
     }
 
+    /// <inheritdoc/>
+    public IPipelineFile CreateWritableCopy(IPipelineFile source, string name)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var target = GeneratePipelineFile(source.OriginalRelativePath, name, source.FileExtension);
+        using var sourceStream = source.OpenReadFileStream();
+        using var targetStream = target.OpenWriteFileStream();
+        sourceStream.CopyTo(targetStream);
+        return target;
+    }
+
     /// <summary>
     /// Removes the temporary directory and all generated files.
     /// </summary>

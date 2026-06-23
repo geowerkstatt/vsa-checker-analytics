@@ -62,7 +62,8 @@ public sealed class NetworkTopologyPatcherProcess
     {
         ArgumentNullException.ThrowIfNull(geoPackage);
 
-        var (target, path) = await CopyGeoPackageAsync(geoPackage, PatchedGeopackageName, cancellationToken).ConfigureAwait(false);
+        var target = pipelineFileManager.CreateWritableCopy(geoPackage, PatchedGeopackageName);
+        var path = target.GetLocalPath();
 
         NetworkTopologyResult topologyResult;
         using (var connection = OpenGeoPackage(path))
@@ -81,21 +82,6 @@ public sealed class NetworkTopologyPatcherProcess
             { PatchedGpkgOutputKey, target },
             { StatusMessageOutputKey, statusMessage },
         };
-    }
-
-    private async Task<(IPipelineFile File, string Path)> CopyGeoPackageAsync(
-        IPipelineFile source, string name, CancellationToken cancellationToken)
-    {
-        var target = pipelineFileManager.GeneratePipelineFile(name, "gpkg");
-        string path;
-        await using (var sourceStream = source.OpenReadFileStream())
-        await using (var targetStream = target.OpenWriteFileStream())
-        {
-            path = targetStream.Name;
-            await sourceStream.CopyToAsync(targetStream, cancellationToken).ConfigureAwait(false);
-        }
-
-        return (target, path);
     }
 
     private static SqliteConnection OpenGeoPackage(string path)
