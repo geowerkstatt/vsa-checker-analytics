@@ -580,7 +580,7 @@ e.tid,
            e.count_error,
            e.wk_max,
            e.gep_max,
-           n.funktionag,
+           n.funktion,
            n.funktionhierarchisch,
            o.bezeichnung AS eigentuemer,
            k.lage AS geom
@@ -621,9 +621,9 @@ e.tid,
           LEFT JOIN organisation o ON n.eigentuemerref = o.t_id
      WHERE e.class LIKE 'SK_Trennbauwerk';
 
--- v_error_sk_regenueberlaufbecken_kanal source
+-- v_error_sk_regenrueckhaltebecken_kanal source
 
-CREATE VIEW v_error_sk_regenueberlaufbecken_kanal AS SELECT 
+CREATE VIEW v_error_sk_regenrueckhaltebecken_kanal AS SELECT
 sk.T_Id AS fid,
 e.tid,
            e.class,
@@ -633,11 +633,11 @@ e.tid,
            o.bezeichnung AS eigentuemer,
            k.lage AS geom
       FROM ca_error_object e
-          JOIN sk_regenueberlaufbecken_kanal sk ON e.tid = sk.t_ili_tid
+          JOIN sk_regenrueckhaltebecken_kanal sk ON e.tid = sk.t_ili_tid
           JOIN knoten n ON sk.paa_knotenref = n.t_id
           JOIN knoten_lage k ON n.t_id = k.t_id
           LEFT JOIN organisation o ON n.eigentuemerref = o.t_id
-     WHERE e.class LIKE 'SK_Regenueberlaufbecken_kanal';
+     WHERE e.class LIKE 'SK_regenrueckhaltebecken_kanal';
 
 CREATE VIEW v_error_sk_regenueberlaufbecken AS SELECT 
 sk.T_Id AS fid,

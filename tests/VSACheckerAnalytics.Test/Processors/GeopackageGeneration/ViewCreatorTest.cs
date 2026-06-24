@@ -145,7 +145,7 @@ public class ViewCreatorTest
             "v_error_ueberlauf_foerderaggregat",
             "v_error_teileinzugsgebiet",
             "v_error_sk_trennbauwerk",
-            "v_error_sk_regenueberlaufbecken_kanal",
+            "v_error_sk_regenrueckhaltebecken_kanal",
             "v_error_sk_regenueberlaufbecken",
             "v_error_sk_regenueberlauf",
             "v_error_sk_pumpwerk",
