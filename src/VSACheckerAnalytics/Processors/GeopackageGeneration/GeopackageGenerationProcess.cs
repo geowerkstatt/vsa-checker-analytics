@@ -212,8 +212,11 @@ public sealed class GeopackageGenerationProcess
         var csvImporter = new CsvImporter(connection, Encoding.GetEncoding(1252), logger);
 
         await ImportCsvAsync(csvImporter, checkerCsvT, "checker_csv_t", cancellationToken);
+        GeopackageContents.RegisterAttributes(connection, "checker_csv_t");
         await ImportCsvAsync(csvImporter, checkerCsvA, "checker_csv_a", cancellationToken);
+        GeopackageContents.RegisterAttributes(connection, "checker_csv_a");
         await ImportCsvAsync(csvImporter, checkerCsvFp, "checker_csv_fp", cancellationToken);
+        GeopackageContents.RegisterAttributes(connection, "checker_csv_fp");
 
         logger.LogInformation("Imported checker CSVs into GeoPackage.");
         return target;
@@ -243,6 +246,7 @@ public sealed class GeopackageGenerationProcess
         await using var stream = errorMatrix.OpenReadFileStream();
         await importer.ImportAsync(stream, "error_matrix", ErrorMatrixColumns, cancellationToken, ErrorMatrixJoinIndexColumns)
             .ConfigureAwait(false);
+        GeopackageContents.RegisterAttributes(connection, "error_matrix");
 
         logger.LogInformation("Imported error matrix into GeoPackage.");
         return target;

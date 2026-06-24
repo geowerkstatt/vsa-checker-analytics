@@ -1,6 +1,7 @@
 ﻿using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.CodeAnalysis;
+using VsaCheckerAnalytics.TestHelpers;
 
 namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 
@@ -167,6 +168,7 @@ public class ErrorDataMaterializerTest
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
+        GeopackageMetadataSchema.Create(connection);
         return connection;
     }
 

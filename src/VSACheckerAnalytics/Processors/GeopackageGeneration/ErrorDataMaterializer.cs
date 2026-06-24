@@ -63,6 +63,7 @@ internal sealed class ErrorDataMaterializer
         var sql = $"CREATE VIEW IF NOT EXISTS \"{viewName}\" AS\n{string.Join("\nUNION ALL\n", selects)}";
 
         ExecuteNonQuery(sql);
+        GeopackageContents.RegisterAttributes(connection, viewName);
         logger.LogDebug("Created build view '{ViewName}'.", viewName);
     }
 
@@ -77,6 +78,8 @@ internal sealed class ErrorDataMaterializer
     internal async Task MaterializeAsync(string buildViewName, CancellationToken cancellationToken)
     {
         CreateTables();
+        GeopackageContents.RegisterAttributes(connection, "ca_error_data");
+        GeopackageContents.RegisterAttributes(connection, "ca_error_object");
         CreateFeatureTableIndexes();
 
         cancellationToken.ThrowIfCancellationRequested();
