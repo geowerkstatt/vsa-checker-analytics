@@ -12,8 +12,6 @@ internal static class GeopackageContents
 {
     /// <summary>
     /// Registers <paramref name="name"/> as an <c>attributes</c> layer in <c>gpkg_contents</c>.
-    /// Idempotent (<c>INSERT OR REPLACE</c>) so a table that gets recreated, e.g. by the
-    /// materializer on a re-run, can be re-registered without a primary-key conflict.
     /// </summary>
     /// <param name="connection">An open SQLite connection to the GeoPackage.</param>
     /// <param name="name">Name of the table or view to register.</param>
@@ -21,7 +19,7 @@ internal static class GeopackageContents
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
-            INSERT OR REPLACE INTO gpkg_contents
+            INSERT INTO gpkg_contents
                 (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id)
             VALUES (@name, 'attributes', @name, NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL)
             """;

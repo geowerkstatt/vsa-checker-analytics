@@ -58,7 +58,7 @@ internal sealed class ViewCreator
         var selects = tableNames
             .Zip(sourceLabels, (table, label) => $"SELECT LOWER('{label}') || '_' || \"t_id\" AS t_id, {columnList}, '{label}' AS source FROM \"{table}\"");
 
-        var sql = $"CREATE VIEW IF NOT EXISTS \"{viewName}\" AS {string.Join(" UNION ALL ", selects)}";
+        var sql = $"CREATE VIEW \"{viewName}\" AS {string.Join(" UNION ALL ", selects)}";
 
         using var command = connection.CreateCommand();
         command.CommandText = sql;
@@ -94,7 +94,7 @@ internal sealed class ViewCreator
         var selectList = $"c.*, {string.Join(", ", errorMatrixSelectColumns)}";
 
         var sql = $"""
-            CREATE VIEW IF NOT EXISTS "{viewName}" AS
+            CREATE VIEW "{viewName}" AS
             SELECT {selectList}
             FROM "{checkErrorViewName}" c
             INNER JOIN "{errorMatrixTableName}" e

@@ -117,26 +117,6 @@ public class ErrorDataMaterializerTest
     }
 
     [TestMethod]
-    public async Task Materialize_IsIdempotent_OnReRun()
-    {
-        using var connection = CreateOpenConnection();
-        CreateTestSchemas(connection);
-        SeedTestData(connection);
-
-        var materializer = new ErrorDataMaterializer(connection, NullLogger.Instance);
-        materializer.CreateBuildView("v_ca_error_data_build", "v_checker_errors", "DE");
-
-        await materializer.MaterializeAsync("v_ca_error_data_build", CancellationToken.None);
-        await materializer.MaterializeAsync("v_ca_error_data_build", CancellationToken.None);
-
-        var errorDataCount = QueryLong(connection, "SELECT COUNT(*) FROM ca_error_data");
-        var errorObjectCount = QueryLong(connection, "SELECT COUNT(*) FROM ca_error_object");
-
-        Assert.AreEqual(6L, errorDataCount);
-        Assert.AreEqual(5L, errorObjectCount);
-    }
-
-    [TestMethod]
     public async Task Materialize_UsesFrenchColumns_WhenLanguageIsFr()
     {
         using var connection = await SetUpAndMaterializeAsync("FR");

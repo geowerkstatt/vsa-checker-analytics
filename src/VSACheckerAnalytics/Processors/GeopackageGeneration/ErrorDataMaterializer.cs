@@ -60,7 +60,7 @@ internal sealed class ErrorDataMaterializer
             .Select(c => BuildClassSelect(errorsViewName, c.ClassName, c.TableName, c.HasEnrichment, cmsg, recommendation, recommendationDetail))
             .Append(BuildCatchAllSelect(errorsViewName, excludedClassNames, cmsg, recommendation, recommendationDetail));
 
-        var sql = $"CREATE VIEW IF NOT EXISTS \"{viewName}\" AS\n{string.Join("\nUNION ALL\n", selects)}";
+        var sql = $"CREATE VIEW \"{viewName}\" AS\n{string.Join("\nUNION ALL\n", selects)}";
 
         ExecuteNonQuery(sql);
         GeopackageContents.RegisterAttributes(connection, viewName);
@@ -83,9 +83,6 @@ internal sealed class ErrorDataMaterializer
         GeopackageContents.RegisterAttributes(connection, "ca_error_data");
         GeopackageContents.RegisterAttributes(connection, "ca_error_object");
         CreateFeatureTableIndexes();
-
-        ExecuteNonQuery("DELETE FROM ca_error_object");
-        ExecuteNonQuery("DELETE FROM ca_error_data");
 
         ExecuteNonQuery($"""
             INSERT INTO ca_error_data (
@@ -215,7 +212,7 @@ internal sealed class ErrorDataMaterializer
     private void CreateTables()
     {
         ExecuteNonQuery("""
-            CREATE TABLE IF NOT EXISTS ca_error_data (
+            CREATE TABLE ca_error_data (
                 fid INTEGER NOT NULL PRIMARY KEY,
                 tid TEXT,
                 check_type TEXT,
@@ -237,7 +234,7 @@ internal sealed class ErrorDataMaterializer
             """);
 
         ExecuteNonQuery("""
-            CREATE TABLE IF NOT EXISTS ca_error_object (
+            CREATE TABLE ca_error_object (
                 fid INTEGER NOT NULL PRIMARY KEY,
                 tid TEXT,
                 class TEXT,
@@ -253,14 +250,14 @@ internal sealed class ErrorDataMaterializer
         {
             if (TableExists(tableName))
             {
-                ExecuteNonQuery($"CREATE INDEX IF NOT EXISTS \"ix_{tableName}_t_ili_tid\" ON \"{tableName}\" (T_Ili_Tid)");
+                ExecuteNonQuery($"CREATE INDEX \"ix_{tableName}_t_ili_tid\" ON \"{tableName}\" (T_Ili_Tid)");
             }
         }
     }
 
     private void CreateResultIndexes()
     {
-        ExecuteNonQuery("CREATE INDEX IF NOT EXISTS ix_ca_error_data_tid_class ON ca_error_data (tid, class)");
+        ExecuteNonQuery("CREATE INDEX ix_ca_error_data_tid_class ON ca_error_data (tid, class)");
     }
 
     private static string LanguageColumn(string prefix, string language) =>
