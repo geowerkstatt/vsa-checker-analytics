@@ -72,7 +72,7 @@ internal sealed class OrphanInspector
         using var command = connection.CreateCommand();
         command.CommandText =
             $"""
-            CREATE TABLE IF NOT EXISTS "{tableName}" AS
+            CREATE TABLE "{tableName}" AS
             SELECT c.*
             FROM "{unionViewName}" c
             WHERE c."t_id" NOT IN (SELECT "t_id" FROM "{errorsViewName}")
