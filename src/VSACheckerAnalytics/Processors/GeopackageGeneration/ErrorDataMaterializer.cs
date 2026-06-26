@@ -77,14 +77,12 @@ internal sealed class ErrorDataMaterializer
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     internal async Task MaterializeAsync(string buildViewName, CancellationToken cancellationToken)
     {
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
         CreateTables();
         GeopackageContents.RegisterAttributes(connection, "ca_error_data");
         GeopackageContents.RegisterAttributes(connection, "ca_error_object");
         CreateFeatureTableIndexes();
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
         ExecuteNonQuery("DELETE FROM ca_error_object");
         ExecuteNonQuery("DELETE FROM ca_error_data");
