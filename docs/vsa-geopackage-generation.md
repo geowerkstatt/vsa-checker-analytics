@@ -160,7 +160,7 @@ und `gpkg_geometry_columns` eingetragen (siehe
 - **Nicht-räumliche Tabellen und Views** (Checker-CSVs, `error_matrix`,
   `v_checker_csv_all`, `v_checker_errors`, `v_ca_error_data_build`,
   `ca_error_data`, `ca_error_object`) werden über den C#-Helfer
-  `GeopackageContents.RegisterAttributes` als `attributes`-Layer registriert.
+  `GeopackageMetadata.RegisterAttributes` als `attributes`-Layer registriert.
 - **Räumliche Feature-Views** in `AdditionalViews.sql` registrieren sich selbst
   direkt nach ihrem `CREATE VIEW`: als `features` in `gpkg_contents` und
   zusätzlich in `gpkg_geometry_columns` mit Geometriespalte, Geometrietyp und

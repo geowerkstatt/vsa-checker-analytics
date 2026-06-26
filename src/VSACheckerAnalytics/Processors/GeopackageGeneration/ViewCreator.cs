@@ -1,5 +1,6 @@
 ﻿using Microsoft.Data.Sqlite;
 using System.Diagnostics.CodeAnalysis;
+using VsaCheckerAnalytics.Geopackage;
 
 namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 
@@ -64,7 +65,7 @@ internal sealed class ViewCreator
         command.CommandText = sql;
         command.ExecuteNonQuery();
 
-        GeopackageContents.RegisterAttributes(connection, viewName);
+        GeopackageMetadata.RegisterAttributes(connection, viewName);
     }
 
     /// <summary>
@@ -107,7 +108,7 @@ internal sealed class ViewCreator
         command.CommandText = sql;
         command.ExecuteNonQuery();
 
-        GeopackageContents.RegisterAttributes(connection, viewName);
+        GeopackageMetadata.RegisterAttributes(connection, viewName);
     }
 
     /// <summary>

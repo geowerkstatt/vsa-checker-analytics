@@ -1,6 +1,7 @@
 ﻿using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
+using VsaCheckerAnalytics.Geopackage;
 
 namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 
@@ -63,7 +64,7 @@ internal sealed class ErrorDataMaterializer
         var sql = $"CREATE VIEW \"{viewName}\" AS\n{string.Join("\nUNION ALL\n", selects)}";
 
         ExecuteNonQuery(sql);
-        GeopackageContents.RegisterAttributes(connection, viewName);
+        GeopackageMetadata.RegisterAttributes(connection, viewName);
         logger.LogDebug("Created build view '{ViewName}'.", viewName);
     }
 
@@ -80,8 +81,8 @@ internal sealed class ErrorDataMaterializer
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
         CreateTables();
-        GeopackageContents.RegisterAttributes(connection, "ca_error_data");
-        GeopackageContents.RegisterAttributes(connection, "ca_error_object");
+        GeopackageMetadata.RegisterAttributes(connection, "ca_error_data");
+        GeopackageMetadata.RegisterAttributes(connection, "ca_error_object");
         CreateFeatureTableIndexes();
 
         ExecuteNonQuery($"""
