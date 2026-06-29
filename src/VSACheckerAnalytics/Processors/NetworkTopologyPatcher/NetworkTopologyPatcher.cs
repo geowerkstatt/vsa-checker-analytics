@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.Operation.Linemerge;
 using System.Diagnostics.CodeAnalysis;
+using VsaCheckerAnalytics.Geopackage;
 
 namespace VsaCheckerAnalytics.Processors.NetworkTopologyPatcher;
 
@@ -115,8 +116,8 @@ internal sealed class NetworkTopologyPatcher
 
         await transaction.CommitAsync(cancellationToken);
 
-        TopologyOutputTables.SetLayerExtent(connection, TopologyOutputTables.NetworkEdgesTable, networkExtent);
-        TopologyOutputTables.SetLayerExtent(connection, TopologyOutputTables.ExtraEdgesTable, extraExtent);
+        GeopackageMetadata.SetLayerExtent(connection, TopologyOutputTables.NetworkEdgesTable, networkExtent);
+        GeopackageMetadata.SetLayerExtent(connection, TopologyOutputTables.ExtraEdgesTable, extraExtent);
 
         logger.LogInformation(
             "Network topology patch complete: {Leitungen} leitung rows + {Aggregate} ueberlauf_foerderaggregat rows processed; {MergeSkipped} leitung skipped after merge failure, {VerlaufSkipped} leitung skipped due to unreadable or non-LineString verlauf.",

@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Globalization;
 using System.Text;
+using VsaCheckerAnalytics.TestHelpers;
 
 namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 
@@ -124,6 +125,20 @@ public class ViewCreatorTest
         var viewCreator = new ViewCreator(connection);
         viewCreator.CreateAdditionalViews();
 
+        // Each view is registered as a GeoPackage layer right at its creation: spatial views as
+        // features (with a geometry column), the errorlist data views as attributes.
+        using (var registration = connection.CreateCommand())
+        {
+            registration.CommandText = "SELECT data_type FROM gpkg_contents WHERE table_name = 'v_vsa_knoten'";
+            Assert.AreEqual("features", registration.ExecuteScalar());
+
+            registration.CommandText = "SELECT data_type FROM gpkg_contents WHERE table_name = 'v_errorlist_error_knoten_data'";
+            Assert.AreEqual("attributes", registration.ExecuteScalar());
+
+            registration.CommandText = "SELECT geometry_type_name FROM gpkg_geometry_columns WHERE table_name = 'v_vsa_leitung'";
+            Assert.AreEqual("LINESTRING", registration.ExecuteScalar());
+        }
+
         var expectedViews = new[]
         {
             "v_vsa_knoten",
@@ -145,7 +160,7 @@ public class ViewCreatorTest
             "v_error_ueberlauf_foerderaggregat",
             "v_error_teileinzugsgebiet",
             "v_error_sk_trennbauwerk",
-            "v_error_sk_regenueberlaufbecken_kanal",
+            "v_error_sk_regenrueckhaltebecken_kanal",
             "v_error_sk_regenueberlaufbecken",
             "v_error_sk_regenueberlauf",
             "v_error_sk_pumpwerk",
@@ -239,6 +254,7 @@ public class ViewCreatorTest
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
+        GeopackageMetadataSchema.Create(connection);
         return connection;
     }
 

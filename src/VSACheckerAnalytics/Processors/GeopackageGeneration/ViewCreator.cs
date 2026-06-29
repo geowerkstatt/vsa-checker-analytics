@@ -1,5 +1,6 @@
 ﻿using Microsoft.Data.Sqlite;
 using System.Diagnostics.CodeAnalysis;
+using VsaCheckerAnalytics.Geopackage;
 
 namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 
@@ -58,11 +59,13 @@ internal sealed class ViewCreator
         var selects = tableNames
             .Zip(sourceLabels, (table, label) => $"SELECT LOWER('{label}') || '_' || \"t_id\" AS t_id, {columnList}, '{label}' AS source FROM \"{table}\"");
 
-        var sql = $"CREATE VIEW IF NOT EXISTS \"{viewName}\" AS {string.Join(" UNION ALL ", selects)}";
+        var sql = $"CREATE VIEW \"{viewName}\" AS {string.Join(" UNION ALL ", selects)}";
 
         using var command = connection.CreateCommand();
         command.CommandText = sql;
         command.ExecuteNonQuery();
+
+        GeopackageMetadata.RegisterAttributes(connection, viewName);
     }
 
     /// <summary>
@@ -92,7 +95,7 @@ internal sealed class ViewCreator
         var selectList = $"c.*, {string.Join(", ", errorMatrixSelectColumns)}";
 
         var sql = $"""
-            CREATE VIEW IF NOT EXISTS "{viewName}" AS
+            CREATE VIEW "{viewName}" AS
             SELECT {selectList}
             FROM "{checkErrorViewName}" c
             INNER JOIN "{errorMatrixTableName}" e
@@ -104,15 +107,22 @@ internal sealed class ViewCreator
         using var command = connection.CreateCommand();
         command.CommandText = sql;
         command.ExecuteNonQuery();
+
+        GeopackageMetadata.RegisterAttributes(connection, viewName);
     }
 
     /// <summary>
-    /// Executes the embedded <c>AdditionalViews.sql</c> script to create the additional VSA views.
+    /// Executes the embedded <c>AdditionalViews.sql</c> script, which creates the additional VSA
+    /// views and registers each one in the GeoPackage metadata right after its <c>CREATE VIEW</c>:
+    /// every view in <c>gpkg_contents</c>, and the spatial views also in <c>gpkg_geometry_columns</c>.
     /// </summary>
-    [SuppressMessage("Security", "CA2100", Justification = "SQL is loaded from an embedded resource compiled into the assembly, not user input.")]
     internal void CreateAdditionalViews()
+        => ExecuteEmbeddedScript("AdditionalViews.sql");
+
+    [SuppressMessage("Security", "CA2100", Justification = "SQL is loaded from an embedded resource compiled into the assembly, not user input.")]
+    private void ExecuteEmbeddedScript(string fileName)
     {
-        const string resourceName = "VsaCheckerAnalytics.EmbeddedResources.AdditionalViews.sql";
+        var resourceName = $"VsaCheckerAnalytics.EmbeddedResources.{fileName}";
 
         var assembly = typeof(ViewCreator).Assembly;
         using var stream = assembly.GetManifestResourceStream(resourceName)

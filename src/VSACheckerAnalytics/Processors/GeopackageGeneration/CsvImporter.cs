@@ -95,7 +95,7 @@ internal sealed class CsvImporter
         var quotedIndexColumns = string.Join(", ", indexColumns.Select(c => $"\"{c}\""));
 
         using var command = connection.CreateCommand();
-        command.CommandText = $"CREATE INDEX IF NOT EXISTS \"{indexName}\" ON \"{tableName}\" ({quotedIndexColumns})";
+        command.CommandText = $"CREATE INDEX \"{indexName}\" ON \"{tableName}\" ({quotedIndexColumns})";
         command.ExecuteNonQuery();
     }
 
@@ -104,7 +104,7 @@ internal sealed class CsvImporter
     {
         var columnDefs = string.Join(", ", columns.Select(c => $"\"{c}\" TEXT"));
         using var command = connection.CreateCommand();
-        command.CommandText = $"CREATE TABLE IF NOT EXISTS \"{tableName}\" (\"t_id\" INTEGER PRIMARY KEY AUTOINCREMENT, {columnDefs})";
+        command.CommandText = $"CREATE TABLE \"{tableName}\" (\"t_id\" INTEGER PRIMARY KEY AUTOINCREMENT, {columnDefs})";
         command.ExecuteNonQuery();
     }
 

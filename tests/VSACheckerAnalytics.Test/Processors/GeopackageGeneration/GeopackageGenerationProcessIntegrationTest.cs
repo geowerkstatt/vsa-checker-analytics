@@ -119,6 +119,17 @@ public class GeopackageGenerationProcessIntegrationTest
             34L,
             (long)(command.ExecuteScalar() ?? 0L),
             "Orphan baseline drifted: the fixtures no longer produce 34 SK_* orphans. If you changed the checker CSVs, the error matrix, or the join, update the expected count.");
+
+        // The analytical views and tables must be registered so GIS clients discover them as
+        // layers: feature views in gpkg_contents + gpkg_geometry_columns, data tables as attributes.
+        command.CommandText = "SELECT data_type FROM gpkg_contents WHERE table_name = 'v_vsa_knoten'";
+        Assert.AreEqual("features", command.ExecuteScalar(), "v_vsa_knoten should be registered as a feature layer.");
+
+        command.CommandText = "SELECT data_type FROM gpkg_contents WHERE table_name = 'ca_error_data'";
+        Assert.AreEqual("attributes", command.ExecuteScalar(), "ca_error_data should be registered as an attributes table.");
+
+        command.CommandText = "SELECT COUNT(*) FROM gpkg_geometry_columns WHERE table_name = 'v_vsa_knoten' AND column_name = 'geom'";
+        Assert.AreEqual(1L, (long)(command.ExecuteScalar() ?? 0L), "v_vsa_knoten geometry column should be declared.");
     }
 
     [TestMethod]
