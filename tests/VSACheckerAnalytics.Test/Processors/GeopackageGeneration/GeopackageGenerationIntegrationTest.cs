@@ -54,6 +54,8 @@ public class GeopackageGenerationIntegrationTest
                 await errorMatrixImporter.ImportAsync(stream, "error_matrix", ErrorMatrixColumns, CancellationToken.None, ErrorMatrixJoinIndexColumns);
             }
 
+            new ReaderErrorRulesInitializer(connection, NullLogger.Instance).Initialize();
+
             var viewCreator = new ViewCreator(connection);
             viewCreator.CreateCheckerCsvUnionView(
                 "v_checker_csv_all",
@@ -64,7 +66,7 @@ public class GeopackageGenerationIntegrationTest
                 "v_checker_errors", "v_checker_csv_all", "error_matrix", "DE");
 
             var materializer = new ErrorDataMaterializer(connection, NullLogger.Instance);
-            materializer.CreateBuildView("v_ca_error_data_build", "v_checker_errors", "DE");
+            materializer.CreateBuildView("v_ca_error_data_build", "v_checker_csv_all", "error_matrix", "reader_error_rules", "DE");
             await materializer.MaterializeAsync("v_ca_error_data_build", CancellationToken.None);
 
             Assert.AreEqual(686, GetRowCount(connection, "checker_csv_t"));
@@ -89,9 +91,17 @@ public class GeopackageGenerationIntegrationTest
 
             var errorDataCount = GetRowCount(connection, "ca_error_data");
             var errorObjectCount = GetRowCount(connection, "ca_error_object");
-            Assert.AreEqual(errorsCount, errorDataCount, "ca_error_data should contain one row per checker error.");
+            var unionCount = GetRowCount(connection, "v_checker_csv_all");
+            Assert.IsGreaterThan(0, errorDataCount, "ca_error_data should contain deduplicated checker errors.");
+            Assert.IsLessThan(unionCount, errorDataCount, "Deduplication and suppression should reduce rows below the raw CSV union count.");
             Assert.IsGreaterThan(0, errorObjectCount, "ca_error_object should contain aggregated rows.");
             Assert.IsLessThanOrEqualTo(errorDataCount, errorObjectCount, "ca_error_object groups errors, so it must have fewer or equal rows.");
+
+            // This fixture contains only igcheck-module errors, which map to module 'gep_check'.
+            // (Reader-error enrichment is covered by ErrorDataMaterializerTest.)
+            Assert.IsGreaterThan(0, GetCountWhere(connection, "ca_error_data", "module = 'gep_check'"), "igcheck errors should be present.");
+            Assert.AreEqual(0, GetCountWhere(connection, "ca_error_data", "check_type = 'ig'"), "This fixture has no reader errors.");
+            Assert.AreEqual(0, GetCountWhere(connection, "ca_error_data", "error IS NULL"), "Every materialized error should have a rendered message.");
 
             var errorDataColumns = GetColumnNames(connection, "ca_error_data");
             Assert.Contains("tid", errorDataColumns);

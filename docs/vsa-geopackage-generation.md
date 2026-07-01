@@ -84,9 +84,23 @@ Tabelle wird als `attributes`-Layer in den GeoPackage-Metadaten registriert
 
 ## Fehlermatrix-Import
 
-Die Fehlermatrix-XLSX wird in die Tabelle `error_matrix` importiert, mit einem
-Join-Index auf (`cid`, `model`, `class_de`). Auch `error_matrix` wird als
-`attributes`-Layer registriert.
+Die Fehlermatrix-XLSX (die igcheck- bzw. Profil-Matrix) wird in die Tabelle
+`error_matrix` importiert, mit einem Join-Index auf (`cid`, `model`, `class_de`).
+Auch `error_matrix` wird als `attributes`-Layer registriert.
+
+Direkt danach ergänzt der `ReaderErrorRulesInitializer` das von geowerkstatt
+gepflegte Reader-Fehler-Wissen, das nicht über die XLSX transportiert wird. Es
+lebt im eingebetteten Skript `ReaderErrorEnrichment.sql` und:
+
+- erweitert `error_matrix` um die Spalten `cmsg_it`, `error_type_de/fr/it`,
+  `required_action_it` und `action_context_it`,
+- ersetzt die `base`-Zeilen (eine pro Reader-`ErrorId`, mit lokalisierten
+  Meldungen, Empfehlungen und Prioritäten),
+- legt die Tabelle `reader_error_rules` an und befüllt sie mit den
+  attribut- bzw. bedingungsspezifischen Overrides und den
+  Unterdrückungsregeln (`suppress`).
+
+`reader_error_rules` wird als `attributes`-Layer registriert.
 
 ## Analytics
 
@@ -101,8 +115,9 @@ Output zurückgegeben wird.
    als Präfix vorangestellt wird (z.B. `t_…`, `a_…`, `fp_…`).
 2. `v_checker_errors` verknüpft den Vereinigungs-View per `INNER JOIN` mit der
    Fehlermatrix (`ErrorId = cid`, `Model = model`, `Class = class_de` bzw.
-   `class_fr` je nach Sprache) und reichert jede CSV-Zeile mit lokalisierten
-   Beschreibungen und Prioritäten an.
+   `class_fr` je nach Sprache). Der View dient nur noch der Inspektion der
+   igcheck-Treffer; die eigentliche Anreicherung erfolgt im Build-View (siehe
+   Materialisierung).
 3. `CreateAdditionalViews()` führt das eingebettete Skript `AdditionalViews.sql`
    aus. Es erstellt die VSA-Feature-Views (`v_vsa_*` für Knoten-, Leitungs- und
    Ueberlauf_Foerderaggregat-Varianten) sowie die Fehler-Views für die
@@ -115,40 +130,56 @@ Output zurückgegeben wird.
 
 ### Materialisierung (`ErrorDataMaterializer`)
 
-Der `ErrorDataMaterializer` erzeugt zwei Tabellen aus dem Errors-View:
+Der `ErrorDataMaterializer` erzeugt zwei Tabellen direkt aus dem
+Vereinigungs-View `v_checker_csv_all`:
 
-- Zunächst baut `CreateBuildView` den Build-View `v_ca_error_data_build`, der
-  jede vorhandene VSA-Feature-Klasse auf das gemeinsame `ca_error_data`-Schema
-  abbildet. Welche Feature-Klassen vorhanden sind, wird zur Laufzeit per
-  `TableExists` bestimmt. Für `Leitung` und `Knoten` werden die
-  Anreicherungsspalten `funktionhierarchisch`, `eigentuemer` (aus
-  `organisation`) und `status` aus den Feature-Tabellen gejoint; alle übrigen
-  Klassen sowie ein Catch-all für nicht vorhandene Tabellen setzen diese Spalten
-  auf `NULL`.
+- `CreateBuildView` baut den Build-View `v_ca_error_data_build`. Er
+  dedupliziert zunächst auf (`Tid`, `Module`, `Description`), sodass derselbe
+  logische Fehler, den mehrere Profile melden, zu einer Zeile zusammenfällt. Die
+  `check_type`-Spalte aggregiert dabei die beteiligten Profile (z.B.
+  `vsa-a; vsa-fp; vsa-t`); Reader-Fehler sind profilunabhängig und werden zu
+  `ig`. Die repräsentative Zeile (kleinste `t_id`) liefert `ErrorId`, `Class`,
+  `Model` und `Topic`.
+- Die Anreicherung läuft in zwei Zweigen:
+  - **igcheck**: `LEFT JOIN` auf `error_matrix` (klassen- bzw.
+    modellspezifische Zeile gewinnt; fehlt ein Eintrag, dient die rohe
+    Validator-Beschreibung als Fallback).
+  - **reader**: Aus der Validator-Meldung werden Parameter extrahiert
+    (`{ATTR}`, `{N}`, `{MAX}`, `{TID}`, `{CONSTRAINT}`, `{ATTRS}`) und über eine
+    dreistufige Auflösung (Bedingungs-Override, Attribut-Override,
+    `base`-Zeile) zu Meldung, Priorität und Empfehlung verbunden. Die
+    Platzhalter werden in die gewählte Sprache gerendert; für FR/IT werden die
+    SIA405-Rollennamen übersetzt. Als `suppress` markierte Reader-Fehler
+    (bereits durch einen igcheck-Check abgedeckt) fallen weg.
+- Die Anreicherungsspalten `funktionhierarchisch`, `eigentuemer` (aus
+  `organisation`) und `status` werden weiterhin aus den Feature-Tabellen
+  `leitung` und `knoten` gejoint; welche vorhanden sind, bestimmt `TableExists`.
 - `MaterializeAsync` legt die Zieltabellen an und befüllt sie in einer einzigen
   Transaktion:
-  - **`ca_error_data`** enthält eine Zeile pro Checker-Fehler, befüllt aus dem
-    Build-View.
+  - **`ca_error_data`** enthält eine Zeile pro dedupliziertem Fehler.
   - **`ca_error_object`** aggregiert `ca_error_data` nach (`tid`, `class`) mit
     `COUNT(*)`, `MAX(wk)` und `MAX(gep)`.
 
-Die `check_type`-Spalte wird aus dem CSV-Feld `Module` abgeleitet: `reader` wird
-zu `ig`, andernfalls ist der Wert die CSV-Quelle (`T`, `A`, `FP`). Die
-`module`-Spalte folgt einer ähnlichen Logik: `reader` wird zu `igcheck`, alles
-andere zu `gep_check`.
+Die Meldungs- und Empfehlungsspalten (`error`, `recommendation`,
+`recommendation_detail`) werden einsprachig in der Sprache der hochgeladenen
+Daten (`DE` oder `FR`) befüllt; die `module`-Spalte bildet `reader` auf
+`igcheck` und alles andere auf `gep_check` ab. `detail` enthält bei
+Reader-Zeilen die rohe Validator-Beschreibung, bei igcheck-Zeilen einen leeren
+String.
 
 `v_ca_error_data_build`, `ca_error_data` und `ca_error_object` werden als
 `attributes`-Layer registriert.
 
 ### Orphan-Erkennung (`OrphanInspector`)
 
-Zum Schluss prüft der `OrphanInspector`, ob Checker-CSV-Zeilen ohne passenden
-Fehlermatrix-Eintrag existieren (Zeilen, die in `v_checker_csv_all`, aber nicht
-in `v_checker_errors` vorkommen). Nur wenn solche Orphans existieren, werden sie
-in die Tabelle `ca_error_orphans` materialisiert und eine Warnung mit den
-betroffenen (`ErrorId`, `Model`, `Class`)-Schlüsseln protokolliert. Die blosse
-Existenz der Tabelle ist damit das Signal, dass das Domain-Team die Fehlermatrix
-prüfen sollte.
+Zum Schluss prüft der `OrphanInspector`, ob Checker-CSV-Zeilen existieren, die
+keine Anreicherung beschreiben kann: igcheck-Zeilen ohne passenden
+Nicht-`base`-Eintrag in `error_matrix`, sowie Reader-Zeilen ohne `base`-Zeile zu
+ihrer `ErrorId`. Nur wenn solche Orphans existieren, werden sie in die Tabelle
+`ca_error_orphans` materialisiert und eine Warnung mit den betroffenen
+(`ErrorId`, `Model`, `Class`)-Schlüsseln protokolliert. Die blosse Existenz der
+Tabelle ist damit das Signal, dass das Domain-Team die Fehlermatrix prüfen
+sollte.
 
 ## GeoPackage-Metadaten-Registrierung
 

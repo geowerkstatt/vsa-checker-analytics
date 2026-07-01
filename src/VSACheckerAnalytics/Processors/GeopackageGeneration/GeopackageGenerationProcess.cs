@@ -249,6 +249,8 @@ public sealed class GeopackageGenerationProcess
             .ConfigureAwait(false);
         GeopackageMetadata.RegisterAttributes(connection, "error_matrix");
 
+        new ReaderErrorRulesInitializer(connection, logger).Initialize();
+
         logger.LogInformation("Imported error matrix into GeoPackage.");
         return target;
     }
@@ -272,11 +274,11 @@ public sealed class GeopackageGenerationProcess
         viewCreator.CreateAdditionalViews();
 
         var materializer = new ErrorDataMaterializer(connection, logger);
-        materializer.CreateBuildView("v_ca_error_data_build", "v_checker_errors", language);
+        materializer.CreateBuildView("v_ca_error_data_build", "v_checker_csv_all", "error_matrix", "reader_error_rules", language);
         await materializer.MaterializeAsync("v_ca_error_data_build", cancellationToken);
 
         new OrphanInspector(connection, logger)
-            .MaterializeOrphans("ca_error_orphans", "v_checker_csv_all", "v_checker_errors");
+            .MaterializeOrphans("ca_error_orphans", "v_checker_csv_all", "error_matrix", language);
 
         logger.LogInformation("Created analytics in GeoPackage.");
         return target;

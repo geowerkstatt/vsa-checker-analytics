@@ -117,26 +117,7 @@ internal sealed class ViewCreator
     /// every view in <c>gpkg_contents</c>, and the spatial views also in <c>gpkg_geometry_columns</c>.
     /// </summary>
     internal void CreateAdditionalViews()
-        => ExecuteEmbeddedScript("AdditionalViews.sql");
-
-    [SuppressMessage("Security", "CA2100", Justification = "SQL is loaded from an embedded resource compiled into the assembly, not user input.")]
-    private void ExecuteEmbeddedScript(string fileName)
-    {
-        var resourceName = $"VsaCheckerAnalytics.EmbeddedResources.{fileName}";
-
-        var assembly = typeof(ViewCreator).Assembly;
-        using var stream = assembly.GetManifestResourceStream(resourceName)
-            ?? throw new InvalidOperationException(
-                $"Embedded SQL resource '{resourceName}' not found. Available resources: " +
-                $"[{string.Join(", ", assembly.GetManifestResourceNames())}].");
-
-        using var reader = new StreamReader(stream);
-        var sql = reader.ReadToEnd();
-
-        using var command = connection.CreateCommand();
-        command.CommandText = sql;
-        command.ExecuteNonQuery();
-    }
+        => EmbeddedSql.Execute(connection, "AdditionalViews.sql");
 
     [SuppressMessage("Security", "CA2100", Justification = "Table name is an internal pipeline constant, not user input.")]
     private List<string> GetColumnNames(string tableName)

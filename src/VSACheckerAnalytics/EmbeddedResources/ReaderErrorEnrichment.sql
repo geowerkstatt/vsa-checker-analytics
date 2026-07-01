@@ -1,0 +1,504 @@
+-- ============================================================
+-- Reader error enrichment setup.
+--
+-- Runs after the canton igcheck matrix (the "vsa" sheet) has been
+-- imported into error_matrix. It adds the geowerkstatt-maintained
+-- reader-error knowledge that does not travel via the XLSX:
+--   * Italian and error_type columns on error_matrix.
+--   * 33 category-level 'base' rows for the reader ErrorIds.
+--   * the reader_error_rules override / suppression table.
+--
+-- The GeoPackage is a fresh copy on every pipeline run, so the
+-- ALTER TABLE statements never hit an existing column.
+-- ============================================================
+
+
+-- ── error_matrix: columns the igcheck XLSX does not carry ────────────────────
+
+ALTER TABLE error_matrix ADD COLUMN cmsg_it            TEXT;
+ALTER TABLE error_matrix ADD COLUMN error_type_de      TEXT;
+ALTER TABLE error_matrix ADD COLUMN error_type_fr      TEXT;
+ALTER TABLE error_matrix ADD COLUMN error_type_it      TEXT;
+ALTER TABLE error_matrix ADD COLUMN required_action_it TEXT;
+ALTER TABLE error_matrix ADD COLUMN action_context_it  TEXT;
+
+
+-- ── error_matrix: base entries (one row per reader ErrorId) ──────────────────
+
+DELETE FROM error_matrix WHERE checkmodel IN ('reader', 'base');
+
+INSERT INTO error_matrix
+    (cid, checkmodel, ccat,
+     cmsg_de,           cmsg_fr,           cmsg_it,
+     error_type_de,     error_type_fr,     error_type_it,
+     required_action_de, required_action_fr, required_action_it,
+     action_context_de,  action_context_fr,  action_context_it,
+     prio_uc, prio_gsp, sub_project_gsp_de, sub_project_gsp_fr)
+VALUES
+
+-- ── Mandatory attribute ───────────────────────────────────────────────────────
+('11', 'base', 'error',
+ 'Pflichtattribut {ATTR} fehlt',
+ 'Attribut obligatoire {ATTR} manquant',
+ 'Attributo obbligatorio {ATTR} mancante',
+ 'attributiv', 'attributif', 'attributivo',
+ 'Daten erheben', 'Saisir les données', 'Rilevare i dati',
+ 'Fehlenden Wert erfassen', 'Saisir la valeur manquante', 'Inserire il valore mancante',
+ NULL, NULL, NULL, NULL),
+
+-- ── MANDATORY constraint ──────────────────────────────────────────────────────
+('60', 'base', 'error',
+ 'MANDATORY Constraint {CONSTRAINT} verletzt',
+ 'Contrainte MANDATORY {CONSTRAINT} violée',
+ 'Costrizione MANDATORY {CONSTRAINT} violata',
+ 'attributiv', 'attributif', 'attributivo',
+ 'Daten erheben', 'Saisir les données', 'Rilevare i dati',
+ 'Constraint-Verletzung gemäss Modelldefinition beheben',
+ 'Résoudre la violation de contrainte selon la définition du modèle',
+ 'Risolvere la violazione di costrizione secondo la definizione del modello',
+ NULL, NULL, NULL, NULL),
+
+-- ── Text too long ─────────────────────────────────────────────────────────────
+('12', 'base', 'error',
+ 'Attribut {ATTR} zu lang ({N} Zeichen, max. {MAX})',
+ 'Attribut {ATTR} trop long ({N} caractères, max. {MAX})',
+ 'Attributo {ATTR} troppo lungo ({N} caratteri, max. {MAX})',
+ 'attributiv', 'attributif', 'attributivo',
+ 'Daten prüfen / bereinigen', 'Vérifier / corriger les données', 'Verificare / correggere i dati',
+ 'Wert auf zulässige Länge kürzen',
+ 'Réduire la valeur à la longueur autorisée',
+ 'Ridurre il valore alla lunghezza consentita',
+ NULL, NULL, NULL, NULL),
+
+-- ── Dangling reference ────────────────────────────────────────────────────────
+('15', 'base', 'error',
+ 'Referenz {ATTR} zeigt auf unbekanntes Objekt (TID={TID})',
+ 'Référence {ATTR} pointe vers un objet inconnu (TID={TID})',
+ 'Riferimento {ATTR} punta a oggetto sconosciuto (TID={TID})',
+ 'attributiv', 'attributif', 'attributivo',
+ 'Daten prüfen / bereinigen', 'Vérifier / corriger les données', 'Verificare / correggere i dati',
+ 'Referenz prüfen und Objekt ergänzen oder Referenz entfernen',
+ 'Vérifier la référence et compléter l''objet ou supprimer la référence',
+ 'Verificare il riferimento e completare l''oggetto o rimuovere il riferimento',
+ NULL, NULL, NULL, NULL),
+
+-- ── Duplicate TID/BID ─────────────────────────────────────────────────────────
+('20', 'base', 'error',
+ 'Doppelte Transfer-ID (TID/BID bereits vorhanden)',
+ 'ID de transfert en double (TID/BID déjà présent)',
+ 'ID di trasferimento duplicato (TID/BID già presente)',
+ 'Allgemein', 'Général', 'Generale',
+ 'Daten prüfen / bereinigen', 'Vérifier / corriger les données', 'Verificare / correggere i dati',
+ 'Doppeltes Objekt entfernen oder OBJ_ID eindeutig vergeben',
+ 'Supprimer l''objet en double ou attribuer un OBJ_ID unique',
+ 'Eliminare l''oggetto duplicato o assegnare un OBJ_ID univoco',
+ NULL, NULL, NULL, NULL),
+
+-- ── Wrong target class ────────────────────────────────────────────────────────
+('21', 'base', 'error',
+ 'Referenz {ATTR} zeigt auf falsche Zielklasse',
+ 'Référence {ATTR} pointe vers une classe cible incorrecte',
+ 'Riferimento {ATTR} punta a classe di destinazione errata',
+ 'attributiv', 'attributif', 'attributivo',
+ 'Daten prüfen / bereinigen', 'Vérifier / corriger les données', 'Verificare / correggere i dati',
+ 'Referenz auf korrekte Zielklasse prüfen und korrigieren',
+ 'Vérifier et corriger la référence vers la classe cible correcte',
+ 'Verificare e correggere il riferimento alla classe di destinazione corretta',
+ NULL, NULL, NULL, NULL),
+
+-- ── List/Bag cardinality ──────────────────────────────────────────────────────
+('22', 'base', 'error',
+ 'Kardinalität der Liste/Bag ungültig',
+ 'Cardinalité de la liste/bag invalide',
+ 'Cardinalità lista/bag non valida',
+ 'attributiv', 'attributif', 'attributivo',
+ 'Daten prüfen / bereinigen', 'Vérifier / corriger les données', 'Verificare / correggere i dati',
+ 'Anzahl Elemente in Liste/Bag prüfen und korrigieren',
+ 'Vérifier et corriger le nombre d''éléments dans la liste/bag',
+ 'Verificare e correggere il numero di elementi nella lista/bag',
+ NULL, NULL, NULL, NULL),
+
+-- ── Role cardinality ──────────────────────────────────────────────────────────
+('50', 'base', 'error',
+ 'Kardinalität der Rolle verletzt',
+ 'Cardinalité du rôle violée',
+ 'Cardinalità del ruolo violata',
+ 'attributiv', 'attributif', 'attributivo',
+ 'Daten prüfen / bereinigen', 'Vérifier / corriger les données', 'Verificare / correggere i dati',
+ 'Anzahl verbundener Objekte für diese Rolle prüfen',
+ 'Vérifier le nombre d''objets connectés pour ce rôle',
+ 'Verificare il numero di oggetti collegati per questo ruolo',
+ NULL, NULL, NULL, NULL),
+
+-- ── UNIQUE constraint ─────────────────────────────────────────────────────────
+('70', 'base', 'error',
+ 'UNIQUE Constraint verletzt für: {ATTRS}',
+ 'Contrainte UNIQUE violée pour : {ATTRS}',
+ 'Costrizione UNIQUE violata per: {ATTRS}',
+ 'attributiv', 'attributif', 'attributivo',
+ 'Daten prüfen / bereinigen', 'Vérifier / corriger les données', 'Verificare / correggere i dati',
+ 'Doppelten Wert bzw. Wertekombination bereinigen',
+ 'Corriger la valeur en double ou la combinaison de valeurs',
+ 'Correggere il valore duplicato o la combinazione di valori',
+ NULL, NULL, NULL, NULL),
+
+-- ── LOCAL UNIQUE constraint ───────────────────────────────────────────────────
+('71', 'base', 'error',
+ 'LOCAL UNIQUE Constraint verletzt',
+ 'Contrainte LOCAL UNIQUE violée',
+ 'Costrizione LOCAL UNIQUE violata',
+ 'attributiv', 'attributif', 'attributivo',
+ 'Daten prüfen / bereinigen', 'Vérifier / corriger les données', 'Verificare / correggere i dati',
+ 'Doppelten Wert innerhalb Liste/Bag bereinigen',
+ 'Corriger la valeur en double dans la liste/bag',
+ 'Correggere il valore duplicato nella lista/bag',
+ NULL, NULL, NULL, NULL),
+
+-- ── Geometry errors ───────────────────────────────────────────────────────────
+('13', 'base', 'error',
+ 'Ungültiges Liniensegment (identische Punkte)',
+ 'Segment de ligne invalide (points identiques)',
+ 'Segmento di linea non valido (punti identici)',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Geometrie in GIS prüfen und korrigieren',
+ 'Vérifier et corriger la géométrie dans le SIG',
+ 'Verificare e correggere la geometria nel GIS',
+ NULL, NULL, NULL, NULL),
+
+('14', 'base', 'error',
+ 'Ungültiger Kreisbogen (Punkte identisch oder kollinear)',
+ 'Arc de cercle invalide (points identiques ou colinéaires)',
+ 'Arco di cerchio non valido (punti identici o colineari)',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Geometrie in GIS prüfen und korrigieren',
+ 'Vérifier et corriger la géométrie dans le SIG',
+ 'Verificare e correggere la geometria nel GIS',
+ NULL, NULL, NULL, NULL),
+
+('201', 'base', 'error',
+ 'Offener Knoten (1er-Knoten)',
+ 'Noeud ouvert (noeud à une seule connexion)',
+ 'Nodo aperto (una sola connessione)',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Topologie prüfen (Knoten ohne zweite Verbindung)',
+ 'Vérifier la topologie (nœud sans deuxième connexion)',
+ 'Verificare la topologia (nodo senza seconda connessione)',
+ NULL, NULL, NULL, NULL),
+
+('207', 'base', 'error',
+ 'Ungültige Verbindungslinie (Nabelschnur)',
+ 'Ligne de connexion invalide (cordon ombilical)',
+ 'Linea di connessione non valida (geometria a cordone)',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Fläche prüfen (Nabelschnur-Geometrie)',
+ 'Vérifier la surface (géométrie en cordon ombilical)',
+ 'Verificare la superficie (geometria a cordone ombelicale)',
+ NULL, NULL, NULL, NULL),
+
+('208', 'base', 'error',
+ 'Teilweise Linienüberlappung',
+ 'Chevauchement partiel de lignes',
+ 'Sovrapposizione parziale di linee',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Überlappende Linien bereinigen',
+ 'Corriger les lignes qui se chevauchent',
+ 'Correggere le linee sovrapposte',
+ NULL, NULL, NULL, NULL),
+
+('209', 'base', 'error',
+ 'Teilweise Kreisbogenüberlappung',
+ 'Chevauchement partiel d''arcs',
+ 'Sovrapposizione parziale di archi',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Überlappende Kreisbogen bereinigen',
+ 'Corriger les arcs de cercle qui se chevauchent',
+ 'Correggere gli archi di cerchio sovrapposti',
+ NULL, NULL, NULL, NULL),
+
+('210', 'base', 'error',
+ 'Doppeltes Liniensegment',
+ 'Segment de ligne en double',
+ 'Segmento di linea duplicato',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Doppeltes Liniensegment entfernen',
+ 'Supprimer le segment de ligne en double',
+ 'Eliminare il segmento di linea duplicato',
+ NULL, NULL, NULL, NULL),
+
+('211', 'base', 'error',
+ 'Doppelter Kreisbogen',
+ 'Arc de cercle en double',
+ 'Arco di cerchio duplicato',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Doppelten Kreisbogen entfernen',
+ 'Supprimer l''arc de cercle en double',
+ 'Eliminare l''arco di cerchio duplicato',
+ NULL, NULL, NULL, NULL),
+
+('212', 'base', 'error',
+ 'Vollständige Linienüberlappung',
+ 'Chevauchement total de lignes',
+ 'Sovrapposizione totale di linee',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Vollständig überlappende Linie entfernen',
+ 'Supprimer la ligne entièrement chevauchante',
+ 'Eliminare la linea completamente sovrapposta',
+ NULL, NULL, NULL, NULL),
+
+('213', 'base', 'error',
+ 'Vollständige Kreisbogenüberlappung',
+ 'Chevauchement total d''arcs',
+ 'Sovrapposizione totale di archi',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Vollständig überlappenden Kreisbogen entfernen',
+ 'Supprimer l''arc de cercle entièrement chevauchant',
+ 'Eliminare l''arco di cerchio completamente sovrapposto',
+ NULL, NULL, NULL, NULL),
+
+('214', 'base', 'error',
+ 'Ungültiger Knoten im Flächenrand',
+ 'Noeud invalide dans le contour de la surface',
+ 'Nodo non valido sul contorno del poligono',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Flächenrand prüfen (Knoten mit ungeradem Grad)',
+ 'Vérifier le contour de la surface (nœud de degré impair)',
+ 'Verificare il contorno della superficie (nodo di grado dispari)',
+ NULL, NULL, NULL, NULL),
+
+('216', 'base', 'error',
+ 'Fläche berührt sich selbst (Punkt-Kontakt)',
+ 'La surface se touche elle-même (contact ponctuel)',
+ 'La superficie si autointerseca (contatto puntuale)',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Fläche prüfen (äusserer Rand berührt sich selbst)',
+ 'Vérifier la surface (le contour extérieur se touche lui-même)',
+ 'Verificare la superficie (il contorno esterno si autointerseca)',
+ NULL, NULL, NULL, NULL),
+
+('221', 'base', 'error',
+ 'Linie ohne Ausdehnung (identische Punkte)',
+ 'Ligne sans extension (points identiques)',
+ 'Linea senza estensione (punti identici)',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Linie prüfen (identische Punkte)',
+ 'Vérifier la ligne (points identiques)',
+ 'Verificare la linea (punti identici)',
+ NULL, NULL, NULL, NULL),
+
+('222', 'base', 'error',
+ 'Doppelter Stützpunkt',
+ 'Point de support en double',
+ 'Vertice duplicato',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Doppelten Stützpunkt entfernen',
+ 'Supprimer le point de support en double',
+ 'Eliminare il vertice duplicato',
+ NULL, NULL, NULL, NULL),
+
+('223', 'base', 'error',
+ 'Sehr flacher oder gerader Kreisbogen',
+ 'Arc de cercle très plat ou droit',
+ 'Arco di cerchio molto piatto o rettilineo',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Kreisbogen prüfen (sehr flach oder gerade)',
+ 'Vérifier l''arc de cercle (très plat ou droit)',
+ 'Verificare l''arco di cerchio (molto piatto o rettilineo)',
+ NULL, NULL, NULL, NULL),
+
+('226', 'base', 'error',
+ 'Fläche ohne Ausdehnung (identische Punkte)',
+ 'Surface sans extension (points identiques)',
+ 'Superficie senza estensione (punti identici)',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Fläche prüfen (identische Punkte)',
+ 'Vérifier la surface (points identiques)',
+ 'Verificare la superficie (punti identici)',
+ NULL, NULL, NULL, NULL),
+
+('227', 'base', 'error',
+ 'Fläche besteht aus mehreren Teilflächen',
+ 'La surface est composée de plusieurs parties',
+ 'La superficie è composta da più parti',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Multipart-Fläche bereinigen (nur einfache Flächen erlaubt)',
+ 'Corriger la surface multipartie (seules les surfaces simples sont autorisées)',
+ 'Correggere la superficie multiparte (solo superfici semplici consentite)',
+ NULL, NULL, NULL, NULL),
+
+('228', 'base', 'error',
+ 'Überschneidung über OVERLAP-Toleranz',
+ 'Intersection dépassant la tolérance OVERLAP',
+ 'Intersezione superiore alla tolleranza OVERLAP',
+ 'Topologie', 'Topologie', 'Topologia',
+ 'Geometrie prüfen / bereinigen', 'Vérifier / corriger la géométrie', 'Verificare / correggere la geometria',
+ 'Geometrie prüfen (OVERLAP-Toleranz überschritten)',
+ 'Vérifier la géométrie (tolérance OVERLAP dépassée)',
+ 'Verificare la geometria (tolleranza OVERLAP superata)',
+ NULL, NULL, NULL, NULL),
+
+-- ── XTF structure errors ───────────────────────────────────────────────────────
+('16', 'base', 'error',
+ 'Unbekanntes Attribut/Link in Klasse (XTF-Strukturfehler)',
+ 'Attribut/lien inconnu dans la classe (erreur structurelle XTF)',
+ 'Attributo/collegamento sconosciuto nella classe (errore strutturale XTF)',
+ 'Allgemein', 'Général', 'Generale',
+ 'Transferfile-Syntax prüfen', 'Vérifier la syntaxe du fichier de transfert', 'Verificare la sintassi del file di trasferimento',
+ 'XTF-Datei prüfen; Datenlieferant kontaktieren',
+ 'Vérifier le fichier XTF; contacter le fournisseur de données',
+ 'Verificare il file XTF; contattare il fornitore di dati',
+ NULL, NULL, NULL, NULL),
+
+('17', 'base', 'error',
+ 'Attribute in falscher Reihenfolge (XTF-Strukturfehler)',
+ 'Attributs dans le mauvais ordre (erreur structurelle XTF)',
+ 'Attributi in ordine errato (errore strutturale XTF)',
+ 'Allgemein', 'Général', 'Generale',
+ 'Transferfile-Syntax prüfen', 'Vérifier la syntaxe du fichier de transfert', 'Verificare la sintassi del file di trasferimento',
+ 'Attributreihenfolge gemäss Modell korrigieren',
+ 'Corriger l''ordre des attributs selon le modèle',
+ 'Correggere l''ordine degli attributi secondo il modello',
+ NULL, NULL, NULL, NULL),
+
+('18', 'base', 'error',
+ 'Unbekanntes Topic im XTF (Objekt ignoriert)',
+ 'Topic inconnu dans le XTF (objet ignoré)',
+ 'Topic sconosciuto nel XTF (oggetto ignorato)',
+ 'Allgemein', 'Général', 'Generale',
+ 'Transferfile-Syntax prüfen', 'Vérifier la syntaxe du fichier de transfert', 'Verificare la sintassi del file di trasferimento',
+ 'XTF-Datei prüfen; Topic-Name korrigieren',
+ 'Vérifier le fichier XTF; corriger le nom du topic',
+ 'Verificare il file XTF; correggere il nome del topic',
+ NULL, NULL, NULL, NULL),
+
+('23', 'base', 'error',
+ 'Unbekannte Klasse im XTF (Objekt ignoriert)',
+ 'Classe inconnue dans le XTF (objet ignoré)',
+ 'Classe sconosciuta nel XTF (oggetto ignorato)',
+ 'Allgemein', 'Général', 'Generale',
+ 'Transferfile-Syntax prüfen', 'Vérifier la syntaxe du fichier de transfert', 'Verificare la sintassi del file di trasferimento',
+ 'XTF-Datei prüfen; Klassen-Name korrigieren',
+ 'Vérifier le fichier XTF; corriger le nom de la classe',
+ 'Verificare il file XTF; correggere il nome della classe',
+ NULL, NULL, NULL, NULL),
+
+('24', 'base', 'error',
+ 'Ungültiges Tag im XTF (Objekt ignoriert)',
+ 'Balise invalide dans le XTF (objet ignoré)',
+ 'Tag non valido nel XTF (oggetto ignorato)',
+ 'Allgemein', 'Général', 'Generale',
+ 'Transferfile-Syntax prüfen', 'Vérifier la syntaxe du fichier de transfert', 'Verificare la sintassi del file di trasferimento',
+ 'XTF-Datei prüfen; Tag korrigieren',
+ 'Vérifier le fichier XTF; corriger le tag',
+ 'Verificare il file XTF; correggere il tag',
+ NULL, NULL, NULL, NULL);
+
+
+-- ── reader_error_rules: attribute / condition overrides + suppression ────────
+
+DROP TABLE IF EXISTS reader_error_rules;
+
+CREATE TABLE reader_error_rules (
+    rule_id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    error_id                  INTEGER NOT NULL,
+    attr_name                 TEXT,
+    condition_col             TEXT,
+    condition_val             TEXT,
+    msg_template_de           TEXT,
+    msg_template_fr           TEXT,
+    msg_template_it           TEXT,
+    msg_template_en           TEXT,
+    error_type_de             TEXT,
+    error_type_fr             TEXT,
+    error_type_it             TEXT,
+    wk                        INTEGER,
+    gep                       INTEGER,
+    recommendation_de         TEXT,
+    recommendation_fr         TEXT,
+    recommendation_it         TEXT,
+    recommendation_detail_de  TEXT,
+    recommendation_detail_fr  TEXT,
+    recommendation_detail_it  TEXT,
+    rule_note                 TEXT,
+    suppress                  INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (error_id, attr_name, condition_col, condition_val)
+);
+
+INSERT INTO reader_error_rules
+    (error_id, attr_name, condition_col, condition_val,
+     msg_template_de, msg_template_fr, msg_template_it, msg_template_en,
+     wk, gep,
+     recommendation_de,       recommendation_fr,          recommendation_it,
+     recommendation_detail_de, recommendation_detail_fr,   recommendation_detail_it,
+     rule_note, suppress)
+VALUES
+    -- Attr-specific override: BetreiberRef
+    (11, 'BetreiberRef', NULL, NULL,
+     'Pflichtattribut BetreiberRef fehlt',
+     'Attribut obligatoire BetreiberRef manquant',
+     'Attributo obbligatorio BetreiberRef mancante',
+     'Mandatory attribute BetreiberRef missing',
+     2, 2,
+     'Daten erheben',   'Saisir les données',   'Rilevare i dati',
+     'Betreiberorganisation erfassen und referenzieren',
+     'Enregistrer et référencer l''organisation exploitante',
+     'Registrare e referenziare l''organizzazione esercente',
+     'Attr-Override: BetreiberRef Prio 2', 0),
+
+    -- Condition override: FunktionHierarchisch missing on SAA object
+    (11, 'FunktionHierarchisch', 'funktionhierarchisch', 'SAA',
+     'Pflichtattribut FunktionHierarchisch fehlt (SAA-Pflichtfeld)',
+     'Attribut obligatoire FunktionHierarchisch manquant (champ obligatoire SAA)',
+     'Attributo obbligatorio FunktionHierarchisch mancante (campo obbligatorio SAA)',
+     'Mandatory attribute FunktionHierarchisch missing (SAA required field)',
+     1, 1,
+     'Daten erheben',   'Saisir les données',   'Rilevare i dati',
+     'FunktionHierarchisch für SAA-Lieferung zwingend setzen',
+     'Définir obligatoirement FunktionHierarchisch pour la livraison SAA',
+     'Impostare obbligatoriamente FunktionHierarchisch per la consegna SAA',
+     'Condition: FunktionHierarchisch fehlt + funktionhierarchisch=SAA', 0),
+
+    -- Attr-specific override: OBJ_ID exact-name
+    (12, 'OBJ_ID', NULL, NULL,
+     'OBJ_ID zu lang: {N} Zeichen (Max. {MAX}). Muss <= {MAX} Zeichen sein.',
+     'OBJ_ID trop long : {N} caractères (max. {MAX}). Doit être <= {MAX} caractères.',
+     'OBJ_ID troppo lungo: {N} caratteri (max. {MAX}). Deve essere <= {MAX} caratteri.',
+     'OBJ_ID too long: {N} characters (max. {MAX}). Must be <= {MAX} characters.',
+     2, 2,
+     'Daten prüfen / bereinigen', 'Vérifier / corriger les données', 'Verificare / correggere i dati',
+     'OBJ_ID auf maximal {MAX} Zeichen kürzen.',
+     'Réduire OBJ_ID à {MAX} caractères maximum.',
+     'Ridurre OBJ_ID a un massimo di {MAX} caratteri.',
+     'Attr-Override: OBJ_ID Prio 2', 0),
+
+    -- Suppression rules: reader error 12 on OBJ_ID_* (covered by igcheck 1021)
+    (12, 'OBJ_ID_Abwasserbauwerk',   NULL, NULL,
+     NULL, NULL, NULL, NULL, NULL, NULL,
+     NULL, NULL, NULL,  NULL, NULL, NULL,
+     'Suppress: covered by igcheck 1021', 1),
+
+    (12, 'OBJ_ID_nachHaltungspunkt', NULL, NULL,
+     NULL, NULL, NULL, NULL, NULL, NULL,
+     NULL, NULL, NULL,  NULL, NULL, NULL,
+     'Suppress: covered by igcheck 1021', 1),
+
+    (12, 'OBJ_ID_vonHaltungspunkt',  NULL, NULL,
+     NULL, NULL, NULL, NULL, NULL, NULL,
+     NULL, NULL, NULL,  NULL, NULL, NULL,
+     'Suppress: covered by igcheck 1021', 1);

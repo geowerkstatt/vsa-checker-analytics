@@ -5,10 +5,11 @@ using System.Diagnostics.CodeAnalysis;
 namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 
 /// <summary>
-/// Detects orphan rows: checker CSV rows that have no matching entry in the error matrix. Orphans
-/// are derived from the checker errors view (the inner join of the CSV union and the error matrix),
-/// so the match definition is not duplicated here. When orphans exist they are materialized into a
-/// table (not a view, so it stays cheap to load) for the domain team to review.
+/// Detects orphan rows: checker CSV rows that no enrichment can describe. An igcheck row is an orphan
+/// when the error matrix has no matching non-base entry; a reader row is an orphan when there is no base
+/// row for its ErrorId. When orphans exist they are materialized into a table (not a view, so it stays
+/// cheap to load) for the domain team to review; when there are none, no table is created, so the mere
+/// presence of the table is the review signal.
 /// </summary>
 internal sealed class OrphanInspector
 {
@@ -33,16 +34,19 @@ internal sealed class OrphanInspector
     /// </summary>
     /// <param name="tableName">Name of the orphan table to create when orphans exist.</param>
     /// <param name="unionViewName">Name of the checker CSV union view (all CSV rows).</param>
-    /// <param name="errorsViewName">Name of the checker errors view (matched rows only).</param>
-    internal void MaterializeOrphans(string tableName, string unionViewName, string errorsViewName)
+    /// <param name="errorMatrixTable">Name of the error matrix table (igcheck rows plus base reader rows).</param>
+    /// <param name="language">Language code selecting the class column (<c>class_de</c> or <c>class_fr</c>).</param>
+    internal void MaterializeOrphans(string tableName, string unionViewName, string errorMatrixTable, string language)
     {
-        var orphanCount = CountUnmatched(unionViewName, errorsViewName);
+        var predicate = UnmatchedPredicate(errorMatrixTable, ClassColumn(language));
+
+        var orphanCount = CountUnmatched(unionViewName, predicate);
         if (orphanCount == 0)
         {
             return;
         }
 
-        Materialize(tableName, unionViewName, errorsViewName);
+        Materialize(tableName, unionViewName, predicate);
 
         var unmatchedKeys = GetUnmatchedKeys(tableName);
         logger.LogWarning(
@@ -52,22 +56,39 @@ internal sealed class OrphanInspector
             string.Join("; ", unmatchedKeys.Select(k => $"({k.ErrorId}, {k.Model}, {k.Class})")));
     }
 
-    [SuppressMessage("Security", "CA2100", Justification = "View names are internal pipeline constants, not user input.")]
-    private long CountUnmatched(string unionViewName, string errorsViewName)
+    private static string ClassColumn(string language) =>
+        string.Equals(language, "FR", StringComparison.OrdinalIgnoreCase) ? "class_fr" : "class_de";
+
+    private static string UnmatchedPredicate(string errorMatrixTable, string classColumn) =>
+        $"""
+        (c."Module" = 'igcheck' AND NOT EXISTS (
+            SELECT 1 FROM "{errorMatrixTable}" em
+            WHERE em.checkmodel != 'base'
+              AND em.cid = c."ErrorId"
+              AND (em.model IS NULL OR em.model = c."Model")
+              AND (em."{classColumn}" IS NULL OR em."{classColumn}" = '' OR em."{classColumn}" = c."Class")))
+        OR
+        (c."Module" = 'reader' AND NOT EXISTS (
+            SELECT 1 FROM "{errorMatrixTable}" b
+            WHERE b.checkmodel = 'base' AND b.cid = c."ErrorId"))
+        """;
+
+    [SuppressMessage("Security", "CA2100", Justification = "View, table and column names are internal pipeline constants, not user input.")]
+    private long CountUnmatched(string unionViewName, string predicate)
     {
         using var command = connection.CreateCommand();
         command.CommandText =
             $"""
             SELECT COUNT(*)
             FROM "{unionViewName}" c
-            WHERE c."t_id" NOT IN (SELECT "t_id" FROM "{errorsViewName}")
+            WHERE {predicate}
             """;
 
         return (long)(command.ExecuteScalar() ?? 0L);
     }
 
-    [SuppressMessage("Security", "CA2100", Justification = "Table and view names are internal pipeline constants, not user input.")]
-    private void Materialize(string tableName, string unionViewName, string errorsViewName)
+    [SuppressMessage("Security", "CA2100", Justification = "View, table and column names are internal pipeline constants, not user input.")]
+    private void Materialize(string tableName, string unionViewName, string predicate)
     {
         using var command = connection.CreateCommand();
         command.CommandText =
@@ -75,7 +96,7 @@ internal sealed class OrphanInspector
             CREATE TABLE "{tableName}" AS
             SELECT c.*
             FROM "{unionViewName}" c
-            WHERE c."t_id" NOT IN (SELECT "t_id" FROM "{errorsViewName}")
+            WHERE {predicate}
             """;
 
         command.ExecuteNonQuery();
