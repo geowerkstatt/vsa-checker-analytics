@@ -113,11 +113,13 @@ Output zurückgegeben wird.
    und ergänzt eine `source`-Spalte (`T`, `A`, `FP`). Jede Zeile erhält
    zusätzlich eine über alle drei Tabellen eindeutige `t_id`, indem die Quelle
    als Präfix vorangestellt wird (z.B. `t_…`, `a_…`, `fp_…`).
-2. `v_checker_errors` verknüpft den Vereinigungs-View per `INNER JOIN` mit der
-   Fehlermatrix (`ErrorId = cid`, `Model = model`, `Class = class_de` bzw.
-   `class_fr` je nach Sprache). Der View dient nur noch der Inspektion der
-   igcheck-Treffer; die eigentliche Anreicherung erfolgt im Build-View (siehe
-   Materialisierung).
+2. `v_checker_csv_classified` ergänzt jede Zeile des Vereinigungs-Views um ein
+   Flag `is_known`: `1`, wenn der Fehler beschrieben werden kann (igcheck-Zeile
+   mit passendem Nicht-`base`-Eintrag in `error_matrix`, oder Reader-Zeile mit
+   `base`-Zeile zu ihrer `ErrorId`), sonst `0`. Dieses Flag ist die einzige
+   Klassifikation: der Build-View nimmt `is_known = 1`, die Orphan-Erkennung
+   `is_known = 0`, damit können die beiden nicht auseinanderlaufen. Der View ist
+   interne Plumbing und wird nicht als GeoPackage-Layer registriert.
 3. `CreateAdditionalViews()` führt das eingebettete Skript `AdditionalViews.sql`
    aus. Es erstellt die VSA-Feature-Views (`v_vsa_*` für Knoten-, Leitungs- und
    Ueberlauf_Foerderaggregat-Varianten) sowie die Fehler-Views für die
@@ -125,13 +127,13 @@ Output zurückgegeben wird.
    `v_error_category_*`). Jede dieser Views registriert sich direkt nach ihrem
    `CREATE VIEW` selbst in den GeoPackage-Metadaten.
 
-`v_checker_csv_all` und `v_checker_errors` werden ebenfalls als
-`attributes`-Layer registriert.
+`v_checker_csv_all` wird ebenfalls als `attributes`-Layer registriert;
+`v_checker_csv_classified` bleibt bewusst unregistriert.
 
 ### Materialisierung (`ErrorDataMaterializer`)
 
-Der `ErrorDataMaterializer` erzeugt zwei Tabellen direkt aus dem
-Vereinigungs-View `v_checker_csv_all`:
+Der `ErrorDataMaterializer` erzeugt zwei Tabellen aus dem klassifizierten View
+`v_checker_csv_classified` und nimmt dabei nur bekannte Fehler auf:
 
 - `CreateBuildView` baut den Build-View `v_ca_error_data_build`. Er
   dedupliziert zunächst auf (`Tid`, `Module`, `Description`), sodass derselbe
@@ -142,21 +144,24 @@ Vereinigungs-View `v_checker_csv_all`:
   `Model` und `Topic`.
 - Die Anreicherung läuft in zwei Zweigen:
   - **igcheck**: `LEFT JOIN` auf `error_matrix` (klassen- bzw.
-    modellspezifische Zeile gewinnt; fehlt ein Eintrag, dient die rohe
-    Validator-Beschreibung als Fallback).
+    modellspezifische Zeile gewinnt). Die rohe Validator-Beschreibung dient nur
+    noch als Meldungs-Fallback für eine bekannte Zeile mit leerer Vorlage, nicht
+    mehr dazu, unbekannte Fehler zu behalten.
   - **reader**: Aus der Validator-Meldung werden Parameter extrahiert
     (`{ATTR}`, `{N}`, `{MAX}`, `{TID}`, `{CONSTRAINT}`, `{ATTRS}`) und über eine
     dreistufige Auflösung (Bedingungs-Override, Attribut-Override,
     `base`-Zeile) zu Meldung, Priorität und Empfehlung verbunden. Die
     Platzhalter werden in die gewählte Sprache gerendert; für FR/IT werden die
     SIA405-Rollennamen übersetzt. Als `suppress` markierte Reader-Fehler
-    (bereits durch einen igcheck-Check abgedeckt) fallen weg.
+    (bereits durch einen igcheck-Check abgedeckt) fallen weg. Zeilen mit
+    `is_known = 0` (unbekannte Fehler) werden hier nicht aufgenommen; sie
+    erscheinen ausschliesslich in `ca_error_orphans`.
 - Die Anreicherungsspalten `funktionhierarchisch`, `eigentuemer` (aus
   `organisation`) und `status` werden weiterhin aus den Feature-Tabellen
   `leitung` und `knoten` gejoint; welche vorhanden sind, bestimmt `TableExists`.
 - `MaterializeAsync` legt die Zieltabellen an und befüllt sie in einer einzigen
   Transaktion:
-  - **`ca_error_data`** enthält eine Zeile pro dedupliziertem Fehler.
+  - **`ca_error_data`** enthält eine Zeile pro dedupliziertem, bekanntem Fehler.
   - **`ca_error_object`** aggregiert `ca_error_data` nach (`tid`, `class`) mit
     `COUNT(*)`, `MAX(wk)` und `MAX(gep)`.
 
@@ -172,14 +177,17 @@ String.
 
 ### Orphan-Erkennung (`OrphanInspector`)
 
-Zum Schluss prüft der `OrphanInspector`, ob Checker-CSV-Zeilen existieren, die
-keine Anreicherung beschreiben kann: igcheck-Zeilen ohne passenden
-Nicht-`base`-Eintrag in `error_matrix`, sowie Reader-Zeilen ohne `base`-Zeile zu
-ihrer `ErrorId`. Nur wenn solche Orphans existieren, werden sie in die Tabelle
-`ca_error_orphans` materialisiert und eine Warnung mit den betroffenen
-(`ErrorId`, `Model`, `Class`)-Schlüsseln protokolliert. Die blosse Existenz der
-Tabelle ist damit das Signal, dass das Domain-Team die Fehlermatrix prüfen
-sollte.
+Zum Schluss materialisiert der `OrphanInspector` das exakte Komplement der
+angereicherten Fehler: alle Zeilen, die der klassifizierte View mit
+`is_known = 0` markiert (igcheck-Zeilen ohne passenden Nicht-`base`-Eintrag in
+`error_matrix`, sowie Reader-Zeilen ohne `base`-Zeile zu ihrer `ErrorId`). Da
+dasselbe `is_known`-Flag auch `ca_error_data` steuert, sind die beiden Mengen
+disjunkt und laufen nicht auseinander. Nur wenn solche Orphans existieren, werden
+sie in die Tabelle `ca_error_orphans` materialisiert und eine Warnung mit den
+betroffenen (`ErrorId`, `Model`, `Class`)-Schlüsseln protokolliert. Die blosse
+Existenz der Tabelle ist damit das Signal, dass etwas nicht stimmt (ein
+Code-Fehler oder vom Lieferanten erfundene Fehler); im Normalfall bleibt sie
+leer.
 
 ## GeoPackage-Metadaten-Registrierung
 
@@ -189,9 +197,10 @@ und `gpkg_geometry_columns` eingetragen (siehe
 [GeoPackage-Tooling](geopackage-tooling.md)). Es gibt zwei Mechanismen:
 
 - **Nicht-räumliche Tabellen und Views** (Checker-CSVs, `error_matrix`,
-  `v_checker_csv_all`, `v_checker_errors`, `v_ca_error_data_build`,
+  `reader_error_rules`, `v_checker_csv_all`, `v_ca_error_data_build`,
   `ca_error_data`, `ca_error_object`) werden über den C#-Helfer
   `GeopackageMetadata.RegisterAttributes` als `attributes`-Layer registriert.
+  `v_checker_csv_classified` ist interne Plumbing und wird nicht registriert.
 - **Räumliche Feature-Views** in `AdditionalViews.sql` registrieren sich selbst
   direkt nach ihrem `CREATE VIEW`: als `features` in `gpkg_contents` und
   zusätzlich in `gpkg_geometry_columns` mit Geometriespalte, Geometrietyp und

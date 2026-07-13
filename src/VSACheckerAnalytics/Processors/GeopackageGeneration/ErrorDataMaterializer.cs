@@ -88,23 +88,25 @@ internal sealed class ErrorDataMaterializer
     }
 
     /// <summary>
-    /// Creates the build view that maps every deduplicated checker error onto the
+    /// Creates the build view that maps every deduplicated, known checker error onto the
     /// <c>ca_error_data</c> target shape. Errors are deduplicated on
     /// (<c>Tid</c>, <c>Module</c>, <c>Description</c>) so the same logical error reported by several
-    /// profiles collapses into one row with an aggregated <c>check_type</c>. igcheck errors are enriched
-    /// from <c>error_matrix</c> (class/model-specific row wins, raw description as fallback); reader
-    /// errors extract parameters from the validator message and resolve their message, priority and
-    /// recommendation through a three-tier lookup (condition override, attribute override, base row).
-    /// Reader errors flagged as suppressed are excluded.
+    /// profiles collapses into one row with an aggregated <c>check_type</c>. Only rows the classified
+    /// view flags <c>is_known = 1</c> are included: igcheck errors are enriched from <c>error_matrix</c>
+    /// (class/model-specific row wins), reader errors resolve their message, priority and recommendation
+    /// through a three-tier lookup (condition override, attribute override, base row) after extracting
+    /// parameters from the validator message. Suppressed reader errors are excluded. Unknown errors are
+    /// left out entirely and surface via the orphan detection, not here. The raw validator description
+    /// is used only as a message fallback for an included row whose template is blank.
     /// </summary>
     /// <param name="viewName">Name of the build view to create.</param>
-    /// <param name="unionViewName">Name of the checker CSV union view (all CSV rows, with <c>source</c> and <c>t_id</c>).</param>
+    /// <param name="classifiedViewName">Name of the classified checker CSV view (union rows plus the <c>is_known</c> flag).</param>
     /// <param name="errorMatrixTable">Name of the error matrix table (igcheck rows plus <c>base</c> reader rows).</param>
     /// <param name="readerRulesTable">Name of the reader error rules table (overrides and suppression).</param>
     /// <param name="language">Language code (<c>"DE"</c>, <c>"FR"</c> or <c>"IT"</c>) selecting the localized columns.</param>
     internal void CreateBuildView(
         string viewName,
-        string unionViewName,
+        string classifiedViewName,
         string errorMatrixTable,
         string readerRulesTable,
         string language)
@@ -134,7 +136,7 @@ internal sealed class ErrorDataMaterializer
                     MAX(CASE WHEN source = 'A'  THEN 1 ELSE 0 END) AS has_a,
                     MAX(CASE WHEN source = 'FP' THEN 1 ELSE 0 END) AS has_fp,
                     MAX(CASE WHEN source = 'T'  THEN 1 ELSE 0 END) AS has_t
-                FROM "{unionViewName}"
+                FROM "{classifiedViewName}"
                 GROUP BY "Tid", "Module", "Description"
             ),
             rep AS (
@@ -144,13 +146,14 @@ internal sealed class ErrorDataMaterializer
                     re."Class"   AS class,
                     re."Model"   AS model,
                     re."Topic"   AS topic,
+                    re.is_known  AS is_known,
                     {ExtractedAttribute} AS xattr,
                     {ExtractedLength}    AS xn,
                     {ExtractedMaxOrTid}  AS xmax_or_tid,
                     {ExtractedConstraint} AS xconstraint,
                     {ExtractedAttrs}     AS xattrs
                 FROM grp g
-                JOIN "{unionViewName}" re ON re.t_id = g.fid
+                JOIN "{classifiedViewName}" re ON re.t_id = g.fid
             ),
             obj AS (
                 {objectAttributes}
@@ -211,7 +214,7 @@ internal sealed class ErrorDataMaterializer
                         (ov_c.condition_col = 'funktionhierarchisch' AND obj.funktionhierarchisch = ov_c.condition_val)
                      OR (ov_c.condition_col = 'eigentuemer'          AND obj.eigentuemer          = ov_c.condition_val)
                       )
-            WHERE COALESCE(ov_c.suppress, ov_a.suppress, 0) = 0
+            WHERE r.is_known = 1 AND COALESCE(ov_c.suppress, ov_a.suppress, 0) = 0
             """;
 
         ExecuteNonQuery(sql);

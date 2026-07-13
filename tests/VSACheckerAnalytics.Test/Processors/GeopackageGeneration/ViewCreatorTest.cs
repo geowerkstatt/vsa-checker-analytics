@@ -66,7 +66,7 @@ public class ViewCreatorTest
     }
 
     [TestMethod]
-    public async Task CreateCheckerErrorsView_JoinsOnCidModelAndClassDe_WhenLanguageDE()
+    public async Task CreateCheckerCsvClassifiedView_FlagsMatchedRowsKnown_AndUnmatchedRowsUnknown()
     {
         using var connection = CreateOpenConnection();
         await SeedCsvTables(connection);
@@ -74,47 +74,12 @@ public class ViewCreatorTest
         CreateUnionView(connection);
 
         var viewCreator = new ViewCreator(connection);
-        viewCreator.CreateCheckerErrorsView("v_checker_errors", "v_checker_csv_all", "error_matrix", "DE");
+        viewCreator.CreateCheckerCsvClassifiedView("v_checker_csv_classified", "v_checker_csv_all", "error_matrix", "DE");
 
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT \"severity\" FROM \"v_checker_errors\" WHERE \"ErrorId\" = 'T1' AND \"Model\" = '2020'";
-        Assert.AreEqual("high", command.ExecuteScalar());
-    }
-
-    [TestMethod]
-    public async Task CreateCheckerErrorsView_JoinsOnCidModelAndClassFr_WhenLanguageFR()
-    {
-        using var connection = CreateOpenConnection();
-        await SeedCsvTables(connection);
-        SeedErrorMatrix(connection);
-        CreateUnionView(connection);
-
-        var viewCreator = new ViewCreator(connection);
-        viewCreator.CreateCheckerErrorsView("v_checker_errors", "v_checker_csv_all", "error_matrix", "FR");
-
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT \"severity\" FROM \"v_checker_errors\" WHERE \"ErrorId\" = 'T1' AND \"Model\" = '2020'";
-        Assert.AreEqual("high", command.ExecuteScalar());
-    }
-
-    [TestMethod]
-    public async Task CreateCheckerErrorsView_ExcludesUnmatchedCsvRows()
-    {
-        using var connection = CreateOpenConnection();
-        await SeedCsvTables(connection);
-        SeedErrorMatrix(connection);
-        CreateUnionView(connection);
-
-        var viewCreator = new ViewCreator(connection);
-        viewCreator.CreateCheckerErrorsView("v_checker_errors", "v_checker_csv_all", "error_matrix", "DE");
-
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM \"v_checker_errors\"";
-        var totalRows = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
-        Assert.AreEqual(2, totalRows);
-
-        command.CommandText = "SELECT COUNT(*) FROM \"v_checker_errors\" WHERE \"ErrorId\" = 'FP1'";
-        Assert.AreEqual(0, Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture));
+        // T1/ClassX and A1/ClassY have matching matrix rows => known; FP1/ClassZ has none => unknown.
+        Assert.AreEqual(1, IsKnown(connection, "T1"));
+        Assert.AreEqual(1, IsKnown(connection, "A1"));
+        Assert.AreEqual(0, IsKnown(connection, "FP1"));
     }
 
     [TestMethod]
@@ -191,59 +156,6 @@ public class ViewCreatorTest
         }
     }
 
-    [TestMethod]
-    public async Task CreateCheckerErrorsView_ExcludesJoinKeysAndUnusedClassFromErrorMatrix()
-    {
-        using var connection = CreateOpenConnection();
-        await SeedCsvTables(connection);
-        SeedErrorMatrix(connection);
-        CreateUnionView(connection);
-
-        var viewCreator = new ViewCreator(connection);
-        viewCreator.CreateCheckerErrorsView("v_checker_errors", "v_checker_csv_all", "error_matrix", "DE");
-
-        var viewColumns = GetViewColumnNames(connection, "v_checker_errors");
-
-        Assert.Contains("severity", viewColumns);
-        Assert.DoesNotContain("cid", viewColumns);
-        Assert.DoesNotContain("model", viewColumns);
-        Assert.DoesNotContain("class_de", viewColumns);
-        Assert.DoesNotContain("class_fr", viewColumns);
-    }
-
-    [TestMethod]
-    public async Task MaterializeOrphans_WithUnmatchedRows_CreatesTableWithOrphans()
-    {
-        using var connection = CreateOpenConnection();
-        await SeedCsvTables(connection);
-        SeedErrorMatrix(connection);
-        CreateUnionView(connection);
-
-        new OrphanInspector(connection, NullLogger.Instance)
-            .MaterializeOrphans("ca_error_orphans", "v_checker_csv_all", "error_matrix", "DE");
-
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT \"ErrorId\" FROM \"ca_error_orphans\"";
-        Assert.AreEqual("FP1", command.ExecuteScalar());
-    }
-
-    [TestMethod]
-    public async Task MaterializeOrphans_AllRowsMatched_CreatesNoTable()
-    {
-        using var connection = CreateOpenConnection();
-        await SeedCsvTables(connection);
-        SeedErrorMatrix(connection);
-        AddErrorMatrixRow(connection, "FP1", "2020", "ClassZ");
-        CreateUnionView(connection);
-
-        new OrphanInspector(connection, NullLogger.Instance)
-            .MaterializeOrphans("ca_error_orphans", "v_checker_csv_all", "error_matrix", "DE");
-
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'ca_error_orphans'";
-        Assert.AreEqual(0, Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture));
-    }
-
     private static SqliteConnection CreateOpenConnection()
     {
         var connection = new SqliteConnection("Data Source=:memory:");
@@ -274,17 +186,6 @@ public class ViewCreatorTest
         command.ExecuteNonQuery();
     }
 
-    private static void AddErrorMatrixRow(SqliteConnection connection, string cid, string model, string classDe)
-    {
-        using var command = connection.CreateCommand();
-        command.CommandText =
-            "INSERT INTO \"error_matrix\" (\"cid\", \"checkmodel\", \"model\", \"class_de\", \"class_fr\", \"severity\") VALUES (@cid, 'vsa', @model, @class, @class, 'low')";
-        command.Parameters.AddWithValue("@cid", cid);
-        command.Parameters.AddWithValue("@model", model);
-        command.Parameters.AddWithValue("@class", classDe);
-        command.ExecuteNonQuery();
-    }
-
     private static void CreateUnionView(SqliteConnection connection)
     {
         var viewCreator = new ViewCreator(connection);
@@ -294,19 +195,11 @@ public class ViewCreatorTest
             ["T", "A", "FP"]);
     }
 
-    private static List<string> GetViewColumnNames(SqliteConnection connection, string viewName)
+    private static int IsKnown(SqliteConnection connection, string errorId)
     {
-        var columns = new List<string>();
         using var command = connection.CreateCommand();
-#pragma warning disable CA2100
-        command.CommandText = $"PRAGMA table_info(\"{viewName}\")";
-#pragma warning restore CA2100
-        using var reader = command.ExecuteReader();
-        while (reader.Read())
-        {
-            columns.Add(reader.GetString(1));
-        }
-
-        return columns;
+        command.CommandText = "SELECT is_known FROM \"v_checker_csv_classified\" WHERE \"ErrorId\" = @id";
+        command.Parameters.AddWithValue("@id", errorId);
+        return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
     }
 }

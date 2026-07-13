@@ -69,46 +69,46 @@ internal sealed class ViewCreator
     }
 
     /// <summary>
-    /// Creates a view that INNER JOINs the checker CSV union view with the error matrix.
-    /// The join matches on <c>ErrorId = cid</c>, <c>Model = model</c>, and
-    /// <c>Class = class_de/class_fr</c> (language-dependent).
+    /// Creates a view that adds an <c>is_known</c> flag to every checker CSV union row: <c>1</c> when
+    /// the error can be described, otherwise <c>0</c>. An <c>igcheck</c> row is known when a matching
+    /// non-<c>base</c> error matrix row exists (<c>cid</c>, <c>model</c> NULL-or-equal, class NULL/empty-or-equal);
+    /// a <c>reader</c> row is known when a <c>base</c> row exists for its ErrorId. This is the single
+    /// classification consumed both by the build view (keeps <c>is_known = 1</c>) and by the orphan
+    /// detection (keeps <c>is_known = 0</c>), so the two cannot disagree. The view is internal plumbing
+    /// and is intentionally not registered as a GeoPackage layer.
     /// </summary>
     /// <param name="viewName">Name of the view to create.</param>
-    /// <param name="checkErrorViewName">Name of the checker CSV union view.</param>
-    /// <param name="errorMatrixTableName">Name of the error matrix table.</param>
-    /// <param name="language">Language code: <c>"DE"</c> or <c>"FR"</c>.</param>
+    /// <param name="unionViewName">Name of the checker CSV union view.</param>
+    /// <param name="errorMatrixTableName">Name of the error matrix table (igcheck rows plus <c>base</c> reader rows).</param>
+    /// <param name="language">Language code (<c>"DE"</c> or <c>"FR"</c>) selecting the class column.</param>
     [SuppressMessage("Security", "CA2100", Justification = "Table, view, and column names are internal pipeline constants, not user input.")]
-    internal void CreateCheckerErrorsView(string viewName, string checkErrorViewName, string errorMatrixTableName, string language)
+    internal void CreateCheckerCsvClassifiedView(string viewName, string unionViewName, string errorMatrixTableName, string language)
     {
         var classColumn = string.Equals(language, "FR", StringComparison.OrdinalIgnoreCase) ? "class_fr" : "class_de";
 
-        var errorMatrixColumns = GetColumnNames(errorMatrixTableName);
-
-        var errorMatrixSelectColumns = errorMatrixColumns
-            .Where(c => !string.Equals(c, "t_id", StringComparison.OrdinalIgnoreCase)
-                     && !string.Equals(c, "cid", StringComparison.OrdinalIgnoreCase)
-                     && !string.Equals(c, "model", StringComparison.OrdinalIgnoreCase)
-                     && !string.Equals(c, "class_de", StringComparison.OrdinalIgnoreCase)
-                     && !string.Equals(c, "class_fr", StringComparison.OrdinalIgnoreCase))
-            .Select(c => $"e.\"{c}\"");
-
-        var selectList = $"c.*, {string.Join(", ", errorMatrixSelectColumns)}";
-
         var sql = $"""
             CREATE VIEW "{viewName}" AS
-            SELECT {selectList}
-            FROM "{checkErrorViewName}" c
-            INNER JOIN "{errorMatrixTableName}" e
-                ON c."ErrorId" = e."cid"
-                AND c."Model" = e."model"
-                AND c."Class" = e."{classColumn}"
+            SELECT c.*,
+                CASE
+                    WHEN c."Module" = 'igcheck' AND EXISTS (
+                        SELECT 1 FROM "{errorMatrixTableName}" em
+                        WHERE em.checkmodel != 'base'
+                          AND em.cid = c."ErrorId"
+                          AND (em.model IS NULL OR em.model = c."Model")
+                          AND (em."{classColumn}" IS NULL OR em."{classColumn}" = '' OR em."{classColumn}" = c."Class"))
+                    THEN 1
+                    WHEN c."Module" = 'reader' AND EXISTS (
+                        SELECT 1 FROM "{errorMatrixTableName}" b
+                        WHERE b.checkmodel = 'base' AND b.cid = c."ErrorId")
+                    THEN 1
+                    ELSE 0
+                END AS is_known
+            FROM "{unionViewName}" c
             """;
 
         using var command = connection.CreateCommand();
         command.CommandText = sql;
         command.ExecuteNonQuery();
-
-        GeopackageMetadata.RegisterAttributes(connection, viewName);
     }
 
     /// <summary>

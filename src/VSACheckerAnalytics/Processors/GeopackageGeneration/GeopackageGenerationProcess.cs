@@ -270,15 +270,15 @@ public sealed class GeopackageGenerationProcess
             ["checker_csv_t", "checker_csv_a", "checker_csv_fp"],
             ["T", "A", "FP"]);
 
-        viewCreator.CreateCheckerErrorsView("v_checker_errors", "v_checker_csv_all", "error_matrix", language);
+        viewCreator.CreateCheckerCsvClassifiedView("v_checker_csv_classified", "v_checker_csv_all", "error_matrix", language);
         viewCreator.CreateAdditionalViews();
 
         var materializer = new ErrorDataMaterializer(connection, logger);
-        materializer.CreateBuildView("v_ca_error_data_build", "v_checker_csv_all", "error_matrix", "reader_error_rules", language);
+        materializer.CreateBuildView("v_ca_error_data_build", "v_checker_csv_classified", "error_matrix", "reader_error_rules", language);
         await materializer.MaterializeAsync("v_ca_error_data_build", cancellationToken);
 
         new OrphanInspector(connection, logger)
-            .MaterializeOrphans("ca_error_orphans", "v_checker_csv_all", "error_matrix", language);
+            .MaterializeOrphans("ca_error_orphans", "v_checker_csv_classified");
 
         logger.LogInformation("Created analytics in GeoPackage.");
         return target;

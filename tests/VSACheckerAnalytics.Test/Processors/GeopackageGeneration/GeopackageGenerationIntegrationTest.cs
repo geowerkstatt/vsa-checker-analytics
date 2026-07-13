@@ -62,11 +62,11 @@ public class GeopackageGenerationIntegrationTest
                 ["checker_csv_t", "checker_csv_a", "checker_csv_fp"],
                 ["T", "A", "FP"]);
 
-            viewCreator.CreateCheckerErrorsView(
-                "v_checker_errors", "v_checker_csv_all", "error_matrix", "DE");
+            viewCreator.CreateCheckerCsvClassifiedView(
+                "v_checker_csv_classified", "v_checker_csv_all", "error_matrix", "DE");
 
             var materializer = new ErrorDataMaterializer(connection, NullLogger.Instance);
-            materializer.CreateBuildView("v_ca_error_data_build", "v_checker_csv_all", "error_matrix", "reader_error_rules", "DE");
+            materializer.CreateBuildView("v_ca_error_data_build", "v_checker_csv_classified", "error_matrix", "reader_error_rules", "DE");
             await materializer.MaterializeAsync("v_ca_error_data_build", CancellationToken.None);
 
             Assert.AreEqual(686, GetRowCount(connection, "checker_csv_t"));
@@ -77,17 +77,6 @@ public class GeopackageGenerationIntegrationTest
             Assert.AreEqual(686, GetCountWhere(connection, "v_checker_csv_all", "source = 'T'"));
             Assert.AreEqual(552, GetCountWhere(connection, "v_checker_csv_all", "source = 'A'"));
             Assert.AreEqual(473, GetCountWhere(connection, "v_checker_csv_all", "source = 'FP'"));
-
-            var errorsCount = GetRowCount(connection, "v_checker_errors");
-            Assert.IsGreaterThan(0, errorsCount);
-
-            var errorsViewColumns = GetColumnNames(connection, "v_checker_errors");
-            Assert.Contains("ccat", errorsViewColumns);
-            Assert.Contains("prio_uc", errorsViewColumns);
-            Assert.DoesNotContain("cid", errorsViewColumns);
-            Assert.DoesNotContain("model", errorsViewColumns);
-            Assert.DoesNotContain("class_de", errorsViewColumns);
-            Assert.DoesNotContain("class_fr", errorsViewColumns);
 
             var errorDataCount = GetRowCount(connection, "ca_error_data");
             var errorObjectCount = GetRowCount(connection, "ca_error_object");

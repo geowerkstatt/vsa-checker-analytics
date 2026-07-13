@@ -13,10 +13,10 @@ public class ErrorDataMaterializerTest
     {
         using var connection = await SetUpAndMaterializeAsync();
 
-        // 9 seeded CSV rows: LT001/1001 appears in A and T (deduped to one group),
-        // OBJ_ID_Abwasserbauwerk is suppressed (dropped) => 7 rows remain.
+        // 9 seeded CSV rows dedupe to 8 groups. OBJ_ID_Abwasserbauwerk is suppressed and the
+        // unknown igcheck error 9999 is excluded (it becomes an orphan) => 6 rows remain.
         var count = QueryLong(connection, "SELECT COUNT(*) FROM ca_error_data");
-        Assert.AreEqual(7L, count);
+        Assert.AreEqual(6L, count);
 
         var suppressed = QueryLong(
             connection,
@@ -67,13 +67,15 @@ public class ErrorDataMaterializerTest
     }
 
     [TestMethod]
-    public async Task Materialize_FallsBackToDescription_WhenIgcheckHasNoMatrixRow()
+    public async Task Materialize_ExcludesUnknownIgcheckError_WhenNoMatrixRow()
     {
         using var connection = await SetUpAndMaterializeAsync();
 
-        var error = QueryString(connection, "SELECT error FROM ca_error_data WHERE tid = 'KN003' AND errorid = '9999'");
+        // 9999 has no error matrix row, so it is unknown and must not reach ca_error_data;
+        // it surfaces via the orphan detection instead.
+        var count = QueryLong(connection, "SELECT COUNT(*) FROM ca_error_data WHERE tid = 'KN003' AND errorid = '9999'");
 
-        Assert.AreEqual("Some unknown igcheck error", error);
+        Assert.AreEqual(0L, count);
     }
 
     [TestMethod]
@@ -148,8 +150,9 @@ public class ErrorDataMaterializerTest
     {
         using var connection = await SetUpAndMaterializeAsync();
 
-        // Objects: (LT001, Leitung), (KN001, Knoten), (TEG001, Teileinzugsgebiet), (KN003, Knoten).
-        Assert.AreEqual(4L, QueryLong(connection, "SELECT COUNT(*) FROM ca_error_object"));
+        // Objects: (LT001, Leitung), (KN001, Knoten), (TEG001, Teileinzugsgebiet).
+        // KN003 had only the unknown error 9999, which is excluded, so it produces no object.
+        Assert.AreEqual(3L, QueryLong(connection, "SELECT COUNT(*) FROM ca_error_object"));
 
         using var cmd = connection.CreateCommand();
         cmd.CommandText = "SELECT count_error, wk_max, gep_max FROM ca_error_object WHERE tid = 'LT001' AND class = 'Leitung'";
@@ -173,14 +176,43 @@ public class ErrorDataMaterializerTest
         Assert.AreEqual("Attribut obligatoire MAITRE_DES_DONNEESRef manquant", error);
     }
 
+    [TestMethod]
+    public async Task Materialize_PartitionsRows_KnownToData_UnknownToOrphans_SuppressedToNeither()
+    {
+        using var connection = await SetUpAndMaterializeAsync();
+
+        new OrphanInspector(connection, NullLogger.Instance)
+            .MaterializeOrphans("ca_error_orphans", "v_checker_csv_classified");
+
+        // Unknown igcheck error 9999: in orphans, not in ca_error_data.
+        Assert.AreEqual(0L, QueryLong(connection, "SELECT COUNT(*) FROM ca_error_data WHERE errorid = '9999'"));
+        Assert.AreEqual(1L, QueryLong(connection, "SELECT COUNT(*) FROM ca_error_orphans WHERE \"ErrorId\" = '9999'"));
+
+        // Known error 1001: in ca_error_data, not in orphans.
+        Assert.IsGreaterThanOrEqualTo(1L, QueryLong(connection, "SELECT COUNT(*) FROM ca_error_data WHERE errorid = '1001'"));
+        Assert.AreEqual(0L, QueryLong(connection, "SELECT COUNT(*) FROM ca_error_orphans WHERE \"ErrorId\" = '1001'"));
+
+        // Suppressed reader error (OBJ_ID_Abwasserbauwerk on KN002): in neither table.
+        Assert.AreEqual(0L, QueryLong(connection, "SELECT COUNT(*) FROM ca_error_data WHERE detail LIKE '%OBJ_ID_Abwasserbauwerk%'"));
+        Assert.AreEqual(0L, QueryLong(connection, "SELECT COUNT(*) FROM ca_error_orphans WHERE \"Tid\" = 'KN002'"));
+
+        // Orphans are exactly the rows the classified view flags as unknown.
+        Assert.AreEqual(
+            QueryLong(connection, "SELECT COUNT(*) FROM v_checker_csv_classified WHERE is_known = 0"),
+            QueryLong(connection, "SELECT COUNT(*) FROM ca_error_orphans"));
+    }
+
     private static async Task<SqliteConnection> SetUpAndMaterializeAsync(string language = "DE")
     {
         var connection = CreateOpenConnection();
         CreateTestSchemas(connection);
         SeedTestData(connection);
 
+        new ViewCreator(connection).CreateCheckerCsvClassifiedView(
+            "v_checker_csv_classified", "v_checker_csv_all", "error_matrix", language);
+
         var materializer = new ErrorDataMaterializer(connection, NullLogger.Instance);
-        materializer.CreateBuildView("v_ca_error_data_build", "v_checker_csv_all", "error_matrix", "reader_error_rules", language);
+        materializer.CreateBuildView("v_ca_error_data_build", "v_checker_csv_classified", "error_matrix", "reader_error_rules", language);
         await materializer.MaterializeAsync("v_ca_error_data_build", CancellationToken.None);
 
         return connection;
