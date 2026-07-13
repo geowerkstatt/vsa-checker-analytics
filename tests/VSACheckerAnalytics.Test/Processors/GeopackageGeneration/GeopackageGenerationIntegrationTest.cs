@@ -15,7 +15,6 @@ public class GeopackageGenerationIntegrationTest
         ["cid", "ccat", "cmsg_de", "cmsg_fr", "class_de", "class_fr", "checkmodel", "model", "prio_uc", "prio_gsp", "sub_project_gsp_de", "sub_project_gsp_fr", "required_action_de", "required_action_fr", "action_context_de", "action_context_fr"];
 
     private static readonly string[] CsvJoinIndexColumns = ["ErrorId", "Model", "Class"];
-    private static readonly string[] ErrorMatrixJoinIndexColumns = ["cid", "model", "class_de"];
 
     [TestMethod]
     public async Task ImportCsvsAndErrorMatrixAndCreateViews()
@@ -48,10 +47,12 @@ public class GeopackageGenerationIntegrationTest
                 await csvImporter.ImportAsync(stream, "checker_csv_fp", CsvColumns, CancellationToken.None, CsvJoinIndexColumns);
             }
 
+            EmbeddedSql.Execute(connection, "ErrorMatrixSchema.sql");
+
             var errorMatrixImporter = new ErrorMatrixImporter(connection, NullLogger.Instance);
             using (var stream = File.OpenRead(GetTestdataPath("errorMatrix.xlsx")))
             {
-                await errorMatrixImporter.ImportAsync(stream, "error_matrix", ErrorMatrixColumns, CancellationToken.None, ErrorMatrixJoinIndexColumns);
+                await errorMatrixImporter.ImportAsync(stream, "error_matrix", ErrorMatrixColumns, CancellationToken.None);
             }
 
             new ReaderErrorRulesInitializer(connection, NullLogger.Instance).Initialize();

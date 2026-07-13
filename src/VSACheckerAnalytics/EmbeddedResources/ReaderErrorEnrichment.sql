@@ -4,23 +4,13 @@
 -- Runs after the canton igcheck matrix (the "vsa" sheet) has been
 -- imported into error_matrix. It adds the geowerkstatt-maintained
 -- reader-error knowledge that does not travel via the XLSX:
---   * Italian and error_type columns on error_matrix.
 --   * 33 category-level 'base' rows for the reader ErrorIds.
 --   * the reader_error_rules override / suppression table.
 --
--- The GeoPackage is a fresh copy on every pipeline run, so the
--- ALTER TABLE statements never hit an existing column.
+-- The error_matrix columns these base rows fill (Italian and
+-- error_type variants) are defined in ErrorMatrixSchema.sql, which
+-- creates error_matrix before the igcheck import.
 -- ============================================================
-
-
--- ── error_matrix: columns the igcheck XLSX does not carry ────────────────────
-
-ALTER TABLE error_matrix ADD COLUMN cmsg_it            TEXT;
-ALTER TABLE error_matrix ADD COLUMN error_type_de      TEXT;
-ALTER TABLE error_matrix ADD COLUMN error_type_fr      TEXT;
-ALTER TABLE error_matrix ADD COLUMN error_type_it      TEXT;
-ALTER TABLE error_matrix ADD COLUMN required_action_it TEXT;
-ALTER TABLE error_matrix ADD COLUMN action_context_it  TEXT;
 
 
 -- ── error_matrix: base entries (one row per reader ErrorId) ──────────────────

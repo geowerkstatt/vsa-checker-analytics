@@ -84,16 +84,16 @@ Tabelle wird als `attributes`-Layer in den GeoPackage-Metadaten registriert
 
 ## Fehlermatrix-Import
 
-Die Fehlermatrix-XLSX (die igcheck- bzw. Profil-Matrix) wird in die Tabelle
-`error_matrix` importiert, mit einem Join-Index auf (`cid`, `model`, `class_de`).
-Auch `error_matrix` wird als `attributes`-Layer registriert.
+Das `error_matrix`-Schema (alle Spalten und der Join-Index auf (`cid`, `model`,
+`class_de`)) ist an einer Stelle definiert: im eingebetteten Skript
+`ErrorMatrixSchema.sql`, das vor dem Import ausgeführt wird. Die Fehlermatrix-XLSX
+(die igcheck- bzw. Profil-Matrix) wird anschliessend in die vorbestehende Tabelle
+`error_matrix` eingefügt. `error_matrix` wird als `attributes`-Layer registriert.
 
 Direkt danach ergänzt der `ReaderErrorRulesInitializer` das von geowerkstatt
 gepflegte Reader-Fehler-Wissen, das nicht über die XLSX transportiert wird. Es
 lebt im eingebetteten Skript `ReaderErrorEnrichment.sql` und:
 
-- erweitert `error_matrix` um die Spalten `cmsg_it`, `error_type_de/fr/it`,
-  `required_action_it` und `action_context_it`,
 - ersetzt die `base`-Zeilen (eine pro Reader-`ErrorId`, mit lokalisierten
   Meldungen, Empfehlungen und Prioritäten),
 - legt die Tabelle `reader_error_rules` an und befüllt sie mit den

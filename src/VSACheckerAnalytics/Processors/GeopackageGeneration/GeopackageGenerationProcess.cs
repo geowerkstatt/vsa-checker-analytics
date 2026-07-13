@@ -43,7 +43,6 @@ public sealed class GeopackageGenerationProcess
         ["cid", "ccat", "cmsg_de", "cmsg_fr", "class_de", "class_fr", "checkmodel", "model", "prio_uc", "prio_gsp", "sub_project_gsp_de", "sub_project_gsp_fr", "required_action_de", "required_action_fr", "action_context_de", "action_context_fr"];
 
     private static readonly string[] CsvJoinIndexColumns = ["ErrorId", "Model", "Class"];
-    private static readonly string[] ErrorMatrixJoinIndexColumns = ["cid", "model", "class_de"];
 
 #pragma warning disable CA1859 // Use concrete types when possible for improved performance
     private readonly IIli2GpkgClient ili2GpkgClient;
@@ -242,10 +241,13 @@ public sealed class GeopackageGenerationProcess
         var target = pipelineFileManager.CreateWritableCopy(sourceGpkg, "gpkg-with-error-matrix");
 
         using var connection = OpenGeoPackage(target.GetLocalPath());
+
+        EmbeddedSql.Execute(connection, "ErrorMatrixSchema.sql");
+
         var importer = new ErrorMatrixImporter(connection, logger);
 
         await using var stream = errorMatrix.OpenReadFileStream();
-        await importer.ImportAsync(stream, "error_matrix", ErrorMatrixColumns, cancellationToken, ErrorMatrixJoinIndexColumns)
+        await importer.ImportAsync(stream, "error_matrix", ErrorMatrixColumns, cancellationToken)
             .ConfigureAwait(false);
         GeopackageMetadata.RegisterAttributes(connection, "error_matrix");
 

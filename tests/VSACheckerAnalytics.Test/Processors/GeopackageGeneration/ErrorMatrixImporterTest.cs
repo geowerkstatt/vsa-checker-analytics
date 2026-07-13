@@ -13,25 +13,10 @@ public class ErrorMatrixImporterTest
     private static readonly string[] ExpectedColumns = ["ErrorId", "Model", "class_de", "class_fr"];
 
     [TestMethod]
-    public async Task ImportAsync_CreatesTableWithCorrectColumns()
-    {
-        using var connection = CreateOpenConnection();
-        var importer = new ErrorMatrixImporter(connection, NullLogger.Instance);
-        using var stream = CreateExcelStream(
-            ExpectedColumns,
-            [["E001", "2020", "Klasse A", "Classe A"]]);
-
-        await importer.ImportAsync(stream, TableName, ExpectedColumns, CancellationToken.None);
-
-        var columns = GetColumnNames(connection, TableName);
-        Assert.AreEqual("t_id", columns[0]);
-        CollectionAssert.AreEqual(ExpectedColumns, columns.Skip(1).ToList());
-    }
-
-    [TestMethod]
     public async Task ImportAsync_InsertsAllRows()
     {
         using var connection = CreateOpenConnection();
+        CreateTable(connection, TableName, ExpectedColumns);
         var importer = new ErrorMatrixImporter(connection, NullLogger.Instance);
         using var stream = CreateExcelStream(
             ExpectedColumns,
@@ -50,6 +35,7 @@ public class ErrorMatrixImporterTest
     public async Task ImportAsync_EmptyCellsAreStoredAsNull()
     {
         using var connection = CreateOpenConnection();
+        CreateTable(connection, TableName, ExpectedColumns);
         var importer = new ErrorMatrixImporter(connection, NullLogger.Instance);
         using var stream = CreateExcelStream(
             ExpectedColumns,
@@ -71,6 +57,7 @@ public class ErrorMatrixImporterTest
     public async Task ImportAsync_HandlesNumericCells()
     {
         using var connection = CreateOpenConnection();
+        CreateTable(connection, TableName, ["ErrorId", "NumericCol"]);
         var importer = new ErrorMatrixImporter(connection, NullLogger.Instance);
         using var workbook = new XLWorkbook();
         var worksheet = workbook.AddWorksheet();
@@ -92,9 +79,10 @@ public class ErrorMatrixImporterTest
     }
 
     [TestMethod]
-    public async Task ImportAsync_EmptyWorksheet_DoesNotCreateTable()
+    public async Task ImportAsync_EmptyWorksheet_LeavesTableEmpty()
     {
         using var connection = CreateOpenConnection();
+        CreateTable(connection, TableName, ExpectedColumns);
         var importer = new ErrorMatrixImporter(connection, NullLogger.Instance);
         using var workbook = new XLWorkbook();
         workbook.AddWorksheet();
@@ -105,15 +93,14 @@ public class ErrorMatrixImporterTest
 
         await importer.ImportAsync(stream, TableName, ExpectedColumns, CancellationToken.None);
 
-        using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT name FROM sqlite_master WHERE type='table' AND name='{TableName}'";
-        Assert.IsNull(command.ExecuteScalar());
+        Assert.AreEqual(0, GetRowCount(connection, TableName));
     }
 
     [TestMethod]
     public async Task ImportAsync_MismatchedHeader_LogsWarningAndImports()
     {
         using var connection = CreateOpenConnection();
+        CreateTable(connection, TableName, ["ErrorId", "Model"]);
         var logger = new TestLogger();
         var importer = new ErrorMatrixImporter(connection, logger);
         using var stream = CreateExcelStream(
@@ -131,6 +118,16 @@ public class ErrorMatrixImporterTest
         var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
         return connection;
+    }
+
+    private static void CreateTable(SqliteConnection connection, string tableName, string[] columns)
+    {
+        var columnDefs = string.Join(", ", columns.Select(c => $"\"{c}\" TEXT"));
+        using var command = connection.CreateCommand();
+#pragma warning disable CA2100
+        command.CommandText = $"CREATE TABLE \"{tableName}\" (\"t_id\" INTEGER PRIMARY KEY AUTOINCREMENT, {columnDefs})";
+#pragma warning restore CA2100
+        command.ExecuteNonQuery();
     }
 
     private static MemoryStream CreateExcelStream(string[] headers, string[][] rows)
@@ -155,22 +152,6 @@ public class ErrorMatrixImporterTest
         workbook.SaveAs(stream);
         stream.Position = 0;
         return stream;
-    }
-
-    private static List<string> GetColumnNames(SqliteConnection connection, string tableName)
-    {
-        var columns = new List<string>();
-        using var command = connection.CreateCommand();
-#pragma warning disable CA2100
-        command.CommandText = $"PRAGMA table_info(\"{tableName}\")";
-#pragma warning restore CA2100
-        using var reader = command.ExecuteReader();
-        while (reader.Read())
-        {
-            columns.Add(reader.GetString(1));
-        }
-
-        return columns;
     }
 
     private static int GetRowCount(SqliteConnection connection, string tableName)

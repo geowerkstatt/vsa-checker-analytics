@@ -100,21 +100,14 @@ public class ReaderErrorRulesInitializerTest
         return connection;
     }
 
-    // Mirrors the table the ErrorMatrixImporter produces from the igcheck XLSX (t_id + the fixed
-    // column set), with one vsa row so the base-row replacement can be shown to leave it untouched.
+    // Creates error_matrix via the canonical schema script (single source of truth) and inserts one
+    // vsa row so the base-row replacement can be shown to leave the imported igcheck rows untouched.
     private static void CreateImportedErrorMatrix(SqliteConnection connection)
     {
+        EmbeddedSql.Execute(connection, "ErrorMatrixSchema.sql");
+
         using var cmd = connection.CreateCommand();
         cmd.CommandText = """
-            CREATE TABLE error_matrix (
-                t_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                cid TEXT, ccat TEXT, cmsg_de TEXT, cmsg_fr TEXT,
-                class_de TEXT, class_fr TEXT, checkmodel TEXT, model TEXT,
-                prio_uc TEXT, prio_gsp TEXT,
-                sub_project_gsp_de TEXT, sub_project_gsp_fr TEXT,
-                required_action_de TEXT, required_action_fr TEXT,
-                action_context_de TEXT, action_context_fr TEXT);
-
             INSERT INTO error_matrix (cid, ccat, cmsg_de, cmsg_fr, class_de, class_fr, checkmodel, model)
             VALUES ('1001', 'error', 'Fehler 1001', 'Erreur 1001', 'Leitung', 'Conduite', 'vsa', '2020');
             """;
