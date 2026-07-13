@@ -49,6 +49,45 @@ public class ReaderErrorRulesInitializerTest
             QueryLong(connection, "SELECT suppress FROM reader_error_rules WHERE error_id = 12 AND attr_name = 'OBJ_ID_Abwasserbauwerk'"));
     }
 
+    [TestMethod]
+    public void Initialize_EverySeededRuleHasBaseRow()
+    {
+        using var connection = SetUpAndInitialize();
+
+        // The classification treats a reader error as known only if it has a base row, so every rule
+        // must target an ErrorId that has one. Initialize() guards this; assert it holds on the seed.
+        const string unmatchedRuleQuery = """
+            SELECT COUNT(*) FROM reader_error_rules r
+            WHERE NOT EXISTS (
+                SELECT 1 FROM error_matrix b
+                WHERE b.checkmodel = 'base' AND b.cid = CAST(r.error_id AS TEXT))
+            """;
+
+        Assert.AreEqual(0L, QueryLong(connection, unmatchedRuleQuery));
+    }
+
+    [TestMethod]
+    public void EnsureEveryRuleHasBaseRow_ThrowsWhenRuleHasNoBaseRow()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                CREATE TABLE error_matrix (t_id INTEGER PRIMARY KEY AUTOINCREMENT, cid TEXT, checkmodel TEXT);
+                INSERT INTO error_matrix (cid, checkmodel) VALUES ('11', 'base');
+                CREATE TABLE reader_error_rules (rule_id INTEGER PRIMARY KEY AUTOINCREMENT, error_id INTEGER);
+                INSERT INTO reader_error_rules (error_id) VALUES (11), (99);
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        var initializer = new ReaderErrorRulesInitializer(connection, NullLogger.Instance);
+
+        var ex = Assert.ThrowsExactly<InvalidOperationException>(() => initializer.EnsureEveryRuleHasBaseRow());
+        Assert.Contains("99", ex.Message);
+    }
+
     private static SqliteConnection SetUpAndInitialize()
     {
         var connection = new SqliteConnection("Data Source=:memory:");
