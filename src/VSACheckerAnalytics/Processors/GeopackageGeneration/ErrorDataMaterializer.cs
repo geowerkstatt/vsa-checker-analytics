@@ -117,48 +117,48 @@ internal sealed class ErrorDataMaterializer
         var objectAttributes = BuildObjectAttributeCte();
 
         var errorTemplate =
-            $"CASE WHEN r.module = 'reader' THEN COALESCE(ov_c.msg_template_{l}, ov_a.msg_template_{l}, base.cmsg_{l}, r.description) ELSE COALESCE(em.cmsg_{l}, r.description) END";
+            $"CASE WHEN r.module = 'reader' THEN COALESCE(condition_rule.msg_template_{l}, attribute_rule.msg_template_{l}, reader_base.cmsg_{l}, r.description) ELSE COALESCE(igcheck_row.cmsg_{l}, r.description) END";
         var recommendationTemplate =
-            $"CASE WHEN r.module = 'reader' THEN COALESCE(ov_c.recommendation_{l}, ov_a.recommendation_{l}, base.required_action_{l}) ELSE em.required_action_{l} END";
+            $"CASE WHEN r.module = 'reader' THEN COALESCE(condition_rule.recommendation_{l}, attribute_rule.recommendation_{l}, reader_base.required_action_{l}) ELSE igcheck_row.required_action_{l} END";
         var recommendationDetailTemplate =
-            $"CASE WHEN r.module = 'reader' THEN COALESCE(ov_c.recommendation_detail_{l}, ov_a.recommendation_detail_{l}, base.action_context_{l}) ELSE em.action_context_{l} END";
+            $"CASE WHEN r.module = 'reader' THEN COALESCE(condition_rule.recommendation_detail_{l}, attribute_rule.recommendation_detail_{l}, reader_base.action_context_{l}) ELSE igcheck_row.action_context_{l} END";
 
         var checkType = AggregatedCheckTypeExpression();
 
         var sql = $"""
             CREATE VIEW "{viewName}" AS
-            WITH grp AS (
+            WITH deduplicated_errors AS (
                 SELECT
-                    MIN(t_id)                                    AS fid,
-                    "Tid"                                        AS tid,
-                    "Module"                                     AS module,
-                    "Description"                                AS description,
+                    MIN(t_id)                                      AS fid,
+                    "Tid"                                          AS tid,
+                    "Module"                                       AS module,
+                    "Description"                                  AS description,
                     MAX(CASE WHEN source = 'A'  THEN 1 ELSE 0 END) AS has_a,
                     MAX(CASE WHEN source = 'FP' THEN 1 ELSE 0 END) AS has_fp,
                     MAX(CASE WHEN source = 'T'  THEN 1 ELSE 0 END) AS has_t
                 FROM "{classifiedViewName}"
                 GROUP BY "Tid", "Module", "Description"
             ),
-            rep AS (
+            parsed_errors AS (
                 SELECT
                     g.fid, g.tid, g.module, g.description, g.has_a, g.has_fp, g.has_t,
-                    re."ErrorId" AS errorid,
-                    re."Class"   AS class,
-                    re."Model"   AS model,
-                    re."Topic"   AS topic,
-                    re.is_known  AS is_known,
-                    {ExtractedAttribute} AS xattr,
-                    {ExtractedLength}    AS xn,
-                    {ExtractedMaxOrTid}  AS xmax_or_tid,
-                    {ExtractedConstraint} AS xconstraint,
-                    {ExtractedAttrs}     AS xattrs
-                FROM grp g
+                    re."ErrorId"          AS errorid,
+                    re."Class"            AS class,
+                    re."Model"            AS model,
+                    re."Topic"            AS topic,
+                    re.is_known           AS is_known,
+                    {ExtractedAttribute}  AS extracted_attr,
+                    {ExtractedLength}     AS extracted_len,
+                    {ExtractedMaxOrTid}   AS extracted_max_or_tid,
+                    {ExtractedConstraint} AS extracted_constraint,
+                    {ExtractedAttrs}      AS extracted_attrs
+                FROM deduplicated_errors g
                 JOIN "{classifiedViewName}" re ON re.t_id = g.fid
             ),
-            obj AS (
+            object_attributes AS (
                 {objectAttributes}
             ),
-            mm AS (
+            matrix_matches AS (
                 SELECT
                     r.fid,
                     (SELECT em.t_id
@@ -169,52 +169,52 @@ internal sealed class ErrorDataMaterializer
                         AND (em.model IS NULL OR em.model = r.model)
                       ORDER BY em."{classColumn}" IS NULL ASC
                       LIMIT 1) AS em_tid
-                FROM rep r
+                FROM parsed_errors r
                 WHERE r.module = 'igcheck'
             )
             SELECT
-                r.tid                                            AS tid,
-                {checkType}                                      AS check_type,
-                r.topic                                          AS topic,
-                r.class                                          AS class,
-                r.errorid                                        AS errorid,
-                {Render(errorTemplate, attrValue)}               AS error,
-                CASE WHEN r.module = 'reader' THEN r.description ELSE '' END AS detail,
-                obj.funktionhierarchisch                         AS funktionhierarchisch,
-                obj.eigentuemer                                  AS eigentuemer,
-                obj.status                                       AS status,
-                CASE WHEN r.module = 'reader' THEN base.ccat ELSE em.ccat END AS category,
-                r.model                                          AS model,
-                CASE WHEN r.module = 'reader' THEN 'igcheck' ELSE 'gep_check' END AS module,
+                r.tid                                                                         AS tid,
+                {checkType}                                                                   AS check_type,
+                r.topic                                                                       AS topic,
+                r.class                                                                       AS class,
+                r.errorid                                                                     AS errorid,
+                {Render(errorTemplate, attrValue)}                                            AS error,
+                CASE WHEN r.module = 'reader' THEN r.description ELSE '' END                  AS detail,
+                obj.funktionhierarchisch                                                      AS funktionhierarchisch,
+                obj.eigentuemer                                                               AS eigentuemer,
+                obj.status                                                                    AS status,
+                CASE WHEN r.module = 'reader' THEN reader_base.ccat ELSE igcheck_row.ccat END AS category,
+                r.model                                                                       AS model,
+                CASE WHEN r.module = 'reader' THEN 'igcheck' ELSE 'gep_check' END             AS module,
                 CASE WHEN r.module = 'reader'
-                     THEN COALESCE(ov_c.wk, ov_a.wk, CAST(base.prio_uc AS INTEGER))
-                     ELSE CAST(em.prio_uc AS INTEGER) END        AS wk,
+                     THEN COALESCE(condition_rule.wk, attribute_rule.wk, CAST(reader_base.prio_uc AS INTEGER))
+                     ELSE CAST(igcheck_row.prio_uc AS INTEGER) END                            AS wk,
                 CASE WHEN r.module = 'reader'
-                     THEN COALESCE(ov_c.gep, ov_a.gep, CAST(base.prio_gsp AS INTEGER))
-                     ELSE CAST(em.prio_gsp AS INTEGER) END        AS gep,
-                {Render(recommendationTemplate, attrValue)}      AS recommendation,
-                {Render(recommendationDetailTemplate, attrValue)} AS recommendation_detail
-            FROM rep r
-            LEFT JOIN obj ON obj.fid = r.fid
-            LEFT JOIN mm  ON mm.fid = r.fid
-            LEFT JOIN "{errorMatrixTable}" em ON em.t_id = mm.em_tid
-            LEFT JOIN "{errorMatrixTable}" base
-                   ON r.module = 'reader' AND base.cid = r.errorid AND base.checkmodel = 'base'
-            LEFT JOIN "{readerRulesTable}" ov_a
+                     THEN COALESCE(condition_rule.gep, attribute_rule.gep, CAST(reader_base.prio_gsp AS INTEGER))
+                     ELSE CAST(igcheck_row.prio_gsp AS INTEGER) END                           AS gep,
+                {Render(recommendationTemplate, attrValue)}                                   AS recommendation,
+                {Render(recommendationDetailTemplate, attrValue)}                             AS recommendation_detail
+            FROM parsed_errors r
+            LEFT JOIN object_attributes obj ON obj.fid = r.fid
+            LEFT JOIN matrix_matches mm ON mm.fid = r.fid
+            LEFT JOIN "{errorMatrixTable}" igcheck_row ON igcheck_row.t_id = mm.em_tid
+            LEFT JOIN "{errorMatrixTable}" reader_base
+                   ON r.module = 'reader' AND reader_base.cid = r.errorid AND reader_base.checkmodel = 'base'
+            LEFT JOIN "{readerRulesTable}" attribute_rule
                    ON r.module = 'reader'
-                  AND ov_a.error_id = CAST(r.errorid AS INTEGER)
-                  AND ov_a.attr_name = r.xattr
-                  AND ov_a.condition_col IS NULL
-            LEFT JOIN "{readerRulesTable}" ov_c
+                  AND attribute_rule.error_id = CAST(r.errorid AS INTEGER)
+                  AND attribute_rule.attr_name = r.extracted_attr
+                  AND attribute_rule.condition_col IS NULL
+            LEFT JOIN "{readerRulesTable}" condition_rule
                    ON r.module = 'reader'
-                  AND ov_c.error_id = CAST(r.errorid AS INTEGER)
-                  AND ov_c.attr_name = r.xattr
-                  AND ov_c.condition_col IS NOT NULL
+                  AND condition_rule.error_id = CAST(r.errorid AS INTEGER)
+                  AND condition_rule.attr_name = r.extracted_attr
+                  AND condition_rule.condition_col IS NOT NULL
                   AND (
-                        (ov_c.condition_col = 'funktionhierarchisch' AND obj.funktionhierarchisch = ov_c.condition_val)
-                     OR (ov_c.condition_col = 'eigentuemer'          AND obj.eigentuemer          = ov_c.condition_val)
+                        (condition_rule.condition_col = 'funktionhierarchisch' AND obj.funktionhierarchisch = condition_rule.condition_val)
+                     OR (condition_rule.condition_col = 'eigentuemer'          AND obj.eigentuemer          = condition_rule.condition_val)
                       )
-            WHERE r.is_known = 1 AND COALESCE(ov_c.suppress, ov_a.suppress, 0) = 0
+            WHERE r.is_known = 1 AND COALESCE(condition_rule.suppress, attribute_rule.suppress, 0) = 0
             """;
 
         ExecuteNonQuery(sql);
@@ -278,18 +278,18 @@ internal sealed class ErrorDataMaterializer
         "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE("
         + templateExpression
         + ", '{ATTR}', COALESCE(" + attrValueExpression + ", ''))"
-        + ", '{N}', COALESCE(r.xn, ''))"
-        + ", '{MAX}', COALESCE(r.xmax_or_tid, ''))"
-        + ", '{TID}', COALESCE(r.xmax_or_tid, ''))"
-        + ", '{ATTRS}', COALESCE(r.xattrs, ''))"
-        + ", '{CONSTRAINT}', COALESCE(r.xconstraint, ''))";
+        + ", '{N}', COALESCE(r.extracted_len, ''))"
+        + ", '{MAX}', COALESCE(r.extracted_max_or_tid, ''))"
+        + ", '{TID}', COALESCE(r.extracted_max_or_tid, ''))"
+        + ", '{ATTRS}', COALESCE(r.extracted_attrs, ''))"
+        + ", '{CONSTRAINT}', COALESCE(r.extracted_constraint, ''))";
 
     // The extracted attribute name substituted for {ATTR}. For FR/IT the German SIA405 administrative
     // role names are translated to the target language (verified against the localized .ili models).
     private static string AttrValueExpression(string languageSuffix) => languageSuffix switch
     {
         "fr" => """
-            CASE r.xattr
+            CASE r.extracted_attr
                 WHEN 'BetreiberRef'                 THEN 'EXPLOITANTRef'
                 WHEN 'BueroRef'                     THEN 'BUREAURef'
                 WHEN 'DatenherrRef'                 THEN 'MAITRE_DES_DONNEESRef'
@@ -298,11 +298,11 @@ internal sealed class ErrorDataMaterializer
                 WHEN 'StandortgemeindeRef'          THEN 'COMMUNE_IMPLANTATIONRef'
                 WHEN 'TraegerschaftRef'             THEN 'ORGANISME_RESPONSABLERef'
                 WHEN 'Verantwortlich_AusloesungRef' THEN 'RESPONSABLE_DECLENCHEMENTRef'
-                ELSE r.xattr
+                ELSE r.extracted_attr
             END
             """,
         "it" => """
-            CASE r.xattr
+            CASE r.extracted_attr
                 WHEN 'BetreiberRef'                 THEN 'gestoreRef'
                 WHEN 'BueroRef'                     THEN 'ufficioRef'
                 WHEN 'DatenherrRef'                 THEN 'proprietario_datiRef'
@@ -311,10 +311,10 @@ internal sealed class ErrorDataMaterializer
                 WHEN 'StandortgemeindeRef'          THEN 'comune_appartenenzaRef'
                 WHEN 'TraegerschaftRef'             THEN 'ente_gestoreRef'
                 WHEN 'Verantwortlich_AusloesungRef' THEN 'responsabile_attivazioneRef'
-                ELSE r.xattr
+                ELSE r.extracted_attr
             END
             """,
-        _ => "r.xattr",
+        _ => "r.extracted_attr",
     };
 
     // Aggregates the profiles that reported an igcheck error into a single label
@@ -339,7 +339,7 @@ internal sealed class ErrorDataMaterializer
 
         if (!leitung && !knoten)
         {
-            return "SELECT r.fid, NULL AS funktionhierarchisch, NULL AS eigentuemer, NULL AS status FROM rep r";
+            return "SELECT r.fid, NULL AS funktionhierarchisch, NULL AS eigentuemer, NULL AS status FROM parsed_errors r";
         }
 
         var funktionParts = new List<string>();
@@ -378,7 +378,7 @@ internal sealed class ErrorDataMaterializer
                    {funktion} AS funktionhierarchisch,
                    {eigentuemer} AS eigentuemer,
                    {status} AS status
-            FROM rep r
+            FROM parsed_errors r
             {string.Join("\n            ", joins)}
             """;
     }
