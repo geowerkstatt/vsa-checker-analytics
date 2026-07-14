@@ -202,6 +202,72 @@ public class ErrorDataMaterializerTest
             QueryLong(connection, "SELECT COUNT(*) FROM ca_error_orphans"));
     }
 
+    [TestMethod]
+    public async Task Materialize_ExtractsAttributeAndTid_ForBadReferenceReaderError()
+    {
+        using var connection = await SetUpAndMaterializeExtractionAsync();
+
+        var error = QueryString(connection, "SELECT error FROM ca_error_data WHERE errorid = '15'");
+
+        Assert.AreEqual("Referenz KnotenRef zeigt auf unbekanntes Objekt (TID=xyz-1)", error);
+    }
+
+    [TestMethod]
+    public async Task Materialize_ExtractsAttribute_ForWrongTargetClassReaderError()
+    {
+        using var connection = await SetUpAndMaterializeExtractionAsync();
+
+        var error = QueryString(connection, "SELECT error FROM ca_error_data WHERE errorid = '21'");
+
+        Assert.AreEqual("Referenz TypeRef zeigt auf falsche Zielklasse", error);
+    }
+
+    [TestMethod]
+    public async Task Materialize_ExtractsConstraintName_ForFailedConstraintReaderError()
+    {
+        using var connection = await SetUpAndMaterializeExtractionAsync();
+
+        var error = QueryString(connection, "SELECT error FROM ca_error_data WHERE errorid = '60'");
+
+        Assert.AreEqual("MANDATORY Constraint MyC verletzt", error);
+    }
+
+    [TestMethod]
+    public async Task Materialize_ExtractsAttrs_ForUniqueConstraintReaderError()
+    {
+        using var connection = await SetUpAndMaterializeExtractionAsync();
+
+        var error = QueryString(connection, "SELECT error FROM ca_error_data WHERE errorid = '70'");
+
+        Assert.AreEqual("UNIQUE Constraint verletzt für: UniqRule", error);
+    }
+
+    [TestMethod]
+    public async Task Materialize_RendersBaseTooLongTemplate_WithAllExtractedParameters()
+    {
+        using var connection = await SetUpAndMaterializeExtractionAsync();
+
+        var error = QueryString(
+            connection,
+            "SELECT error FROM ca_error_data WHERE errorid = '12' AND detail LIKE 'the value of MyAttr%'");
+
+        Assert.AreEqual("Attribut MyAttr zu lang (20 Zeichen, max. 16)", error);
+    }
+
+    [TestMethod]
+    public async Task Materialize_MissingMaxAnchor_LeavesPlaceholderEmpty_WithoutGarbage()
+    {
+        using var connection = await SetUpAndMaterializeExtractionAsync();
+
+        // The message lacks the "> " anchor, so length and max extract to NULL. The row must still
+        // materialize and render with empty {N}/{MAX} placeholders rather than a garbage substring.
+        var error = QueryString(
+            connection,
+            "SELECT error FROM ca_error_data WHERE errorid = '12' AND detail LIKE '%BadAttr%'");
+
+        Assert.AreEqual("Attribut BadAttr zu lang ( Zeichen, max. )", error);
+    }
+
     private static async Task<SqliteConnection> SetUpAndMaterializeAsync(string language = "DE")
     {
         var connection = CreateOpenConnection();
@@ -300,6 +366,51 @@ public class ErrorDataMaterializerTest
 
             INSERT INTO organisation (T_Id, bezeichnung)
             VALUES (100, 'Gemeinde Aarau');
+            """;
+        cmd.ExecuteNonQuery();
+    }
+
+    private static async Task<SqliteConnection> SetUpAndMaterializeExtractionAsync(string language = "DE")
+    {
+        var connection = CreateOpenConnection();
+        CreateTestSchemas(connection);
+        SeedExtractionData(connection);
+
+        new ViewCreator(connection).CreateCheckerCsvClassifiedView(
+            "v_checker_csv_classified", "v_checker_csv_all", "error_matrix", language);
+
+        var materializer = new ErrorDataMaterializer(connection, NullLogger.Instance);
+        materializer.CreateBuildView("v_ca_error_data_build", "v_checker_csv_classified", "error_matrix", "reader_error_rules", language);
+        await materializer.MaterializeAsync("v_ca_error_data_build", CancellationToken.None);
+
+        return connection;
+    }
+
+    // Seeds one reader row per extracting ErrorId plus a matching base row, with synthetic messages
+    // that mirror the assumed igcheck wording. No real reader-error samples exist in the fixtures, so
+    // these pin the assumed format and guard against regressions; they do not prove it matches igcheck.
+    private static void SeedExtractionData(SqliteConnection connection)
+    {
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = """
+            INSERT INTO v_checker_csv_all (t_id, "Tid", source, "Topic", "Class", "ErrorId", "Description", "Model", "Module")
+            VALUES
+                ('e11',  'X11',  'A', 'T', 'Knoten', '11', 'SomeRef has to be defined', '2020', 'reader'),
+                ('e12',  'X12',  'A', 'T', 'Knoten', '12', 'the value of MyAttr is out of range, text is too long 20 > 16', '2020', 'reader'),
+                ('e12b', 'X12B', 'A', 'T', 'Knoten', '12', 'the value of BadAttr is out of range, text is too long 20', '2020', 'reader'),
+                ('e15',  'X15',  'A', 'T', 'Knoten', '15', 'the value of KnotenRef is out of range, reference points to unknown object tid=xyz-1', '2020', 'reader'),
+                ('e21',  'X21',  'A', 'T', 'Knoten', '21', 'the value of TypeRef is out of range', '2020', 'reader'),
+                ('e60',  'X60',  'A', 'T', 'Knoten', '60', 'the set constraint MyC failed on object X60', '2020', 'reader'),
+                ('e70',  'X70',  'A', 'T', 'Knoten', '70', 'the unique constraint UniqRule (values=a,b) is violated', '2020', 'reader');
+
+            INSERT INTO error_matrix (cid, checkmodel, ccat, cmsg_de)
+            VALUES
+                ('11', 'base', 'error', 'Pflichtattribut {ATTR} fehlt'),
+                ('12', 'base', 'error', 'Attribut {ATTR} zu lang ({N} Zeichen, max. {MAX})'),
+                ('15', 'base', 'error', 'Referenz {ATTR} zeigt auf unbekanntes Objekt (TID={TID})'),
+                ('21', 'base', 'error', 'Referenz {ATTR} zeigt auf falsche Zielklasse'),
+                ('60', 'base', 'error', 'MANDATORY Constraint {CONSTRAINT} verletzt'),
+                ('70', 'base', 'error', 'UNIQUE Constraint verletzt für: {ATTRS}');
             """;
         cmd.ExecuteNonQuery();
     }

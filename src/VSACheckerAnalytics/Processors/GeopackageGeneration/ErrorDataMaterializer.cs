@@ -13,50 +13,78 @@ namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 /// </summary>
 internal sealed class ErrorDataMaterializer
 {
+    // Reader ErrorIds whose validator message carries the parameters extracted below.
+    private const int AttributeMissingErrorId = 11;
+    private const int ValueTooLongErrorId = 12;
+    private const int UnknownReferenceErrorId = 15;
+    private const int WrongReferenceClassErrorId = 21;
+    private const int MandatoryConstraintErrorId = 60;
+    private const int UniqueConstraintErrorId = 70;
+
     // Parameter extraction from the raw validator message (English), per reader ErrorId.
-    // Offsets match the igcheck output format: "the value of " is 13 characters, so the attribute
-    // name for ErrorIds 12/15/21 starts at position 14.
-    private const string ExtractedAttribute = """
-        CASE CAST(re."ErrorId" AS INTEGER)
-            WHEN 11 THEN TRIM(SUBSTR(re."Description", 1,  INSTR(re."Description", ' has to be defined') - 1))
-            WHEN 12 THEN TRIM(SUBSTR(re."Description", 14, INSTR(re."Description", ' is out of range') - 14))
-            WHEN 15 THEN TRIM(SUBSTR(re."Description", 14, INSTR(re."Description", ' is out of range') - 14))
-            WHEN 21 THEN TRIM(SUBSTR(re."Description", 14, INSTR(re."Description", ' is out of range') - 14))
+    // Anchors are located with INSTR and offsets derived with LENGTH (no magic numbers); each branch
+    // is guarded, so a missing anchor yields NULL instead of a garbage substring. The wording is
+    // coupled to the igcheck English output: a phrasing change makes the affected branch return NULL.
+    private static readonly string ExtractedAttribute = $"""
+        CASE
+            WHEN CAST(re."ErrorId" AS INTEGER) = {AttributeMissingErrorId} AND INSTR(re."Description", ' has to be defined') > 0
+                THEN TRIM(SUBSTR(re."Description", 1, INSTR(re."Description", ' has to be defined') - 1))
+            WHEN CAST(re."ErrorId" AS INTEGER) IN ({ValueTooLongErrorId}, {UnknownReferenceErrorId}, {WrongReferenceClassErrorId})
+                 AND INSTR(re."Description", 'the value of ') > 0
+                 AND INSTR(re."Description", ' is out of range') > 0
+                THEN TRIM(SUBSTR(
+                    re."Description",
+                    INSTR(re."Description", 'the value of ') + LENGTH('the value of '),
+                    INSTR(re."Description", ' is out of range') - INSTR(re."Description", 'the value of ') - LENGTH('the value of ')))
             ELSE NULL
         END
         """;
 
-    private const string ExtractedLength = """
-        CASE CAST(re."ErrorId" AS INTEGER)
-            WHEN 12 THEN TRIM(SUBSTR(re."Description",
-                             INSTR(re."Description", 'too long ') + 9,
-                             INSTR(re."Description", ' > ') - INSTR(re."Description", 'too long ') - 9))
+    private static readonly string ExtractedLength = $"""
+        CASE
+            WHEN CAST(re."ErrorId" AS INTEGER) = {ValueTooLongErrorId}
+                 AND INSTR(re."Description", 'too long ') > 0
+                 AND INSTR(re."Description", ' > ') > 0
+                THEN TRIM(SUBSTR(
+                    re."Description",
+                    INSTR(re."Description", 'too long ') + LENGTH('too long '),
+                    INSTR(re."Description", ' > ') - INSTR(re."Description", 'too long ') - LENGTH('too long ')))
             ELSE NULL
         END
         """;
 
-    private const string ExtractedMaxOrTid = """
-        CASE CAST(re."ErrorId" AS INTEGER)
-            WHEN 12 THEN TRIM(SUBSTR(re."Description", INSTR(re."Description", '> ') + 2))
-            WHEN 15 THEN TRIM(SUBSTR(re."Description", INSTR(re."Description", 'tid=') + 4))
+    private static readonly string ExtractedMaxOrTid = $"""
+        CASE
+            WHEN CAST(re."ErrorId" AS INTEGER) = {ValueTooLongErrorId} AND INSTR(re."Description", '> ') > 0
+                THEN TRIM(SUBSTR(re."Description", INSTR(re."Description", '> ') + LENGTH('> ')))
+            WHEN CAST(re."ErrorId" AS INTEGER) = {UnknownReferenceErrorId} AND INSTR(re."Description", 'tid=') > 0
+                THEN TRIM(SUBSTR(re."Description", INSTR(re."Description", 'tid=') + LENGTH('tid=')))
             ELSE NULL
         END
         """;
 
-    private const string ExtractedConstraint = """
-        CASE CAST(re."ErrorId" AS INTEGER)
-            WHEN 60 THEN TRIM(SUBSTR(re."Description",
-                             INSTR(re."Description", 'constraint ') + 11,
-                             INSTR(re."Description", ' failed') - INSTR(re."Description", 'constraint ') - 11))
+    private static readonly string ExtractedConstraint = $"""
+        CASE
+            WHEN CAST(re."ErrorId" AS INTEGER) = {MandatoryConstraintErrorId}
+                 AND INSTR(re."Description", 'constraint ') > 0
+                 AND INSTR(re."Description", ' failed') > 0
+                THEN TRIM(SUBSTR(
+                    re."Description",
+                    INSTR(re."Description", 'constraint ') + LENGTH('constraint '),
+                    INSTR(re."Description", ' failed') - INSTR(re."Description", 'constraint ') - LENGTH('constraint ')))
             ELSE NULL
         END
         """;
 
-    private const string ExtractedAttrs = """
-        CASE CAST(re."ErrorId" AS INTEGER)
-            WHEN 70 THEN TRIM(SUBSTR(re."Description",
-                             INSTR(re."Description", 'constraint ') + 11,
-                             INSTR(re."Description", ' (values=') - INSTR(re."Description", 'constraint ') - 11))
+    private static readonly string ExtractedAttrs = $"""
+        CASE
+            WHEN CAST(re."ErrorId" AS INTEGER) = {UniqueConstraintErrorId}
+                 AND INSTR(re."Description", 'constraint ') > 0
+                 AND INSTR(re."Description", ' (values=') > 0
+                THEN TRIM(SUBSTR(
+                    re."Description",
+                    INSTR(re."Description", 'constraint ') + LENGTH('constraint '),
+                    INSTR(re."Description", ' (values=') - INSTR(re."Description", 'constraint ') - LENGTH('constraint ')))
             ELSE NULL
         END
         """;
