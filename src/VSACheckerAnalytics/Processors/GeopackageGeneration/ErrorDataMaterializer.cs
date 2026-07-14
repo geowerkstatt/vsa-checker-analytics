@@ -79,12 +79,12 @@ internal sealed class ErrorDataMaterializer
     private static readonly string ExtractedAttrs = $"""
         CASE
             WHEN CAST(re."ErrorId" AS INTEGER) = {UniqueConstraintErrorId}
-                 AND INSTR(re."Description", 'constraint ') > 0
-                 AND INSTR(re."Description", ' (values=') > 0
+                 AND INSTR(re."Description", '(values=') > 0
+                 AND INSTR(SUBSTR(re."Description", INSTR(re."Description", '(values=') + LENGTH('(values=')), ')') > 0
                 THEN TRIM(SUBSTR(
-                    re."Description",
-                    INSTR(re."Description", 'constraint ') + LENGTH('constraint '),
-                    INSTR(re."Description", ' (values=') - INSTR(re."Description", 'constraint ') - LENGTH('constraint ')))
+                    SUBSTR(re."Description", INSTR(re."Description", '(values=') + LENGTH('(values=')),
+                    1,
+                    INSTR(SUBSTR(re."Description", INSTR(re."Description", '(values=') + LENGTH('(values=')), ')') - 1))
             ELSE NULL
         END
         """;

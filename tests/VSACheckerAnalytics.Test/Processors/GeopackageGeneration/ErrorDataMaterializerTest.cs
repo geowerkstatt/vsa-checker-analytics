@@ -233,13 +233,24 @@ public class ErrorDataMaterializerTest
     }
 
     [TestMethod]
-    public async Task Materialize_ExtractsAttrs_ForUniqueConstraintReaderError()
+    public async Task Materialize_ExtractsViolatingValues_ForUniqueConstraintReaderError()
     {
         using var connection = await SetUpAndMaterializeExtractionAsync();
 
-        var error = QueryString(connection, "SELECT error FROM ca_error_data WHERE errorid = '70'");
+        var error = QueryString(connection, "SELECT error FROM ca_error_data WHERE errorid = '70' AND tid = 'X70'");
 
-        Assert.AreEqual("UNIQUE Constraint verletzt für: UniqRule", error);
+        Assert.AreEqual("UNIQUE Constraint verletzt für: a,b", error);
+    }
+
+    [TestMethod]
+    public async Task Materialize_MissingClosingParen_LeavesValuesEmpty_ForUniqueConstraintReaderError()
+    {
+        using var connection = await SetUpAndMaterializeExtractionAsync();
+
+        // The "(values=" opener has no closing ")", so the values extract to NULL and {ATTRS} renders empty.
+        var error = QueryString(connection, "SELECT error FROM ca_error_data WHERE errorid = '70' AND tid = 'X70B'");
+
+        Assert.AreEqual("UNIQUE Constraint verletzt für: ", error);
     }
 
     [TestMethod]
@@ -401,7 +412,8 @@ public class ErrorDataMaterializerTest
                 ('e15',  'X15',  'A', 'T', 'Knoten', '15', 'the value of KnotenRef is out of range, reference points to unknown object tid=xyz-1', '2020', 'reader'),
                 ('e21',  'X21',  'A', 'T', 'Knoten', '21', 'the value of TypeRef is out of range', '2020', 'reader'),
                 ('e60',  'X60',  'A', 'T', 'Knoten', '60', 'the set constraint MyC failed on object X60', '2020', 'reader'),
-                ('e70',  'X70',  'A', 'T', 'Knoten', '70', 'the unique constraint UniqRule (values=a,b) is violated', '2020', 'reader');
+                ('e70',  'X70',  'A', 'T', 'Knoten', '70', 'the unique constraint UniqRule (values=a,b) is violated', '2020', 'reader'),
+                ('e70b', 'X70B', 'A', 'T', 'Knoten', '70', 'the unique constraint Other (values=a,b is violated', '2020', 'reader');
 
             INSERT INTO error_matrix (cid, checkmodel, ccat, cmsg_de)
             VALUES
