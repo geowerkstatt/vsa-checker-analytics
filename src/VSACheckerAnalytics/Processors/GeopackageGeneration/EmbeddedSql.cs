@@ -13,14 +13,7 @@ internal static class EmbeddedSql
     [SuppressMessage("Security", "CA2100", Justification = "SQL is loaded from an embedded resource compiled into the assembly, not user input.")]
     internal static void Execute(SqliteConnection connection, string fileName)
     {
-        var resourceName = $"VsaCheckerAnalytics.EmbeddedResources.{fileName}";
-
-        var assembly = typeof(EmbeddedSql).Assembly;
-        using var stream = assembly.GetManifestResourceStream(resourceName)
-            ?? throw new InvalidOperationException(
-                $"Embedded SQL resource '{resourceName}' not found. Available resources: " +
-                $"[{string.Join(", ", assembly.GetManifestResourceNames())}].");
-
+        using var stream = EmbeddedResource.OpenRead(fileName);
         using var reader = new StreamReader(stream);
         var sql = reader.ReadToEnd();
 

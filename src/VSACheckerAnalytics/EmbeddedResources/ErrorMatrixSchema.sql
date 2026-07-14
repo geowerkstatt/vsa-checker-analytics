@@ -5,9 +5,9 @@
 -- before the igcheck XLSX import. Columns fall into two groups:
 --   * the 16 columns the igcheck XLSX carries, inserted positionally
 --     by ErrorMatrixImporter (see ErrorMatrixColumns).
---   * the 6 geowerkstatt-maintained columns the XLSX does not carry
---     (Italian and error_type variants), filled by ReaderErrorEnrichment.sql
---     for the reader 'base' rows.
+--   * the 6 geowerkstatt-maintained columns the igcheck XLSX does not carry
+--     (Italian and error_type variants), filled for the reader 'base' rows
+--     imported from the embedded errorMatrixBaseError.xlsx.
 --
 -- error_matrix is never part of the GeoPackage template, so this
 -- script always creates the table on a fresh pipeline copy.

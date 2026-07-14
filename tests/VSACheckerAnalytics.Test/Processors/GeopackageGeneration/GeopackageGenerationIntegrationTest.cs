@@ -14,6 +14,9 @@ public class GeopackageGenerationIntegrationTest
     private static readonly string[] ErrorMatrixColumns =
         ["cid", "ccat", "cmsg_de", "cmsg_fr", "class_de", "class_fr", "checkmodel", "model", "prio_uc", "prio_gsp", "sub_project_gsp_de", "sub_project_gsp_fr", "required_action_de", "required_action_fr", "action_context_de", "action_context_fr"];
 
+    private static readonly string[] BaseErrorColumns =
+        ["cid", "ccat", "cmsg_de", "cmsg_fr", "class_de", "class_fr", "checkmodel", "model", "prio_uc", "prio_gsp", "sub_project_gsp_de", "sub_project_gsp_fr", "required_action_de", "required_action_fr", "action_context_de", "action_context_fr", "cmsg_it", "error_type_de", "error_type_fr", "error_type_it", "required_action_it", "action_context_it"];
+
     private static readonly string[] CsvJoinIndexColumns = ["ErrorId", "Model", "Class"];
 
     [TestMethod]
@@ -53,6 +56,11 @@ public class GeopackageGenerationIntegrationTest
             using (var stream = File.OpenRead(GetTestdataPath("errorMatrix.xlsx")))
             {
                 await errorMatrixImporter.ImportAsync(stream, "error_matrix", ErrorMatrixColumns, CancellationToken.None);
+            }
+
+            using (var baseStream = EmbeddedResource.OpenRead("errorMatrixBaseError.xlsx"))
+            {
+                await errorMatrixImporter.ImportAsync(baseStream, "error_matrix", BaseErrorColumns, CancellationToken.None);
             }
 
             new ReaderErrorRulesInitializer(connection, NullLogger.Instance).Initialize();

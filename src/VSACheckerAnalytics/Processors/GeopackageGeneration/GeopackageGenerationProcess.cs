@@ -42,6 +42,9 @@ public sealed class GeopackageGenerationProcess
     private static readonly string[] ErrorMatrixColumns =
         ["cid", "ccat", "cmsg_de", "cmsg_fr", "class_de", "class_fr", "checkmodel", "model", "prio_uc", "prio_gsp", "sub_project_gsp_de", "sub_project_gsp_fr", "required_action_de", "required_action_fr", "action_context_de", "action_context_fr"];
 
+    private static readonly string[] BaseErrorColumns =
+        ["cid", "ccat", "cmsg_de", "cmsg_fr", "class_de", "class_fr", "checkmodel", "model", "prio_uc", "prio_gsp", "sub_project_gsp_de", "sub_project_gsp_fr", "required_action_de", "required_action_fr", "action_context_de", "action_context_fr", "cmsg_it", "error_type_de", "error_type_fr", "error_type_it", "required_action_it", "action_context_it"];
+
     private static readonly string[] CsvJoinIndexColumns = ["ErrorId", "Model", "Class"];
 
 #pragma warning disable CA1859 // Use concrete types when possible for improved performance
@@ -249,6 +252,11 @@ public sealed class GeopackageGenerationProcess
         await using var stream = errorMatrix.OpenReadFileStream();
         await importer.ImportAsync(stream, "error_matrix", ErrorMatrixColumns, cancellationToken)
             .ConfigureAwait(false);
+
+        using var baseStream = EmbeddedResource.OpenRead("errorMatrixBaseError.xlsx");
+        await importer.ImportAsync(baseStream, "error_matrix", BaseErrorColumns, cancellationToken)
+            .ConfigureAwait(false);
+
         GeopackageMetadata.RegisterAttributes(connection, "error_matrix");
 
         new ReaderErrorRulesInitializer(connection, logger).Initialize();

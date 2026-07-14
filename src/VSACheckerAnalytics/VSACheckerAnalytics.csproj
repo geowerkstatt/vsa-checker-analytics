@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="EmbeddedResources\*.sql" />
+    <EmbeddedResource Include="EmbeddedResources\errorMatrixBaseError.xlsx" />
   </ItemGroup>
 
   <ItemGroup>

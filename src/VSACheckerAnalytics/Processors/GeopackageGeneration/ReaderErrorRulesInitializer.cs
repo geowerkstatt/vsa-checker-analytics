@@ -8,7 +8,7 @@ namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 /// Applies the geowerkstatt-maintained reader-error knowledge on top of the imported igcheck matrix:
 /// the Italian and error-type columns, the category-level <c>base</c> rows for reader ErrorIds, and the
 /// <c>reader_error_rules</c> override / suppression table. The content lives in the embedded
-/// <c>ReaderErrorEnrichment.sql</c> resource so domain edits stay in one reviewable place.
+/// <c>ReaderErrorRules.sql</c> resource so domain edits stay in one reviewable place.
 /// </summary>
 internal sealed class ReaderErrorRulesInitializer
 {
@@ -33,7 +33,7 @@ internal sealed class ReaderErrorRulesInitializer
     /// </summary>
     internal void Initialize()
     {
-        EmbeddedSql.Execute(connection, "ReaderErrorEnrichment.sql");
+        EmbeddedSql.Execute(connection, "ReaderErrorRules.sql");
         GeopackageMetadata.RegisterAttributes(connection, "reader_error_rules");
         EnsureEveryRuleHasBaseRow();
         logger.LogInformation("Applied reader error enrichment: base rows and reader_error_rules seeded.");
@@ -42,7 +42,7 @@ internal sealed class ReaderErrorRulesInitializer
     /// <summary>
     /// Verifies that every <c>reader_error_rules</c> row targets a reader ErrorId that has a <c>base</c>
     /// row in <c>error_matrix</c>. A rule without a base row would be classified as unknown (an orphan)
-    /// instead of enriched, so a mismatch is a seeding mistake in <c>ReaderErrorEnrichment.sql</c> and
+    /// instead of enriched, so a mismatch is a seeding mistake in <c>ReaderErrorRules.sql</c> and
     /// must fail loudly rather than silently drop the affected errors.
     /// </summary>
     /// <exception cref="InvalidOperationException">A rule references an ErrorId with no base row.</exception>
@@ -70,7 +70,7 @@ internal sealed class ReaderErrorRulesInitializer
         {
             throw new InvalidOperationException(
                 $"reader_error_rules references ErrorId(s) without a base row in error_matrix: [{string.Join(", ", missing)}]. " +
-                "Every rule must target an ErrorId that has a base row in ReaderErrorEnrichment.sql.");
+                "Every rule must target an ErrorId that has a base row in ReaderErrorRules.sql.");
         }
     }
 }

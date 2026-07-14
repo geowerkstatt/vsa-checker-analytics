@@ -8,17 +8,22 @@ namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 [TestClass]
 public class ReaderErrorRulesInitializerTest
 {
+    private static readonly string[] BaseErrorColumns =
+        ["cid", "ccat", "cmsg_de", "cmsg_fr", "class_de", "class_fr", "checkmodel", "model", "prio_uc", "prio_gsp", "sub_project_gsp_de", "sub_project_gsp_fr", "required_action_de", "required_action_fr", "action_context_de", "action_context_fr", "cmsg_it", "error_type_de", "error_type_fr", "error_type_it", "required_action_it", "action_context_it"];
+
     [TestMethod]
-    public void Initialize_AddsBaseRows_KeepsExistingMatrixRows()
+    public void BaseRows_LoadedFromXlsx_KeepVsaRow()
     {
         using var connection = SetUpAndInitialize();
 
+        // The 33 base rows now come from the embedded errorMatrixBaseError.xlsx (imported in setup),
+        // not from the SQL script. The imported vsa row stays untouched.
         Assert.AreEqual(33L, QueryLong(connection, "SELECT COUNT(*) FROM error_matrix WHERE checkmodel = 'base'"));
         Assert.AreEqual(1L, QueryLong(connection, "SELECT COUNT(*) FROM error_matrix WHERE checkmodel = 'vsa'"));
     }
 
     [TestMethod]
-    public void Initialize_AddsItalianColumn_AndPopulatesBaseRow()
+    public void BaseRows_HaveItalianAndPlaceholdersFromXlsx()
     {
         using var connection = SetUpAndInitialize();
 
@@ -55,7 +60,8 @@ public class ReaderErrorRulesInitializerTest
         using var connection = SetUpAndInitialize();
 
         // The classification treats a reader error as known only if it has a base row, so every rule
-        // must target an ErrorId that has one. Initialize() guards this; assert it holds on the seed.
+        // must target an ErrorId that has one (base rows come from the embedded XLSX imported in
+        // setup). Initialize() guards this; assert it holds.
         const string unmatchedRuleQuery = """
             SELECT COUNT(*) FROM reader_error_rules r
             WHERE NOT EXISTS (
@@ -94,6 +100,7 @@ public class ReaderErrorRulesInitializerTest
         connection.Open();
         GeopackageMetadataSchema.Create(connection);
         CreateImportedErrorMatrix(connection);
+        ImportBaseErrors(connection);
 
         new ReaderErrorRulesInitializer(connection, NullLogger.Instance).Initialize();
 
@@ -101,7 +108,7 @@ public class ReaderErrorRulesInitializerTest
     }
 
     // Creates error_matrix via the canonical schema script (single source of truth) and inserts one
-    // vsa row so the base-row replacement can be shown to leave the imported igcheck rows untouched.
+    // vsa row, so the base import and Initialize can be shown to leave the igcheck rows untouched.
     private static void CreateImportedErrorMatrix(SqliteConnection connection)
     {
         EmbeddedSql.Execute(connection, "ErrorMatrixSchema.sql");
@@ -112,6 +119,15 @@ public class ReaderErrorRulesInitializerTest
             VALUES ('1001', 'error', 'Fehler 1001', 'Erreur 1001', 'Leitung', 'Conduite', 'vsa', '2020');
             """;
         cmd.ExecuteNonQuery();
+    }
+
+    // Loads the 33 category-level base rows from the embedded errorMatrixBaseError.xlsx, exactly as
+    // the pipeline does, so the reader_error_rules guard has the base rows it requires.
+    private static void ImportBaseErrors(SqliteConnection connection)
+    {
+        var importer = new ErrorMatrixImporter(connection, NullLogger.Instance);
+        using var stream = EmbeddedResource.OpenRead("errorMatrixBaseError.xlsx");
+        importer.ImportAsync(stream, "error_matrix", BaseErrorColumns, CancellationToken.None).GetAwaiter().GetResult();
     }
 
     [SuppressMessage("Security", "CA2100", Justification = "Test queries use hardcoded SQL, not user input.")]
