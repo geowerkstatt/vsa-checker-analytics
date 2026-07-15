@@ -195,7 +195,8 @@ internal sealed class ErrorDataMaterializer
                         AND em.checkmodel != 'base'
                         AND (em."{classColumn}" IS NULL OR em."{classColumn}" = '' OR em."{classColumn}" = r.class)
                         AND (em.model IS NULL OR em.model = r.model)
-                      ORDER BY em."{classColumn}" IS NULL ASC
+                      -- Most specific row wins: class-specific before class-agnostic, then model-specific before model-agnostic.
+                      ORDER BY em."{classColumn}" IS NULL ASC, em.model IS NULL ASC
                       LIMIT 1) AS em_tid
                 FROM parsed_errors r
                 WHERE r.module = 'igcheck'

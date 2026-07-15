@@ -290,6 +290,41 @@ public class ErrorDataMaterializerTest
         Assert.AreEqual("Attribut BadAttr zu lang ( Zeichen, max. )", error);
     }
 
+    [TestMethod]
+    public async Task Materialize_PrefersModelSpecificMatrixRow_OverModelAgnostic()
+    {
+        using var connection = CreateOpenConnection();
+        CreateTestSchemas(connection);
+
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                INSERT INTO v_checker_csv_all (t_id, "Tid", source, "Topic", "Class", "ErrorId", "Description", "Model", "Module")
+                VALUES ('a_01', 'LT700', 'A', 'T1', 'Leitung', '7001', 'MANDATORY foo', '2020', 'igcheck');
+
+                -- Two class-specific rows for the same error differ only in model. The model-agnostic row is
+                -- inserted first (lower t_id), so a plain LIMIT 1 without the model tiebreak would take it;
+                -- the model-specific row (class/model-specific wins) must still be the one chosen.
+                INSERT INTO error_matrix (cid, checkmodel, ccat, model, class_de, class_fr, cmsg_de, cmsg_fr)
+                VALUES
+                    ('7001', 'vsa', 'error', NULL,   'Leitung', 'Conduite', 'Modellunabhaengig', 'FR agnostic'),
+                    ('7001', 'vsa', 'error', '2020', 'Leitung', 'Conduite', 'Modellspezifisch',  'FR specific');
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        new ViewCreator(connection).CreateCheckerCsvClassifiedView(
+            "v_checker_csv_classified", "v_checker_csv_all", "error_matrix", "DE");
+
+        var materializer = new ErrorDataMaterializer(connection, NullLogger.Instance);
+        materializer.CreateBuildView("v_ca_error_data_build", "v_checker_csv_classified", "error_matrix", "reader_error_rules", "DE");
+        await materializer.MaterializeAsync("v_ca_error_data_build", CancellationToken.None);
+
+        Assert.AreEqual(
+            "Modellspezifisch",
+            QueryString(connection, "SELECT error FROM ca_error_data WHERE errorid = '7001'"));
+    }
+
     private static async Task<SqliteConnection> SetUpAndMaterializeAsync(string language = "DE")
     {
         var connection = CreateOpenConnection();
