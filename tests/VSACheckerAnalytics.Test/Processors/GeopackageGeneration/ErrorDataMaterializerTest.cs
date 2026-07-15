@@ -174,6 +174,16 @@ public class ErrorDataMaterializerTest
             "SELECT error FROM ca_error_data WHERE errorid = '11' AND detail LIKE 'DatenherrRef%'");
 
         Assert.AreEqual("Attribut obligatoire MAITRE_DES_DONNEESRef manquant", error);
+
+        // igcheck errors take their French matrix columns. Use the class-agnostic row (1002): the
+        // class-specific rows key on class_fr, which the German class names in this fixture don't match.
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT error, recommendation, recommendation_detail FROM ca_error_data WHERE errorid = '1002' AND tid = 'TEG001'";
+        using var reader = cmd.ExecuteReader();
+        Assert.IsTrue(reader.Read());
+        Assert.AreEqual("Erreur 1002", reader.GetString(0));
+        Assert.AreEqual("Fix FR 1002", reader.GetString(1));
+        Assert.AreEqual("Ctx FR 1002", reader.GetString(2));
     }
 
     [TestMethod]
@@ -189,7 +199,7 @@ public class ErrorDataMaterializerTest
         Assert.AreEqual(1L, QueryLong(connection, "SELECT COUNT(*) FROM ca_error_orphans WHERE \"ErrorId\" = '9999'"));
 
         // Known error 1001: in ca_error_data, not in orphans.
-        Assert.IsGreaterThanOrEqualTo(1L, QueryLong(connection, "SELECT COUNT(*) FROM ca_error_data WHERE errorid = '1001'"));
+        Assert.AreEqual(1L, QueryLong(connection, "SELECT COUNT(*) FROM ca_error_data WHERE errorid = '1001'"));
         Assert.AreEqual(0L, QueryLong(connection, "SELECT COUNT(*) FROM ca_error_orphans WHERE \"ErrorId\" = '1001'"));
 
         // Suppressed reader error (OBJ_ID_Abwasserbauwerk on KN002): in neither table.

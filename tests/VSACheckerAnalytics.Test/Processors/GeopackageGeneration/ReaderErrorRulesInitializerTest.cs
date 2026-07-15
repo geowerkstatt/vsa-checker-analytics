@@ -12,9 +12,9 @@ public class ReaderErrorRulesInitializerTest
         ["cid", "ccat", "cmsg_de", "cmsg_fr", "class_de", "class_fr", "checkmodel", "model", "prio_uc", "prio_gsp", "sub_project_gsp_de", "sub_project_gsp_fr", "required_action_de", "required_action_fr", "action_context_de", "action_context_fr", "cmsg_it", "error_type_de", "error_type_fr", "error_type_it", "required_action_it", "action_context_it"];
 
     [TestMethod]
-    public void BaseRows_LoadedFromXlsx_KeepVsaRow()
+    public async Task BaseRows_LoadedFromXlsx_KeepVsaRow()
     {
-        using var connection = SetUpAndInitialize();
+        using var connection = await SetUpAndInitializeAsync();
 
         // The 33 base rows now come from the embedded errorMatrixBaseError.xlsx (imported in setup),
         // not from the SQL script. The imported vsa row stays untouched.
@@ -23,9 +23,9 @@ public class ReaderErrorRulesInitializerTest
     }
 
     [TestMethod]
-    public void BaseRows_HaveItalianAndPlaceholdersFromXlsx()
+    public async Task BaseRows_HaveItalianAndPlaceholdersFromXlsx()
     {
-        using var connection = SetUpAndInitialize();
+        using var connection = await SetUpAndInitializeAsync();
 
         using var cmd = connection.CreateCommand();
         cmd.CommandText = "SELECT cmsg_de, cmsg_it FROM error_matrix WHERE cid = '11' AND checkmodel = 'base'";
@@ -37,9 +37,9 @@ public class ReaderErrorRulesInitializerTest
     }
 
     [TestMethod]
-    public void Initialize_SeedsReaderErrorRules_WithOverridesAndSuppression()
+    public async Task Initialize_SeedsReaderErrorRules_WithOverridesAndSuppression()
     {
-        using var connection = SetUpAndInitialize();
+        using var connection = await SetUpAndInitializeAsync();
 
         Assert.IsGreaterThanOrEqualTo(
             6L,
@@ -55,9 +55,9 @@ public class ReaderErrorRulesInitializerTest
     }
 
     [TestMethod]
-    public void Initialize_EverySeededRuleHasBaseRow()
+    public async Task Initialize_EverySeededRuleHasBaseRow()
     {
-        using var connection = SetUpAndInitialize();
+        using var connection = await SetUpAndInitializeAsync();
 
         // The classification treats a reader error as known only if it has a base row, so every rule
         // must target an ErrorId that has one (base rows come from the embedded XLSX imported in
@@ -94,13 +94,36 @@ public class ReaderErrorRulesInitializerTest
         Assert.Contains("99", ex.Message);
     }
 
-    private static SqliteConnection SetUpAndInitialize()
+    [TestMethod]
+    public void EnsureNoDuplicateRulesOrBaseRows_ThrowsOnDuplicateRule()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                CREATE TABLE error_matrix (t_id INTEGER PRIMARY KEY AUTOINCREMENT, cid TEXT, checkmodel TEXT);
+                INSERT INTO error_matrix (cid, checkmodel) VALUES ('11', 'base');
+                CREATE TABLE reader_error_rules (rule_id INTEGER PRIMARY KEY AUTOINCREMENT, error_id INTEGER, attr_name TEXT, condition_col TEXT, condition_val TEXT);
+                INSERT INTO reader_error_rules (error_id, attr_name, condition_col, condition_val)
+                VALUES (11, 'BetreiberRef', NULL, NULL), (11, 'BetreiberRef', NULL, NULL);
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        var initializer = new ReaderErrorRulesInitializer(connection, NullLogger.Instance);
+
+        var ex = Assert.ThrowsExactly<InvalidOperationException>(() => initializer.EnsureNoDuplicateRulesOrBaseRows());
+        Assert.Contains("BetreiberRef", ex.Message);
+    }
+
+    private static async Task<SqliteConnection> SetUpAndInitializeAsync()
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
         GeopackageMetadataSchema.Create(connection);
         CreateImportedErrorMatrix(connection);
-        ImportBaseErrors(connection);
+        await ImportBaseErrorsAsync(connection);
 
         new ReaderErrorRulesInitializer(connection, NullLogger.Instance).Initialize();
 
@@ -123,11 +146,11 @@ public class ReaderErrorRulesInitializerTest
 
     // Loads the 33 category-level base rows from the embedded errorMatrixBaseError.xlsx, exactly as
     // the pipeline does, so the reader_error_rules guard has the base rows it requires.
-    private static void ImportBaseErrors(SqliteConnection connection)
+    private static async Task ImportBaseErrorsAsync(SqliteConnection connection)
     {
         var importer = new ErrorMatrixImporter(connection, NullLogger.Instance);
         using var stream = EmbeddedResource.OpenRead("errorMatrixBaseError.xlsx");
-        importer.ImportAsync(stream, "error_matrix", BaseErrorColumns, CancellationToken.None).GetAwaiter().GetResult();
+        await importer.ImportAsync(stream, "error_matrix", BaseErrorColumns, CancellationToken.None);
     }
 
     [SuppressMessage("Security", "CA2100", Justification = "Test queries use hardcoded SQL, not user input.")]

@@ -83,6 +83,37 @@ public class ViewCreatorTest
     }
 
     [TestMethod]
+    public async Task CreateCheckerCsvClassifiedView_FlagsReaderRow_KnownOnlyWithBaseRow()
+    {
+        using var connection = CreateOpenConnection();
+
+        // Reader rows: ErrorId 11 has a base row (known), ErrorId 99 has none (unknown -> orphan path).
+        var importer = new CsvImporter(connection, Encoding.UTF8, NullLogger.Instance);
+        foreach (var (tableName, errorId) in new[] { ("checker_csv_t", "11"), ("checker_csv_a", "99"), ("checker_csv_fp", "11") })
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes($"ErrorId;Model;Class;Module\n{errorId};2020;;reader"));
+            await importer.ImportAsync(stream, tableName, ["ErrorId", "Model", "Class", "Module"], CancellationToken.None);
+        }
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                CREATE TABLE "error_matrix" ("t_id" INTEGER PRIMARY KEY AUTOINCREMENT, "cid" TEXT, "checkmodel" TEXT, "model" TEXT, "class_de" TEXT, "class_fr" TEXT);
+                INSERT INTO "error_matrix" ("cid", "checkmodel") VALUES ('11', 'base');
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        CreateUnionView(connection);
+        new ViewCreator(connection).CreateCheckerCsvClassifiedView(
+            "v_checker_csv_classified", "v_checker_csv_all", "error_matrix", "DE");
+
+        // A reader error is known only if a base row exists for its ErrorId; otherwise it is an orphan.
+        Assert.AreEqual(1, IsKnown(connection, "11"));
+        Assert.AreEqual(0, IsKnown(connection, "99"));
+    }
+
+    [TestMethod]
     public void CreateAdditionalViews_CreatesAllExpectedViews()
     {
         using var connection = CreateOpenConnection();

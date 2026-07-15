@@ -1,4 +1,4 @@
--- ============================================================
+﻿-- ============================================================
 -- Reader error rules setup.
 --
 -- Runs after error_matrix has been populated (igcheck rows from the

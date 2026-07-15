@@ -36,6 +36,7 @@ internal sealed class ReaderErrorRulesInitializer
         EmbeddedSql.Execute(connection, "ReaderErrorRules.sql");
         GeopackageMetadata.RegisterAttributes(connection, "reader_error_rules");
         EnsureEveryRuleHasBaseRow();
+        EnsureNoDuplicateRulesOrBaseRows();
         logger.LogInformation("Applied reader error enrichment: base rows and reader_error_rules seeded.");
     }
 
@@ -71,6 +72,56 @@ internal sealed class ReaderErrorRulesInitializer
             throw new InvalidOperationException(
                 $"reader_error_rules references ErrorId(s) without a base row in error_matrix: [{string.Join(", ", missing)}]. " +
                 "Every rule must target an ErrorId that has a base row in ReaderErrorRules.sql.");
+        }
+    }
+
+    /// <summary>
+    /// Verifies that no reader-error definition can match a build-view join more than once: neither
+    /// duplicate <c>reader_error_rules</c> (on the effective join key, treating NULL condition columns
+    /// as equal) nor duplicate <c>base</c> rows per ErrorId. A duplicate would silently fan out rows in
+    /// <c>ca_error_data</c> and inflate the <c>ca_error_object</c> counts, so it must fail loudly.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">A duplicate rule or base row exists.</exception>
+    internal void EnsureNoDuplicateRulesOrBaseRows()
+    {
+        var duplicates = new List<string>();
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                SELECT 'rule ' || error_id || '/' || IFNULL(attr_name, '') || '/' || IFNULL(condition_col, '') || '/' || IFNULL(condition_val, '')
+                FROM reader_error_rules
+                GROUP BY error_id, IFNULL(attr_name, ''), IFNULL(condition_col, ''), IFNULL(condition_val, '')
+                HAVING COUNT(*) > 1
+                """;
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                duplicates.Add(reader.GetString(0));
+            }
+        }
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                SELECT 'base cid ' || cid
+                FROM error_matrix
+                WHERE checkmodel = 'base'
+                GROUP BY cid
+                HAVING COUNT(*) > 1
+                """;
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                duplicates.Add(reader.GetString(0));
+            }
+        }
+
+        if (duplicates.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Duplicate reader-error definitions would fan out ca_error_data rows: [{string.Join(", ", duplicates)}]. " +
+                "Each (error_id, attr_name, condition) rule and each base ErrorId must be unique.");
         }
     }
 }

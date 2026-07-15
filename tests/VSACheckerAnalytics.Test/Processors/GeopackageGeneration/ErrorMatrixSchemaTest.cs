@@ -37,6 +37,16 @@ public class ErrorMatrixSchemaTest
         using var connection = CreateOpenConnection();
 
         EmbeddedSql.Execute(connection, "ErrorMatrixSchema.sql");
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "INSERT INTO error_matrix (cid, checkmodel) VALUES ('X', 'vsa')";
+            command.ExecuteNonQuery();
+        }
+
+        Assert.AreEqual(1, GetRowCount(connection, "error_matrix"));
+
+        // Re-running must DROP and recreate the table (clear it), not preserve existing rows.
         EmbeddedSql.Execute(connection, "ErrorMatrixSchema.sql");
 
         Assert.AreEqual(0, GetRowCount(connection, "error_matrix"));
