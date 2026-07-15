@@ -209,7 +209,8 @@ public class ErrorDataMaterializerTest
 
         var error = QueryString(connection, "SELECT error FROM ca_error_data WHERE errorid = '15'");
 
-        Assert.AreEqual("Referenz KnotenRef zeigt auf unbekanntes Objekt (TID=xyz-1)", error);
+        // Verbatim real igcheck ErrorId-15 message; {ATTR}=DatenherrRef, {TID}=ch080qwzPR000018.
+        Assert.AreEqual("Referenz DatenherrRef zeigt auf unbekanntes Objekt (TID=ch080qwzPR000018)", error);
     }
 
     [TestMethod]
@@ -397,9 +398,9 @@ public class ErrorDataMaterializerTest
         return connection;
     }
 
-    // Seeds one reader row per extracting ErrorId plus a matching base row, with synthetic messages
-    // that mirror the assumed igcheck wording. No real reader-error samples exist in the fixtures, so
-    // these pin the assumed format and guard against regressions; they do not prove it matches igcheck.
+    // Seeds one reader row per extracting ErrorId plus a matching base row. The ErrorId-15 message is a
+    // verbatim real igcheck message (from a customer FR dataset); 11/12/21/60/70 are synthetic and mirror
+    // the assumed wording, pinning the format and guarding regressions without proving it matches igcheck.
     private static void SeedExtractionData(SqliteConnection connection)
     {
         using var cmd = connection.CreateCommand();
@@ -409,7 +410,7 @@ public class ErrorDataMaterializerTest
                 ('e11',  'X11',  'A', 'T', 'Knoten', '11', 'SomeRef has to be defined', '2020', 'reader'),
                 ('e12',  'X12',  'A', 'T', 'Knoten', '12', 'the value of MyAttr is out of range, text is too long 20 > 16', '2020', 'reader'),
                 ('e12b', 'X12B', 'A', 'T', 'Knoten', '12', 'the value of BadAttr is out of range, text is too long 20', '2020', 'reader'),
-                ('e15',  'X15',  'A', 'T', 'Knoten', '15', 'the value of KnotenRef is out of range, reference points to unknown object tid=xyz-1', '2020', 'reader'),
+                ('e15',  'X15',  'A', 'T', 'Knoten', '15', 'the value of DatenherrRef is out of range, no external object found with tid=ch080qwzPR000018', '2020', 'reader'),
                 ('e21',  'X21',  'A', 'T', 'Knoten', '21', 'the value of TypeRef is out of range', '2020', 'reader'),
                 ('e60',  'X60',  'A', 'T', 'Knoten', '60', 'the set constraint MyC failed on object X60', '2020', 'reader'),
                 ('e70',  'X70',  'A', 'T', 'Knoten', '70', 'the unique constraint UniqRule (values=a,b) is violated', '2020', 'reader'),
