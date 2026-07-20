@@ -136,6 +136,7 @@ pipelines:
           it: VSA Corrispondenza
         process_id: vsa_matcher
         input:
+          uploadFiles: "${upload()}"
           unzippedFiles: "${step_output(gep_checker_unzipper.gep_checker_files)}"
         output:
           - take: gep

@@ -116,7 +116,7 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// <returns>A dictionary of named outputs for downstream pipeline steps, including a localized <c>status_message</c>.</returns>
     [PipelineProcessRun]
     public async Task<Dictionary<string, object?>> RunAsync(
-        [UploadFiles] IPipelineFileList uploadFiles,
+        IPipelineFileList uploadFiles,
         IPipelineFile[] unzippedFiles,
         CancellationToken cancellationToken)
     {
