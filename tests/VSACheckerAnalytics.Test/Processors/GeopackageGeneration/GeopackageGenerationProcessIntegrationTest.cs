@@ -23,18 +23,19 @@ public class GeopackageGenerationProcessIntegrationTest
         new() { Take = "generatedGeopackage", As = "generatedGeopackage" },
     ];
 
-    private static readonly List<InputConfig> GeopackageGenerationInputs =
-    [
-        new() { From = UpstreamStepId, Take = "gpkg_template", As = "geoPackage" },
-        new() { From = UpstreamStepId, Take = "gep", As = "dssMiniXtf" },
-        new() { From = UpstreamStepId, Take = "standard_org_table", As = "defaultOrgsXtf" },
-        new() { From = UpstreamStepId, Take = "user_org_table", As = "userOrgsXtf" },
-        new() { From = UpstreamStepId, Take = "checker_csv_t", As = "checkerCsvT" },
-        new() { From = UpstreamStepId, Take = "checker_csv_a", As = "checkerCsvA" },
-        new() { From = UpstreamStepId, Take = "checker_csv_fp", As = "checkerCsvFp" },
-        new() { From = UpstreamStepId, Take = "error_matrix", As = "errorMatrix" },
-        new() { From = UpstreamStepId, Take = "language", As = "language" },
-    ];
+    private static readonly IReadOnlyDictionary<string, InputValue> GeopackageGenerationInputs =
+        new Dictionary<string, InputValue>
+        {
+            ["geoPackage"] = new InputValue.StepOutputReference(UpstreamStepId, "gpkg_template"),
+            ["dssMiniXtf"] = new InputValue.StepOutputReference(UpstreamStepId, "gep"),
+            ["defaultOrgsXtf"] = new InputValue.StepOutputReference(UpstreamStepId, "standard_org_table"),
+            ["userOrgsXtf"] = new InputValue.StepOutputReference(UpstreamStepId, "user_org_table"),
+            ["checkerCsvT"] = new InputValue.StepOutputReference(UpstreamStepId, "checker_csv_t"),
+            ["checkerCsvA"] = new InputValue.StepOutputReference(UpstreamStepId, "checker_csv_a"),
+            ["checkerCsvFp"] = new InputValue.StepOutputReference(UpstreamStepId, "checker_csv_fp"),
+            ["errorMatrix"] = new InputValue.StepOutputReference(UpstreamStepId, "error_matrix"),
+            ["language"] = new InputValue.StepOutputReference(UpstreamStepId, "language"),
+        };
 
     private PipelineProcessFactory pipelineProcessFactory = null!;
     private Mock<ILoggerFactory> loggerFactoryMock = null!;
@@ -172,7 +173,7 @@ public class GeopackageGenerationProcessIntegrationTest
         using var step = PipelineStep.Builder()
             .Id("geopackage_generation")
             .DisplayName(new Dictionary<string, string> { { "en", "GeoPackage Generation" } })
-            .InputConfig(GeopackageGenerationInputs)
+            .Inputs(GeopackageGenerationInputs)
             .OutputConfig(GeopackageGenerationOutputs)
             .Process(process)
             .Logger(new Mock<ILogger>().Object)

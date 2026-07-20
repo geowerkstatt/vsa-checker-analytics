@@ -23,10 +23,11 @@ public class ErrorOverviewExportProcessIntegrationTest
         new() { Take = "error_overview", As = "errorOverview" },
     ];
 
-    private static readonly List<InputConfig> ErrorOverviewExportInputs =
-    [
-        new() { From = UpstreamStepId, Take = "generatedGeopackage", As = "geopackage" },
-    ];
+    private static readonly IReadOnlyDictionary<string, InputValue> ErrorOverviewExportInputs =
+        new Dictionary<string, InputValue>
+        {
+            ["geopackage"] = new InputValue.StepOutputReference(UpstreamStepId, "generatedGeopackage"),
+        };
 
     private PipelineProcessFactory pipelineProcessFactory = null!;
     private string tempDir = null!;
@@ -158,7 +159,7 @@ public class ErrorOverviewExportProcessIntegrationTest
         using var step = PipelineStep.Builder()
             .Id("error_overview_export")
             .DisplayName(new Dictionary<string, string> { { "en", "Error Overview Export" } })
-            .InputConfig(ErrorOverviewExportInputs)
+            .Inputs(ErrorOverviewExportInputs)
             .OutputConfig(ErrorOverviewExportOutputs)
             .Process(process)
             .Logger(new Mock<ILogger>().Object)
