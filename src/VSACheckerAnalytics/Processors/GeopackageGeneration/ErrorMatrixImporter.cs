@@ -25,25 +25,21 @@ internal sealed class ErrorMatrixImporter
     }
 
     /// <summary>
-    /// Reads the first worksheet of the Excel file from <paramref name="excelStream"/> and
-    /// imports it into a table named <paramref name="tableName"/>. The table schema is defined by
-    /// <paramref name="columns"/>; the first row with data is skipped but validated against
-    /// the expected columns. All values are stored as TEXT.
+    /// Reads the first worksheet of the Excel file from <paramref name="excelStream"/> and inserts
+    /// its rows into the pre-existing table named <paramref name="tableName"/>. Cells are read
+    /// positionally in <paramref name="columns"/> order; the first row is skipped but validated
+    /// (warn-only) against the expected columns. All values are stored as TEXT. The table and any
+    /// indexes must already exist (see <c>ErrorMatrixSchema.sql</c>).
     /// </summary>
     /// <param name="excelStream">Stream containing the XLSX data.</param>
-    /// <param name="tableName">Name of the table to create.</param>
-    /// <param name="columns">Fixed column names defining the table schema.</param>
+    /// <param name="tableName">Name of the pre-existing table to insert into.</param>
+    /// <param name="columns">Column names to insert, in worksheet order.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
-    /// <param name="indexColumns">
-    /// Optional list of columns on which a composite index is created after the rows
-    /// have been inserted. Pass <c>null</c> or an empty array to skip index creation.
-    /// </param>
     internal Task ImportAsync(
         Stream excelStream,
         string tableName,
         string[] columns,
-        CancellationToken cancellationToken,
-        string[]? indexColumns = null)
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -69,35 +65,9 @@ internal sealed class ErrorMatrixImporter
                 string.Join(", ", headerColumns));
         }
 
-        CreateTable(tableName, columns);
         InsertRows(usedRange, tableName, columns);
 
-        if (indexColumns is { Length: > 0 })
-        {
-            CreateIndex(tableName, indexColumns);
-        }
-
         return Task.CompletedTask;
-    }
-
-    [SuppressMessage("Security", "CA2100", Justification = "Table and column names are application-defined constants, not user input.")]
-    private void CreateIndex(string tableName, string[] indexColumns)
-    {
-        var indexName = $"ix_{tableName}_{string.Join("_", indexColumns).ToLowerInvariant()}";
-        var quotedIndexColumns = string.Join(", ", indexColumns.Select(c => $"\"{c}\""));
-
-        using var command = connection.CreateCommand();
-        command.CommandText = $"CREATE INDEX \"{indexName}\" ON \"{tableName}\" ({quotedIndexColumns})";
-        command.ExecuteNonQuery();
-    }
-
-    [SuppressMessage("Security", "CA2100", Justification = "Column names are application-defined constants, not user input.")]
-    private void CreateTable(string tableName, string[] columns)
-    {
-        var columnDefs = string.Join(", ", columns.Select(c => $"\"{c}\" TEXT"));
-        using var command = connection.CreateCommand();
-        command.CommandText = $"CREATE TABLE \"{tableName}\" (\"t_id\" INTEGER PRIMARY KEY AUTOINCREMENT, {columnDefs})";
-        command.ExecuteNonQuery();
     }
 
     [SuppressMessage("Security", "CA2100", Justification = "Column names are application-defined constants, not user input.")]

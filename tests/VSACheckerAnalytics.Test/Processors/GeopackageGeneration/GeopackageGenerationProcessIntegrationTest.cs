@@ -93,7 +93,7 @@ public class GeopackageGenerationProcessIntegrationTest
     [TestMethod]
     public async Task RunGeopackageGenerationPipeline_WithoutUserOrgs()
     {
-        var result = await RunPipelineAsync(includeUserOrgs: false);
+        var result = await RunDePipelineAsync(includeUserOrgs: false);
 
         Assert.AreEqual(StepState.Success, result.StepState);
 
@@ -135,7 +135,7 @@ public class GeopackageGenerationProcessIntegrationTest
     [TestMethod]
     public async Task RunGeopackageGenerationPipeline_WithUserOrgs()
     {
-        var result = await RunPipelineAsync(includeUserOrgs: true);
+        var result = await RunDePipelineAsync(includeUserOrgs: true);
 
         Assert.AreEqual(StepState.Success, result.StepState);
 
@@ -146,7 +146,38 @@ public class GeopackageGenerationProcessIntegrationTest
         Assert.IsGreaterThan(0, stream.Length);
     }
 
-    private async Task<(StepState StepState, StepResult StepResult)> RunPipelineAsync(bool includeUserOrgs)
+    [TestMethod]
+    public async Task RunGeopackageGenerationPipeline_WithFrenchReaderErrors()
+    {
+        const string readerCsv = "reader_errors_2020_1_f_sample_fp_err.csv";
+        var result = await RunPipelineAsync(includeUserOrgs: false, "FR", readerCsv, readerCsv, readerCsv);
+
+        Assert.AreEqual(StepState.Success, result.StepState);
+
+        var gpkgFile = result.StepResult.Outputs["generatedGeopackage"].Data as IPipelineFile;
+        Assert.IsNotNull(gpkgFile);
+
+        string gpkgPath;
+        using (var stream = gpkgFile.OpenReadFileStream())
+        {
+            gpkgPath = stream.Name;
+        }
+
+        using var connection = new SqliteConnection($"Data Source={gpkgPath};Mode=ReadOnly;Pooling=false");
+        connection.Open();
+
+        // Six distinct real reader errors (ErrorId 15), all known via the base row, mapped reader -> igcheck.
+        Assert.AreEqual(6L, CountErrorData(connection, "errorid = '15'"));
+        Assert.AreEqual(6L, CountErrorData(connection, "errorid = '15' AND module = 'igcheck' AND check_type = 'ig'"));
+
+        // French base-15 template rendered with the translated SIA405 role names on the real extracted values.
+        Assert.AreEqual(1L, CountErrorData(connection, "detail LIKE '%DatenherrRef%' AND error LIKE '%MAITRE_DES_DONNEESRef%' AND error LIKE '%ch080qwzPR000018%'"));
+        Assert.AreEqual(1L, CountErrorData(connection, "detail LIKE '%DatenlieferantRef%' AND error LIKE '%FOURNISSEUR_DES_DONNEESRef%'"));
+        Assert.AreEqual(2L, CountErrorData(connection, "detail LIKE '%BetreiberRef%' AND error LIKE '%EXPLOITANTRef%'"));
+        Assert.AreEqual(2L, CountErrorData(connection, "detail LIKE '%EigentuemerRef%' AND error LIKE '%PROPRIETAIRERef%'"));
+    }
+
+    private async Task<(StepState StepState, StepResult StepResult)> RunPipelineAsync(bool includeUserOrgs, string language, string checkerCsvT, string checkerCsvA, string checkerCsvFp)
     {
         var stepConfig = new StepConfig
         {
@@ -185,11 +216,11 @@ public class GeopackageGenerationProcessIntegrationTest
         upstream.Outputs["user_org_table"] = includeUserOrgs
             ? FileOutput(CreateFile("userOrgs.xtf", "user-bytes"))
             : FileOutput();
-        upstream.Outputs["checker_csv_t"] = FileOutput(CopyFromTestdata("transferdatensatz_2020_1_d_LV95_T-20231205_mini_t_err.csv"));
-        upstream.Outputs["checker_csv_a"] = FileOutput(CopyFromTestdata("transferdatensatz_2020_1_d_LV95_T-20231205_mini_a_err.csv"));
-        upstream.Outputs["checker_csv_fp"] = FileOutput(CopyFromTestdata("transferdatensatz_2020_1_d_LV95_T-20231205_mini_fp_err.csv"));
+        upstream.Outputs["checker_csv_t"] = FileOutput(CopyFromTestdata(checkerCsvT));
+        upstream.Outputs["checker_csv_a"] = FileOutput(CopyFromTestdata(checkerCsvA));
+        upstream.Outputs["checker_csv_fp"] = FileOutput(CopyFromTestdata(checkerCsvFp));
         upstream.Outputs["error_matrix"] = FileOutput(CopyFromTestdata("errorMatrix.xlsx"));
-        upstream.Outputs["language"] = new StepOutput { Data = "DE", Action = [] };
+        upstream.Outputs["language"] = new StepOutput { Data = language, Action = [] };
 
         var context = new PipelineContext
         {
@@ -203,6 +234,23 @@ public class GeopackageGenerationProcessIntegrationTest
 
     private static StepOutput FileOutput(params IPipelineFile[] files)
         => new() { Data = files, Action = [] };
+
+    private Task<(StepState StepState, StepResult StepResult)> RunDePipelineAsync(bool includeUserOrgs)
+        => RunPipelineAsync(
+            includeUserOrgs,
+            "DE",
+            "transferdatensatz_2020_1_d_LV95_T-20231205_mini_t_err.csv",
+            "transferdatensatz_2020_1_d_LV95_T-20231205_mini_a_err.csv",
+            "transferdatensatz_2020_1_d_LV95_T-20231205_mini_fp_err.csv");
+
+#pragma warning disable CA2100
+    private static long CountErrorData(SqliteConnection connection, string whereClause)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT COUNT(*) FROM ca_error_data WHERE {whereClause}";
+        return (long)(command.ExecuteScalar() ?? 0L);
+    }
+#pragma warning restore CA2100
 
     private TestPipelineFile CreateFile(string fileName, string content)
     {

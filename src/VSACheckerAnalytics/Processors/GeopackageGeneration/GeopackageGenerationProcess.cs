@@ -42,8 +42,10 @@ public sealed class GeopackageGenerationProcess
     private static readonly string[] ErrorMatrixColumns =
         ["cid", "ccat", "cmsg_de", "cmsg_fr", "class_de", "class_fr", "checkmodel", "model", "prio_uc", "prio_gsp", "sub_project_gsp_de", "sub_project_gsp_fr", "required_action_de", "required_action_fr", "action_context_de", "action_context_fr"];
 
+    private static readonly string[] BaseErrorColumns =
+        ["cid", "ccat", "cmsg_de", "cmsg_fr", "class_de", "class_fr", "checkmodel", "model", "prio_uc", "prio_gsp", "sub_project_gsp_de", "sub_project_gsp_fr", "required_action_de", "required_action_fr", "action_context_de", "action_context_fr", "cmsg_it", "error_type_de", "error_type_fr", "error_type_it", "required_action_it", "action_context_it"];
+
     private static readonly string[] CsvJoinIndexColumns = ["ErrorId", "Model", "Class"];
-    private static readonly string[] ErrorMatrixJoinIndexColumns = ["cid", "model", "class_de"];
 
 #pragma warning disable CA1859 // Use concrete types when possible for improved performance
     private readonly IIli2GpkgClient ili2GpkgClient;
@@ -242,12 +244,22 @@ public sealed class GeopackageGenerationProcess
         var target = pipelineFileManager.CreateWritableCopy(sourceGpkg, "gpkg-with-error-matrix");
 
         using var connection = OpenGeoPackage(target.GetLocalPath());
+
+        EmbeddedSql.Execute(connection, "ErrorMatrixSchema.sql");
+
         var importer = new ErrorMatrixImporter(connection, logger);
 
         await using var stream = errorMatrix.OpenReadFileStream();
-        await importer.ImportAsync(stream, "error_matrix", ErrorMatrixColumns, cancellationToken, ErrorMatrixJoinIndexColumns)
+        await importer.ImportAsync(stream, "error_matrix", ErrorMatrixColumns, cancellationToken)
             .ConfigureAwait(false);
+
+        using var baseStream = EmbeddedResource.OpenRead("errorMatrixBaseError.xlsx");
+        await importer.ImportAsync(baseStream, "error_matrix", BaseErrorColumns, cancellationToken)
+            .ConfigureAwait(false);
+
         GeopackageMetadata.RegisterAttributes(connection, "error_matrix");
+
+        new ReaderErrorRulesInitializer(connection, logger).Initialize();
 
         logger.LogInformation("Imported error matrix into GeoPackage.");
         return target;
@@ -268,15 +280,15 @@ public sealed class GeopackageGenerationProcess
             ["checker_csv_t", "checker_csv_a", "checker_csv_fp"],
             ["T", "A", "FP"]);
 
-        viewCreator.CreateCheckerErrorsView("v_checker_errors", "v_checker_csv_all", "error_matrix", language);
+        viewCreator.CreateCheckerCsvClassifiedView("v_checker_csv_classified", "v_checker_csv_all", "error_matrix", language);
         viewCreator.CreateAdditionalViews();
 
         var materializer = new ErrorDataMaterializer(connection, logger);
-        materializer.CreateBuildView("v_ca_error_data_build", "v_checker_errors", language);
+        materializer.CreateBuildView("v_ca_error_data_build", "v_checker_csv_classified", "error_matrix", "reader_error_rules", language);
         await materializer.MaterializeAsync("v_ca_error_data_build", cancellationToken);
 
         new OrphanInspector(connection, logger)
-            .MaterializeOrphans("ca_error_orphans", "v_checker_csv_all", "v_checker_errors");
+            .MaterializeOrphans("ca_error_orphans", "v_checker_csv_classified");
 
         logger.LogInformation("Created analytics in GeoPackage.");
         return target;

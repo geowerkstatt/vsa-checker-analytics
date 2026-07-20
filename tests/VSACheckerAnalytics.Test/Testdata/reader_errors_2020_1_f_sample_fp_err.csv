@@ -1,0 +1,7 @@
+Module;ErrorId;Category;Group;Description;Model;Topic;Bid;Class;Tid;Line;CharPos;Geom1;Geom2;UserAttributes;Profiles
+reader;15;ERROR;;the value of DatenherrRef is out of range, no external object found with tid=ch080qwzPR000018;VSADSSMINI_2020_1_LV95;VSADSSMini;;Rohrprofil;ch080qwzRP000002;17;;;;;
+reader;15;ERROR;;the value of DatenlieferantRef is out of range, no external object found with tid=ch080qwzPR000017;VSADSSMINI_2020_1_LV95;VSADSSMini;;Rohrprofil;ch080qwzRP000002;17;;;;;
+reader;15;ERROR;;the value of BetreiberRef is out of range, no external object found with tid=ch080qwzAV000007;VSADSSMINI_2020_1_LV95;VSADSSMini;;Knoten;ch080qwzAK000001;156;;2646398.8/1139799.0;;;
+reader;15;ERROR;;the value of EigentuemerRef is out of range, no external object found with tid=ch080qwzAV000007;VSADSSMINI_2020_1_LV95;VSADSSMini;;Knoten;ch080qwzAK000001;156;;2646398.8/1139799.0;;;
+reader;15;ERROR;;the value of EigentuemerRef is out of range, no external object found with tid=ch080qwzPR000006;VSADSSMINI_2020_1_LV95;VSADSSMini;;Knoten;ch080qwzAK000046;387;;2648225.0/1143025.0;;;
+reader;15;ERROR;;the value of BetreiberRef is out of range, no external object found with tid=ch080qwzPR000006;VSADSSMINI_2020_1_LV95;VSADSSMini;;Knoten;ch080qwzAK000133;1061;;2642561.986/1154527.18;;;
