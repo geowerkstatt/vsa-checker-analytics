@@ -120,9 +120,7 @@ pipelines:
           it: Estrazione del file GEP Checker
         process_id: unzipper
         input:
-          - from: gep_checker_file_matcher
-            take: gep_checker_files
-            as: zipFile
+          zipFile: "${step_output(gep_checker_file_matcher.gep_checker_files)}"
         output:
           - take: extracted_files
             as: gep_checker_files
@@ -138,9 +136,7 @@ pipelines:
           it: VSA Corrispondenza
         process_id: vsa_matcher
         input:
-          - from: gep_checker_unzipper
-            take: gep_checker_files
-            as: unzippedFiles
+          unzippedFiles: "${step_output(gep_checker_unzipper.gep_checker_files)}"
         output:
           - take: gep
             as: gep
@@ -225,33 +221,15 @@ pipelines:
           it: GeoPackage Generation
         process_id: geopackage_generation
         input:
-          - from: vsa_matcher
-            take: gpkg_template
-            as: geoPackage
-          - from: vsa_matcher
-            take: gep
-            as: dssMiniXtf
-          - from: vsa_matcher
-            take: standard_org_table
-            as: defaultOrgsXtf
-          - from: vsa_matcher
-            take: user_org_table
-            as: userOrgsXtf
-          - from: vsa_matcher
-            take: checker_csv_t
-            as: checkerCsvT
-          - from: vsa_matcher
-            take: checker_csv_a
-            as: checkerCsvA
-          - from: vsa_matcher
-            take: checker_csv_fp
-            as: checkerCsvFp
-          - from: vsa_matcher
-            take: error_matrix
-            as: errorMatrix
-          - from: vsa_matcher
-            take: language
-            as: language
+          geoPackage: "${step_output(vsa_matcher.gpkg_template)}"
+          dssMiniXtf: "${step_output(vsa_matcher.gep)}"
+          defaultOrgsXtf: "${step_output(vsa_matcher.standard_org_table)}"
+          userOrgsXtf: "${step_output(vsa_matcher.user_org_table)}"
+          checkerCsvT: "${step_output(vsa_matcher.checker_csv_t)}"
+          checkerCsvA: "${step_output(vsa_matcher.checker_csv_a)}"
+          checkerCsvFp: "${step_output(vsa_matcher.checker_csv_fp)}"
+          errorMatrix: "${step_output(vsa_matcher.error_matrix)}"
+          language: "${step_output(vsa_matcher.language)}"
         output:
           - take: generatedGeopackage
             as: generatedGeopackage
@@ -276,9 +254,7 @@ pipelines:
           it: Esportazione panoramica degli errori
         process_id: error_overview_export
         input:
-          - from: geopackage_generation
-            take: generatedGeopackage
-            as: geopackage
+          geopackage: "${step_output(geopackage_generation.generatedGeopackage)}"
         output:
           - take: error_overview
             as: errorOverview
@@ -296,9 +272,7 @@ pipelines:
           it: Patcher topologia di rete
         process_id: network_topology_patcher
         input:
-          - from: geopackage_generation
-            take: generatedGeopackage
-            as: geoPackage
+          geoPackage: "${step_output(geopackage_generation.generatedGeopackage)}"
         output:
           - take: patchedGeopackage
             as: patchedGeopackage

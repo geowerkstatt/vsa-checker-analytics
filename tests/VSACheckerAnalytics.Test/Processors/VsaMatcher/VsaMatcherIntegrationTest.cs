@@ -117,15 +117,15 @@ public class VsaMatcherIntegrationTest
             .JobId(Guid.NewGuid())
             .Build();
 
-        var inputConfig = new List<InputConfig>
+        var inputConfig = new Dictionary<string, InputValue>
         {
-            new() { From = "unzipper", Take = "extracted_files", As = "unzippedFiles" },
+            ["unzippedFiles"] = new InputValue.StepOutputReference("unzipper", "extracted_files"),
         };
 
         using var step = PipelineStep.Builder()
             .Id("vsa_matcher")
             .DisplayName(new Dictionary<string, string> { { "en", "VSA Matching" } })
-            .InputConfig(inputConfig)
+            .Inputs(inputConfig)
             .OutputConfig(VsaMatcherOutputs)
             .Process(process)
             .Logger(new Mock<ILogger>().Object)
