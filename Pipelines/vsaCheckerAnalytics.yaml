@@ -97,9 +97,9 @@ pipelines:
           it: Corrispondenza file GEP Checker (ZIP)
         process_id: zip_file_matcher
         output:
-          - take: matched_files
+          - take: MatchedFiles
             as: gep_checker_files
-          - take: status_message
+          - take: StatusMessage
             as: status_message
             action:
               - StatusMessage
@@ -122,9 +122,9 @@ pipelines:
         input:
           zipFile: "${step_output(gep_checker_file_matcher.gep_checker_files)}"
         output:
-          - take: extracted_files
+          - take: ExtractedFiles
             as: gep_checker_files
-          - take: status_message
+          - take: StatusMessage
             as: status_message
             action:
               - StatusMessage
@@ -139,25 +139,25 @@ pipelines:
           uploadFiles: "${upload()}"
           unzippedFiles: "${step_output(gep_checker_unzipper.gep_checker_files)}"
         output:
-          - take: gep
+          - take: Gep
             as: gep
-          - take: model_version
+          - take: ModelVersion
             as: model_version
-          - take: language
+          - take: Language
             as: language
-          - take: user_org_table
+          - take: UserOrgTable
             as: user_org_table
-          - take: checker_csv_a
+          - take: CheckerCsvA
             as: checker_csv_a
-          - take: checker_csv_fp
+          - take: CheckerCsvFp
             as: checker_csv_fp
-          - take: checker_csv_t
+          - take: CheckerCsvT
             as: checker_csv_t
-          - take: gpkg_template
+          - take: GpkgTemplate
             as: gpkg_template
-          - take: standard_org_table
+          - take: StandardOrgTable
             as: standard_org_table
-          - take: status_message
+          - take: StatusMessage
             as: status_message
             action:
               - StatusMessage
@@ -224,9 +224,9 @@ pipelines:
           errorMatrix: "${file(ErrorMatrix_v3.xlsx)}"
           language: "${step_output(vsa_matcher.language)}"
         output:
-          - take: generatedGeopackage
+          - take: GeneratedGeopackage
             as: generatedGeopackage
-          - take: status_message
+          - take: StatusMessage
             as: status_message
             action:
               - StatusMessage
@@ -249,11 +249,11 @@ pipelines:
         input:
           geopackage: "${step_output(geopackage_generation.generatedGeopackage)}"
         output:
-          - take: error_overview
+          - take: ErrorOverview
             as: errorOverview
             action:
               - Download
-          - take: status_message
+          - take: StatusMessage
             as: status_message
             action:
               - StatusMessage
@@ -267,11 +267,11 @@ pipelines:
         input:
           geoPackage: "${step_output(geopackage_generation.generatedGeopackage)}"
         output:
-          - take: patchedGeopackage
+          - take: PatchedGeopackage
             as: patchedGeopackage
             action:
               - Download
-          - take: status_message
+          - take: StatusMessage
             as: status_message
             action:
               - StatusMessage
