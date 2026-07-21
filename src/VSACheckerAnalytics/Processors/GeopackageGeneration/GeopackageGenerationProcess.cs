@@ -16,9 +16,7 @@ namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 /// </summary>
 public sealed class GeopackageGenerationProcess
 {
-    private const string GeneratedGpkgOutputKey = "generatedGeopackage";
     private const string GeneratedGeopackageName = "generated";
-    private const string StatusMessageOutputKey = "status_message";
 
     private static readonly LocalizedText GeneratedStatusMessage = new Dictionary<string, string>
     {
@@ -88,9 +86,9 @@ public sealed class GeopackageGenerationProcess
     /// <param name="errorMatrix">Error matrix XLSX file.</param>
     /// <param name="language">Language code (<c>"DE"</c> or <c>"FR"</c>) for the error matrix join.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A dictionary with the populated GeoPackage under <c>generatedGeopackage</c>.</returns>
+    /// <returns>A <see cref="GeopackageGenerationResult"/> with the populated GeoPackage and a localized status message.</returns>
     [PipelineProcessRun]
-    public async Task<Dictionary<string, object?>> RunAsync(
+    public async Task<GeopackageGenerationResult> RunAsync(
         IPipelineFile geoPackage,
         IPipelineFile dssMiniXtf,
         IPipelineFile defaultOrgsXtf,
@@ -120,10 +118,10 @@ public sealed class GeopackageGenerationProcess
             outputGpkg = await CreateAnalyticsAsync(outputGpkg, language, cancellationToken);
         }
 
-        return new Dictionary<string, object?>
+        return new GeopackageGenerationResult
         {
-            { GeneratedGpkgOutputKey, outputGpkg },
-            { StatusMessageOutputKey, outputGpkg is not null ? GeneratedStatusMessage : ImportFailedStatusMessage },
+            GeneratedGeopackage = outputGpkg,
+            StatusMessage = outputGpkg is not null ? GeneratedStatusMessage : ImportFailedStatusMessage,
         };
     }
 

@@ -20,9 +20,7 @@ namespace VsaCheckerAnalytics.Processors.NetworkTopologyPatcher;
 /// </summary>
 public sealed class NetworkTopologyPatcherProcess
 {
-    private const string PatchedGpkgOutputKey = "patchedGeopackage";
     private const string PatchedGeopackageName = "gpkg-with-topology";
-    private const string StatusMessageOutputKey = "status_message";
 
     private static readonly LocalizedText TopologyStatusMessageFormat = new Dictionary<string, string>
     {
@@ -54,9 +52,9 @@ public sealed class NetworkTopologyPatcherProcess
     /// </summary>
     /// <param name="geoPackage">Prepared input GeoPackage containing <c>leitung</c>, <c>knoten_lage</c>, and (optionally) <c>ueberlauf_foerderaggregat</c>.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A dictionary with the enriched GeoPackage copy under <c>patchedGeopackage</c>.</returns>
+    /// <returns>A <see cref="NetworkTopologyPatcherResult"/> with the enriched GeoPackage copy and a localized status message.</returns>
     [PipelineProcessRun]
-    public async Task<Dictionary<string, object?>> RunAsync(
+    public async Task<NetworkTopologyPatcherResult> RunAsync(
         IPipelineFile geoPackage,
         CancellationToken cancellationToken = default)
     {
@@ -77,10 +75,10 @@ public sealed class NetworkTopologyPatcherProcess
         var statusMessage = TopologyStatusMessageFormat
             .Map(msg => string.Format(CultureInfo.InvariantCulture, msg, topologyResult.EdgesBuilt, topologyResult.LeitungenSkipped));
 
-        return new Dictionary<string, object?>
+        return new NetworkTopologyPatcherResult
         {
-            { PatchedGpkgOutputKey, target },
-            { StatusMessageOutputKey, statusMessage },
+            PatchedGeopackage = target,
+            StatusMessage = statusMessage,
         };
     }
 
