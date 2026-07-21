@@ -20,7 +20,7 @@ public class GeopackageGenerationProcessIntegrationTest
 
     private static readonly List<OutputConfig> GeopackageGenerationOutputs =
     [
-        new() { Take = "generatedGeopackage", As = "generatedGeopackage" },
+        new() { Take = "GeneratedGeopackage", As = "generatedGeopackage" },
     ];
 
     private static readonly IReadOnlyDictionary<string, InputValue> GeopackageGenerationInputs =

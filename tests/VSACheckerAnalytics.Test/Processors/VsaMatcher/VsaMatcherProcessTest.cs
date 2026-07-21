@@ -45,11 +45,11 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
 
-        var gepFiles = (IPipelineFile[])result["gep"]!;
+        var gepFiles = result.Gep;
         Assert.AreSame(gepFile, gepFiles.Single());
-        Assert.AreEqual("2020", result["model_version"]);
-        Assert.AreEqual("DE", result["language"]);
-        var statusMessage = (LocalizedText)result["status_message"]!;
+        Assert.AreEqual("2020", result.ModelVersion);
+        Assert.AreEqual("DE", result.Language);
+        var statusMessage = result.StatusMessage;
         Assert.AreEqual("GEP file identified (model 2020, DE), 0 checker CSV(s) found.", statusMessage["en"]);
     }
 
@@ -62,10 +62,10 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
 
-        var gepFiles = (IPipelineFile[])result["gep"]!;
+        var gepFiles = result.Gep;
         Assert.AreSame(gepFile, gepFiles.Single());
-        Assert.AreEqual("2020.1", result["model_version"]);
-        Assert.AreEqual("DE", result["language"]);
+        Assert.AreEqual("2020.1", result.ModelVersion);
+        Assert.AreEqual("DE", result.Language);
     }
 
     [TestMethod]
@@ -77,10 +77,10 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
 
-        var gepFiles = (IPipelineFile[])result["gep"]!;
+        var gepFiles = result.Gep;
         Assert.AreSame(gepFile, gepFiles.Single());
-        Assert.AreEqual("2020.1", result["model_version"]);
-        Assert.AreEqual("DE", result["language"]);
+        Assert.AreEqual("2020.1", result.ModelVersion);
+        Assert.AreEqual("DE", result.Language);
     }
 
     [TestMethod]
@@ -92,10 +92,10 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
 
-        var gepFiles = (IPipelineFile[])result["gep"]!;
+        var gepFiles = result.Gep;
         Assert.AreSame(gepFile, gepFiles.Single());
-        Assert.AreEqual("2020", result["model_version"]);
-        Assert.AreEqual("FR", result["language"]);
+        Assert.AreEqual("2020", result.ModelVersion);
+        Assert.AreEqual("FR", result.Language);
     }
 
     [TestMethod]
@@ -107,10 +107,10 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
 
-        var gepFiles = (IPipelineFile[])result["gep"]!;
+        var gepFiles = result.Gep;
         Assert.AreSame(gepFile, gepFiles.Single());
-        Assert.AreEqual("2020.1", result["model_version"]);
-        Assert.AreEqual("FR", result["language"]);
+        Assert.AreEqual("2020.1", result.ModelVersion);
+        Assert.AreEqual("FR", result.Language);
     }
 
     [TestMethod]
@@ -122,10 +122,10 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
 
-        var gepFiles = (IPipelineFile[])result["gep"]!;
+        var gepFiles = result.Gep;
         Assert.AreSame(gepFile, gepFiles.Single());
-        Assert.AreEqual("2020", result["model_version"]);
-        Assert.AreEqual("DE", result["language"]);
+        Assert.AreEqual("2020", result.ModelVersion);
+        Assert.AreEqual("DE", result.Language);
     }
 
     [TestMethod]
@@ -137,13 +137,13 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
 
-        var gepFiles = (IPipelineFile[])result["gep"]!;
+        var gepFiles = result.Gep;
         Assert.IsEmpty(gepFiles);
-        Assert.IsNull(result["model_version"]);
-        Assert.IsNull(result["language"]);
-        Assert.IsNull(result["gpkg_template"]);
-        Assert.IsNull(result["standard_org_table"]);
-        var statusMessage = (LocalizedText)result["status_message"]!;
+        Assert.IsNull(result.ModelVersion);
+        Assert.IsNull(result.Language);
+        Assert.IsNull(result.GpkgTemplate);
+        Assert.IsNull(result.StandardOrgTable);
+        var statusMessage = result.StatusMessage;
         Assert.AreEqual("Keine GEP-Transferdatei in den hochgeladenen Dateien gefunden.", statusMessage["de"]);
         Assert.AreEqual("Aucun fichier de transfert GEP trouvé dans les fichiers téléchargés.", statusMessage["fr"]);
         Assert.AreEqual("Nessun file di trasferimento GEP trovato nei file caricati.", statusMessage["it"]);
@@ -160,11 +160,11 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
 
-        var gepFiles = (IPipelineFile[])result["gep"]!;
+        var gepFiles = result.Gep;
         Assert.HasCount(2, gepFiles);
-        Assert.IsNull(result["model_version"]);
-        Assert.IsNull(result["language"]);
-        var statusMessage = (LocalizedText)result["status_message"]!;
+        Assert.IsNull(result.ModelVersion);
+        Assert.IsNull(result.Language);
+        var statusMessage = result.StatusMessage;
         Assert.AreEqual("2 GEP files found (2020 DE, 2020.1 DE), unambiguous assignment not possible.", statusMessage["en"]);
     }
 
@@ -178,7 +178,7 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
 
-        var orgTables = (IPipelineFile[])result["user_org_table"]!;
+        var orgTables = result.UserOrgTable;
         Assert.AreSame(orgFile, orgTables.Single());
     }
 
@@ -192,7 +192,7 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
 
-        var orgTables = (IPipelineFile[])result["user_org_table"]!;
+        var orgTables = result.UserOrgTable;
         Assert.AreSame(orgFile, orgTables.Single());
     }
 
@@ -205,7 +205,7 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
 
-        var orgTables = (IPipelineFile[])result["user_org_table"]!;
+        var orgTables = result.UserOrgTable;
         Assert.IsEmpty(orgTables);
     }
 
@@ -223,13 +223,13 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, unzipped, CancellationToken.None);
 
-        var csvsA = (IPipelineFile[])result["checker_csv_a"]!;
-        var csvsFp = (IPipelineFile[])result["checker_csv_fp"]!;
-        var csvsT = (IPipelineFile[])result["checker_csv_t"]!;
+        var csvsA = result.CheckerCsvA;
+        var csvsFp = result.CheckerCsvFp;
+        var csvsT = result.CheckerCsvT;
         Assert.AreSame(csvA, csvsA.Single());
         Assert.AreSame(csvFp, csvsFp.Single());
         Assert.AreSame(csvT, csvsT.Single());
-        var statusMessage = (LocalizedText)result["status_message"]!;
+        var statusMessage = result.StatusMessage;
         Assert.AreEqual("GEP-Datei erkannt (Modell 2020, DE), 3 Checker-CSV(s) gefunden.", statusMessage["de"]);
         Assert.AreEqual("Fichier GEP identifié (modèle 2020, DE), 3 CSV de vérification trouvé(s).", statusMessage["fr"]);
         Assert.AreEqual("File GEP identificato (modello 2020, DE), 3 CSV di verifica trovati.", statusMessage["it"]);
@@ -248,8 +248,8 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, unzipped, CancellationToken.None);
 
-        var csvsA = (IPipelineFile[])result["checker_csv_a"]!;
-        var csvsFp = (IPipelineFile[])result["checker_csv_fp"]!;
+        var csvsA = result.CheckerCsvA;
+        var csvsFp = result.CheckerCsvFp;
         Assert.IsEmpty(csvsA);
         Assert.IsEmpty(csvsFp);
     }
@@ -265,9 +265,9 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, unzipped, CancellationToken.None);
 
-        var csvsA = (IPipelineFile[])result["checker_csv_a"]!;
-        var csvsFp = (IPipelineFile[])result["checker_csv_fp"]!;
-        var csvsT = (IPipelineFile[])result["checker_csv_t"]!;
+        var csvsA = result.CheckerCsvA;
+        var csvsFp = result.CheckerCsvFp;
+        var csvsT = result.CheckerCsvT;
         Assert.AreSame(csvA, csvsA.Single());
         Assert.IsEmpty(csvsFp);
         Assert.IsEmpty(csvsT);
@@ -285,7 +285,7 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, unzipped, CancellationToken.None);
 
-        var csvsA = (IPipelineFile[])result["checker_csv_a"]!;
+        var csvsA = result.CheckerCsvA;
         Assert.HasCount(2, csvsA);
     }
 
@@ -298,7 +298,7 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
 
-        var gpkgTemplate = result["gpkg_template"] as IPipelineFile;
+        var gpkgTemplate = result.GpkgTemplate;
         Assert.IsNotNull(gpkgTemplate);
         Assert.AreEqual("gpkg", gpkgTemplate.FileExtension);
     }
@@ -312,7 +312,7 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
 
-        var orgTable = result["standard_org_table"] as IPipelineFile;
+        var orgTable = result.StandardOrgTable;
         Assert.IsNotNull(orgTable);
         Assert.AreEqual("xtf", orgTable.FileExtension);
     }
@@ -326,10 +326,10 @@ public sealed class VsaMatcherProcessTest
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
 
-        var gepFiles = (IPipelineFile[])result["gep"]!;
+        var gepFiles = result.Gep;
         Assert.AreSame(gepFile, gepFiles.Single());
-        Assert.AreEqual("2020", result["model_version"]);
-        Assert.AreEqual("DE", result["language"]);
+        Assert.AreEqual("2020", result.ModelVersion);
+        Assert.AreEqual("DE", result.Language);
     }
 
     private VsaMatcherProcess CreateProcess()

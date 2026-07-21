@@ -99,7 +99,7 @@ public sealed class ErrorOverviewExportProcessTest
 
         var result = await process.RunAsync(geopackage);
 
-        var statusMessage = (LocalizedText)result["status_message"]!;
+        var statusMessage = result.StatusMessage;
         Assert.AreEqual("Error overview created: 2 errors exported.", statusMessage["en"]);
 
         using var workbook = OpenOutputWorkbook(result);
@@ -334,10 +334,9 @@ public sealed class ErrorOverviewExportProcessTest
         ExecuteNonQuery(connection, sql);
     }
 
-    private static XLWorkbook OpenOutputWorkbook(Dictionary<string, object?> result)
+    private static XLWorkbook OpenOutputWorkbook(ErrorOverviewExportResult result)
     {
-        var outputFile = (IPipelineFile)result["error_overview"]!;
-        Assert.IsNotNull(outputFile);
+        var outputFile = result.ErrorOverview;
 
         using var fileStream = outputFile.OpenReadFileStream();
         var memoryStream = new MemoryStream();
