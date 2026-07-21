@@ -116,7 +116,7 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// <returns>A dictionary of named outputs for downstream pipeline steps, including a localized <c>status_message</c>.</returns>
     [PipelineProcessRun]
     public async Task<Dictionary<string, object?>> RunAsync(
-        IPipelineFileList uploadFiles,
+        IPipelineFile[] uploadFiles,
         IPipelineFile[] unzippedFiles,
         CancellationToken cancellationToken)
     {
@@ -180,12 +180,12 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// Finds all GEP transfer files among the uploaded XTF files. Each match carries its own
     /// model version and language. Checks version 2020.1 first (more specific) before 2020.
     /// </summary>
-    private GepMatch[] FindGepFiles(IPipelineFileList uploadFiles)
+    private GepMatch[] FindGepFiles(IPipelineFile[] uploadFiles)
     {
         var xtfFiles = uploadFiles.WithExtensions(new HashSet<string> { "xtf" });
         var matches = new List<GepMatch>();
 
-        foreach (var file in xtfFiles.Files)
+        foreach (var file in xtfFiles)
         {
             var models = ExtractIliModels(file);
 
@@ -220,12 +220,12 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// <summary>
     /// Finds all user-provided organisation tables among the uploaded XTF files.
     /// </summary>
-    private IPipelineFile[] FindOrgTables(IPipelineFileList uploadFiles)
+    private IPipelineFile[] FindOrgTables(IPipelineFile[] uploadFiles)
     {
         var xtfFiles = uploadFiles.WithExtensions(new HashSet<string> { "xtf" });
         var orgTables = new List<IPipelineFile>();
 
-        foreach (var file in xtfFiles.Files)
+        foreach (var file in xtfFiles)
         {
             var models = ExtractIliModels(file);
 
