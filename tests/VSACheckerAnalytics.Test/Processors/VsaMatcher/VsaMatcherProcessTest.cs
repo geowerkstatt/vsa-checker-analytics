@@ -40,7 +40,7 @@ public sealed class VsaMatcherProcessTest
     public async Task RunAsync_IdentifiesGep2020()
     {
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "VSADSSMINI_2020_LV95");
-        var uploads = new TestPipelineFileList([gepFile]);
+        IPipelineFile[] uploads = [gepFile];
         var process = CreateProcess();
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
@@ -57,7 +57,7 @@ public sealed class VsaMatcherProcessTest
     public async Task RunAsync_IdentifiesGep20201()
     {
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "VSADSSMINI_2020_1_LV95");
-        var uploads = new TestPipelineFileList([gepFile]);
+        IPipelineFile[] uploads = [gepFile];
         var process = CreateProcess();
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
@@ -72,7 +72,7 @@ public sealed class VsaMatcherProcessTest
     public async Task RunAsync_Prefers20201_OverMultipleModels()
     {
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "VSADSSMINI_2020_LV95", "VSADSSMINI_2020_1_LV95");
-        var uploads = new TestPipelineFileList([gepFile]);
+        IPipelineFile[] uploads = [gepFile];
         var process = CreateProcess();
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
@@ -87,7 +87,7 @@ public sealed class VsaMatcherProcessTest
     public async Task RunAsync_IdentifiesFrenchGep2020()
     {
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "VSASDEEMINI_2020_LV95");
-        var uploads = new TestPipelineFileList([gepFile]);
+        IPipelineFile[] uploads = [gepFile];
         var process = CreateProcess();
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
@@ -102,7 +102,7 @@ public sealed class VsaMatcherProcessTest
     public async Task RunAsync_IdentifiesFrenchGep20201()
     {
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "VSASDEEMINI_2020_1_LV95");
-        var uploads = new TestPipelineFileList([gepFile]);
+        IPipelineFile[] uploads = [gepFile];
         var process = CreateProcess();
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
@@ -117,7 +117,7 @@ public sealed class VsaMatcherProcessTest
     public async Task RunAsync_IdentifiesGepFromInterlis23()
     {
         var gepFile = fileFactory.CreateXtf23("gep.xtf", "VSADSSMINI_2020_LV95");
-        var uploads = new TestPipelineFileList([gepFile]);
+        IPipelineFile[] uploads = [gepFile];
         var process = CreateProcess();
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
@@ -132,7 +132,7 @@ public sealed class VsaMatcherProcessTest
     public async Task RunAsync_NoGepFound_ReturnsEmptyArray()
     {
         var otherFile = fileFactory.CreateXtf24("other.xtf", "UnknownModel");
-        var uploads = new TestPipelineFileList([otherFile]);
+        IPipelineFile[] uploads = [otherFile];
         var process = CreateProcess();
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
@@ -155,7 +155,7 @@ public sealed class VsaMatcherProcessTest
     {
         var gepFile1 = fileFactory.CreateXtf24("gep1.xtf", "VSADSSMINI_2020_LV95");
         var gepFile2 = fileFactory.CreateXtf24("gep2.xtf", "VSADSSMINI_2020_1_LV95");
-        var uploads = new TestPipelineFileList([gepFile1, gepFile2]);
+        IPipelineFile[] uploads = [gepFile1, gepFile2];
         var process = CreateProcess();
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
@@ -173,7 +173,7 @@ public sealed class VsaMatcherProcessTest
     {
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "VSADSSMINI_2020_LV95");
         var orgFile = fileFactory.CreateXtf24("org.xtf", "SIA405_Base_Abwasser_LV95");
-        var uploads = new TestPipelineFileList([gepFile, orgFile]);
+        IPipelineFile[] uploads = [gepFile, orgFile];
         var process = CreateProcess();
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
@@ -187,7 +187,7 @@ public sealed class VsaMatcherProcessTest
     {
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "VSADSSMINI_2020_LV95");
         var orgFile = fileFactory.CreateXtf24("org.xtf", "SIA405_Base_Eaux_usees_LV95");
-        var uploads = new TestPipelineFileList([gepFile, orgFile]);
+        IPipelineFile[] uploads = [gepFile, orgFile];
         var process = CreateProcess();
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
@@ -200,7 +200,7 @@ public sealed class VsaMatcherProcessTest
     public async Task RunAsync_NoOrgTable_ReturnsEmptyArray()
     {
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "VSADSSMINI_2020_LV95");
-        var uploads = new TestPipelineFileList([gepFile]);
+        IPipelineFile[] uploads = [gepFile];
         var process = CreateProcess();
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
@@ -217,7 +217,7 @@ public sealed class VsaMatcherProcessTest
         var csvFp = fileFactory.CreateCsv("gep_fp_err.csv", "check");
         var csvT = fileFactory.CreateCsv("gep_t_err.csv", "check");
         var logFile = fileFactory.CreateFile("a.log", "log content", "check");
-        var uploads = new TestPipelineFileList([gepFile]);
+        IPipelineFile[] uploads = [gepFile];
         IPipelineFile[] unzipped = [csvA, csvFp, csvT, logFile];
         var process = CreateProcess();
 
@@ -242,7 +242,7 @@ public sealed class VsaMatcherProcessTest
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "VSADSSMINI_2020_LV95");
         var csvA = fileFactory.CreateCsv("gep_a_err.csv", "other");
         var csvFp = fileFactory.CreateCsv("gep_fp_err.csv");
-        var uploads = new TestPipelineFileList([gepFile]);
+        IPipelineFile[] uploads = [gepFile];
         IPipelineFile[] unzipped = [csvA, csvFp];
         var process = CreateProcess();
 
@@ -259,7 +259,7 @@ public sealed class VsaMatcherProcessTest
     {
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "VSADSSMINI_2020_LV95");
         var csvA = fileFactory.CreateCsv("gep_a_err.csv", "check");
-        var uploads = new TestPipelineFileList([gepFile]);
+        IPipelineFile[] uploads = [gepFile];
         IPipelineFile[] unzipped = [csvA];
         var process = CreateProcess();
 
@@ -279,7 +279,7 @@ public sealed class VsaMatcherProcessTest
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "VSADSSMINI_2020_LV95");
         var csvA1 = fileFactory.CreateCsv("gep_a_err.csv", "check");
         var csvA2 = fileFactory.CreateCsv("other_a_err.csv", "check");
-        var uploads = new TestPipelineFileList([gepFile]);
+        IPipelineFile[] uploads = [gepFile];
         IPipelineFile[] unzipped = [csvA1, csvA2];
         var process = CreateProcess();
 
@@ -293,7 +293,7 @@ public sealed class VsaMatcherProcessTest
     public async Task RunAsync_CopiesGpkgTemplateForVersion2020()
     {
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "VSADSSMINI_2020_LV95");
-        var uploads = new TestPipelineFileList([gepFile]);
+        IPipelineFile[] uploads = [gepFile];
         var process = CreateProcess();
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
@@ -307,7 +307,7 @@ public sealed class VsaMatcherProcessTest
     public async Task RunAsync_FetchesStandardOrgTable()
     {
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "VSADSSMINI_2020_LV95");
-        var uploads = new TestPipelineFileList([gepFile]);
+        IPipelineFile[] uploads = [gepFile];
         var process = CreateProcess();
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);
@@ -321,7 +321,7 @@ public sealed class VsaMatcherProcessTest
     public async Task RunAsync_IliModelMatchingIsCaseInsensitive()
     {
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "vsadssmini_2020_lv95");
-        var uploads = new TestPipelineFileList([gepFile]);
+        IPipelineFile[] uploads = [gepFile];
         var process = CreateProcess();
 
         var result = await process.RunAsync(uploads, [], CancellationToken.None);

@@ -225,7 +225,7 @@ public class GeopackageGenerationProcessIntegrationTest
 
         var context = new PipelineContext
         {
-            Upload = new PipelineFileList([]),
+            Upload = [],
             StepResults = new Dictionary<string, StepResult> { { UpstreamStepId, upstream } },
         };
 

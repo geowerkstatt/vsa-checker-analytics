@@ -117,7 +117,7 @@ public class VsaMatcherIntegrationTest
 
         var inputConfig = new Dictionary<string, InputValue>
         {
-            ["uploadFiles"] = new InputValue.UploadReference(),
+            ["files"] = new InputValue.UploadReference(),
             ["unzippedFiles"] = new InputValue.StepOutputReference("unzipper", "extracted_files"),
         };
 
@@ -146,7 +146,7 @@ public class VsaMatcherIntegrationTest
 
         var context = new PipelineContext
         {
-            Upload = new PipelineFileList([new PipelineFile(gepXtfPath, "gep_vsadssmini_2020.xtf")]),
+            Upload = [new PipelineFile(gepXtfPath, "gep_vsadssmini_2020.xtf")],
             StepResults = new Dictionary<string, StepResult> { { "unzipper", unzipResult } },
         };
 
