@@ -117,7 +117,7 @@ public class VsaMatcherIntegrationTest
 
         var inputConfig = new Dictionary<string, InputValue>
         {
-            ["uploadFiles"] = new InputValue.UploadReference(),
+            ["files"] = new InputValue.UploadReference(),
             ["unzippedFiles"] = new InputValue.StepOutputReference("unzipper", "extracted_files"),
         };
 

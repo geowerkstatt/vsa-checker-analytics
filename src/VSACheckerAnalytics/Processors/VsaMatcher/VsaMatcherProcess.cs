@@ -110,18 +110,18 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// provides named output channels for downstream processors. A localized
     /// <c>status_message</c> summarises the identification result.
     /// </summary>
-    /// <param name="uploadFiles">The originally uploaded files (GEP transfer file, optional org table, ZIP).</param>
+    /// <param name="files">The originally uploaded files (GEP transfer file, optional org table, ZIP).</param>
     /// <param name="unzippedFiles">Files extracted from the GEP checker ZIP by a preceding unzip step.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <returns>A dictionary of named outputs for downstream pipeline steps, including a localized <c>status_message</c>.</returns>
     [PipelineProcessRun]
     public async Task<Dictionary<string, object?>> RunAsync(
-        IPipelineFile[] uploadFiles,
+        IPipelineFile[] files,
         IPipelineFile[] unzippedFiles,
         CancellationToken cancellationToken)
     {
-        var gepMatches = FindGepFiles(uploadFiles);
-        var userOrgTables = FindOrgTables(uploadFiles);
+        var gepMatches = FindGepFiles(files);
+        var userOrgTables = FindOrgTables(files);
 
         var checkerCsvsA = FindCheckerCsvs(unzippedFiles, CheckerCsvPatternA, "ARA (a)");
         var checkerCsvsFp = FindCheckerCsvs(unzippedFiles, CheckerCsvPatternFp, "Fachprüfungen (FP)");
@@ -180,9 +180,9 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// Finds all GEP transfer files among the uploaded XTF files. Each match carries its own
     /// model version and language. Checks version 2020.1 first (more specific) before 2020.
     /// </summary>
-    private GepMatch[] FindGepFiles(IPipelineFile[] uploadFiles)
+    private GepMatch[] FindGepFiles(IPipelineFile[] files)
     {
-        var xtfFiles = uploadFiles.WithExtensions(new HashSet<string> { "xtf" });
+        var xtfFiles = files.WithExtensions(new HashSet<string> { "xtf" });
         var matches = new List<GepMatch>();
 
         foreach (var file in xtfFiles)
@@ -220,9 +220,9 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// <summary>
     /// Finds all user-provided organisation tables among the uploaded XTF files.
     /// </summary>
-    private IPipelineFile[] FindOrgTables(IPipelineFile[] uploadFiles)
+    private IPipelineFile[] FindOrgTables(IPipelineFile[] files)
     {
-        var xtfFiles = uploadFiles.WithExtensions(new HashSet<string> { "xtf" });
+        var xtfFiles = files.WithExtensions(new HashSet<string> { "xtf" });
         var orgTables = new List<IPipelineFile>();
 
         foreach (var file in xtfFiles)
