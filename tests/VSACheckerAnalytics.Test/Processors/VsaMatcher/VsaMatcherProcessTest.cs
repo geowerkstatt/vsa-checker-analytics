@@ -143,7 +143,6 @@ public sealed class VsaMatcherProcessTest
         Assert.IsNull(result["language"]);
         Assert.IsNull(result["gpkg_template"]);
         Assert.IsNull(result["standard_org_table"]);
-        Assert.IsNotNull(result["error_matrix"]);
         var statusMessage = (LocalizedText)result["status_message"]!;
         Assert.AreEqual("Keine GEP-Transferdatei in den hochgeladenen Dateien gefunden.", statusMessage["de"]);
         Assert.AreEqual("Aucun fichier de transfert GEP trouvé dans les fichiers téléchargés.", statusMessage["fr"]);
@@ -319,20 +318,6 @@ public sealed class VsaMatcherProcessTest
     }
 
     [TestMethod]
-    public async Task RunAsync_CopiesErrorMatrix()
-    {
-        var gepFile = fileFactory.CreateXtf24("gep.xtf", "VSADSSMINI_2020_LV95");
-        var uploads = new TestPipelineFileList([gepFile]);
-        var process = CreateProcess();
-
-        var result = await process.RunAsync(uploads, [], CancellationToken.None);
-
-        var errorMatrix = result["error_matrix"] as IPipelineFile;
-        Assert.IsNotNull(errorMatrix);
-        Assert.AreEqual("xlsx", errorMatrix.FileExtension);
-    }
-
-    [TestMethod]
     public async Task RunAsync_IliModelMatchingIsCaseInsensitive()
     {
         var gepFile = fileFactory.CreateXtf24("gep.xtf", "vsadssmini_2020_lv95");
@@ -351,14 +336,12 @@ public sealed class VsaMatcherProcessTest
     {
         var templatePath2020 = fileFactory.CreateResourceFile("template_2020.gpkg");
         var templatePath20201 = fileFactory.CreateResourceFile("template_2020_1.gpkg");
-        var errorMatrixPath = fileFactory.CreateResourceFile("error_matrix.xlsx");
 
         var process = new VsaMatcherProcess(
             NullLogger.Instance,
             fileManager,
             templatePath2020,
             templatePath20201,
-            errorMatrixPath,
             OrgTableUrl2020,
             OrgTableUrl20201);
 

@@ -136,6 +136,7 @@ pipelines:
           it: VSA Corrispondenza
         process_id: vsa_matcher
         input:
+          uploadFiles: "${upload()}"
           unzippedFiles: "${step_output(gep_checker_unzipper.gep_checker_files)}"
         output:
           - take: gep
@@ -156,8 +157,6 @@ pipelines:
             as: gpkg_template
           - take: standard_org_table
             as: standard_org_table
-          - take: error_matrix
-            as: error_matrix
           - take: status_message
             as: status_message
             action:
@@ -207,12 +206,6 @@ pipelines:
                   en: "Exactly one standard organisation table file is required"
                   fr: "Un fichier de table d'organisation standard est requis"
                   it: "È necessario un file di tabella organizzativa standard"
-              - expression: "[vsa_matcher.error_matrix] == null"
-                message:
-                  de: "Ein Fehler-Matrix File notwendig"
-                  en: "Exactly one error matrix file is required"
-                  fr: "Un fichier de matrice d'erreurs est requis"
-                  it: "È necessario un file matrice degli errori"
       - id: geopackage_generation
         display_name:
           de: GeoPackage Erstellung
@@ -228,7 +221,7 @@ pipelines:
           checkerCsvT: "${step_output(vsa_matcher.checker_csv_t)}"
           checkerCsvA: "${step_output(vsa_matcher.checker_csv_a)}"
           checkerCsvFp: "${step_output(vsa_matcher.checker_csv_fp)}"
-          errorMatrix: "${step_output(vsa_matcher.error_matrix)}"
+          errorMatrix: "${file(ErrorMatrix_v3.xlsx)}"
           language: "${step_output(vsa_matcher.language)}"
         output:
           - take: generatedGeopackage

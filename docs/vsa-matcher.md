@@ -18,7 +18,6 @@ werden vom Framework automatisch injiziert.
 |----------------------------|----------|-------------------------------------------------------------------|
 | `geoPackageTemplatePath2020`  | `string` | Pfad zum GeoPackage-Template für Modellversion 2020.           |
 | `geoPackageTemplatePath20201` | `string` | Pfad zum GeoPackage-Template für Modellversion 2020.1.         |
-| `errorMatrixPath`             | `string` | Pfad zur Fehlermatrix-XLSX.                                    |
 | `vsaOrgTableUrl2020`         | `string` | URL der Standard-Organisationstabelle (2020) im VSA-Repository (https://www.vsa.ch/models/organisation/vsa_organisationen.xtf).  |
 | `vsaOrgTableUrl20201`        | `string` | URL der Standard-Organisationstabelle (2020.1) im VSA-Repository (https://www.vsa.ch/models/organisation/vsa_organisationen_2020_1.xtf).|
 
@@ -46,7 +45,6 @@ Die `RunAsync`-Methode erhält zwei Sammlungen:
 | `checker_csv_t`     | `IPipelineFile[]` | Checker-CSVs für Trägerschaft (T), erkannt am Dateinamen mit der Endung `_t_err`. Die Post-Condition des Schritts stellt sicher, dass genau eine vorhanden ist. |
 | `gpkg_template`     | `IPipelineFile?`  | Aus den Application Resources kopiertes GeoPackage-Template, passend zur Modellversion. Für die weitere Verarbeitung zwingend; die Post-Condition des Schritts stellt seine Präsenz sicher. |
 | `standard_org_table`| `IPipelineFile?`  | Aus dem VSA-Repository bezogene Standard-Organisationstabelle, passend zur Modellversion. Für die weitere Verarbeitung zwingend; die Post-Condition des Schritts stellt ihre Präsenz sicher. |
-| `error_matrix`      | `IPipelineFile?`  | Aus den Application Resources kopierte Fehlermatrix-XLSX. Für die weitere Verarbeitung zwingend; die Post-Condition des Schritts stellt ihre Präsenz sicher. |
 | `status_message`    | `LocalizedText`   | Lokalisierte Statusmeldung, die das Identifizierungsergebnis zusammenfasst (erkannte Modellversion und Sprache sowie die Anzahl gefundener Checker-CSVs, oder ein Hinweis auf eine fehlende bzw. mehrere GEP-Dateien). Wird über die Output-Action `StatusMessage` in der Oberfläche angezeigt. |
 
 ## Dateiidentifikation

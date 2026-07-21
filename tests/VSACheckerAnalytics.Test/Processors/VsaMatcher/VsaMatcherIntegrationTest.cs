@@ -31,7 +31,6 @@ public class VsaMatcherIntegrationTest
         new() { Take = "checker_csv_t", As = "checker_csv_t" },
         new() { Take = "gpkg_template", As = "gpkg_template" },
         new() { Take = "standard_org_table", As = "standard_org_table" },
-        new() { Take = "error_matrix", As = "error_matrix" },
     ];
 
     private Mock<HttpMessageHandler> httpMessageHandlerMock = null!;
@@ -62,7 +61,6 @@ public class VsaMatcherIntegrationTest
                     {
                         { "geoPackageTemplatePath2020", Path.Combine(ResourceDir, "template_ca_dssmini_2020_d.gpkg") },
                         { "geoPackageTemplatePath20201", Path.Combine(ResourceDir, "template_ca_dssmini_2020_1_d.gpkg") },
-                        { "errorMatrixPath", Path.Combine(ResourceDir, "errorMatrix.xlsx") },
                         { "vsaOrgTableUrl2020", OrgTableUrl2020 },
                         { "vsaOrgTableUrl20201", OrgTableUrl20201 },
                     }
@@ -119,6 +117,7 @@ public class VsaMatcherIntegrationTest
 
         var inputConfig = new Dictionary<string, InputValue>
         {
+            ["uploadFiles"] = new InputValue.UploadReference(),
             ["unzippedFiles"] = new InputValue.StepOutputReference("unzipper", "extracted_files"),
         };
 
@@ -174,7 +173,6 @@ public class VsaMatcherIntegrationTest
 
         Assert.IsNotNull(result.Outputs["gpkg_template"].Data);
         Assert.IsNotNull(result.Outputs["standard_org_table"].Data);
-        Assert.IsNotNull(result.Outputs["error_matrix"].Data);
     }
 
     private void ReplaceHttpClient(object process)

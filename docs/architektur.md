@@ -40,8 +40,8 @@ flowchart
 	geoPackageTemplates --- vsaMatcher
 	orgTables --- vsaMatcher
 	unzipper ---|"3 * (CSV, XTF, log)"| vsaMatcher
-	errorMatrix --- vsaMatcher
-	vsaMatcher ---|"GEP, User Org. default Org, GPKG Template, Error Matrix, Language, Model"| aggregationProcess
+	errorMatrix --- aggregationProcess
+	vsaMatcher ---|"GEP, User Org. default Org, GPKG Template, Language, Model"| aggregationProcess
 	aggregationProcess ---|"Aggregated GPKG with statistics"| networkTopology
 	aggregationProcess ---|"Aggregated GPKG with statistics"| excelMapper
 	networkTopology ---|"complete GPKG"| zipPacker
@@ -105,7 +105,7 @@ Prozessor, welcher die Eingabedaten aus User-Upload und GEP-Checker-Output gemä
 
 - **User-Upload**: DSS Mini-Transferdatei (anhand des INTERLIS-Modellnamens werden Modellversion 2020 / 2020.1 und Sprache DE / FR bestimmt — beides steuert die Auswahl der Resources), optional eine Organisationstabelle.
 - **GEP-Checker-Output**: 9 Dateien aus dem Unzipper (`a` / `FP` / `T` × CSV / XTF / Log) — der Matcher verwendet nur die CSV-Dateien für die Weiterverarbeitung.
-- **Application Resources**: anhand der Modellversion aus dem GEP wird automatisch das passende Vorlage-GPKG gewählt; die Error-Matrix ist versionsunabhängig.
+- **Application Resources**: anhand der Modellversion aus dem GEP wird automatisch das passende Vorlage-GPKG gewählt. Die versionsunabhängige Error-Matrix wird nicht mehr über den Matcher bezogen, sondern direkt in die Geopackage Generation injiziert.
 - **VSA Repository**: anhand der Modellversion wird die passende Standard-Org-Tabelle bei jedem Run frisch vom öffentlichen VSA-Repository geladen.
 
 **Ausgabekanäle** (was an `Geopackage Generation` weitergegeben wird):
@@ -120,7 +120,6 @@ Prozessor, welcher die Eingabedaten aus User-Upload und GEP-Checker-Output gemä
   - `FP`: "Prüfungsart: "Fachprüfungen"
 - Vorlage-GPKG (passend zur Modellversion)
 - Standard-Org-Tabelle (passend zur Modellversion, aus VSA Repository)
-- Error-Matrix
 
 Der VSA-Matcher enthält eine Liste von Post-Conditions, welche prüfen ob alle notwendigen Daten für die nachfolgenden Schritte vorhanden sind. Wenn eine Post-Condition fehlschlägt, wird der gesamte Prozess mit einem Fehler abgebrochen.
 
@@ -131,7 +130,6 @@ Der VSA-Matcher enthält eine Liste von Post-Conditions, welche prüfen ob alle 
 - Drei Error Datensätze aus dem GEP-Checker-Output müssen vorhanden sein (CSV: a, FP und T)
 - Ein Geopackage Template muss vorhanden sein
 - Eine Standard-Organisationstabelle muss vorhanden sein
-- Eine Error-Matrix muss vorhanden sein
 
 ### Geopackage Generation (Aggregation)
 
