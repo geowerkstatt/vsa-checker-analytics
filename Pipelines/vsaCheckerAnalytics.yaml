@@ -267,6 +267,10 @@ pipelines:
             as: errorOverview
             action:
               - Download
+          - take: CantonErrorMatrix
+            as: cantonErrorMatrix
+            action:
+              - Download
           - take: StatusMessage
             as: status_message
             action:
