@@ -85,6 +85,7 @@ public sealed class GeopackageGenerationProcess
     /// <param name="checkerCsvFp">Checker CSV file for Fachprüfungen (FP).</param>
     /// <param name="errorMatrix">Error matrix XLSX file.</param>
     /// <param name="language">Language code (<c>"DE"</c> or <c>"FR"</c>) for the error matrix join.</param>
+    /// <param name="modelVersion">Data model version (<c>"2020"</c> or <c>"2020.1"</c>) selecting the statistics views.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A <see cref="GeopackageGenerationResult"/> with the populated GeoPackage and a localized status message.</returns>
     [PipelineProcessRun]
@@ -98,6 +99,7 @@ public sealed class GeopackageGenerationProcess
         IPipelineFile checkerCsvFp,
         IPipelineFile errorMatrix,
         string language,
+        string modelVersion,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(geoPackage);
@@ -108,6 +110,7 @@ public sealed class GeopackageGenerationProcess
         ArgumentNullException.ThrowIfNull(checkerCsvFp);
         ArgumentNullException.ThrowIfNull(errorMatrix);
         ArgumentNullException.ThrowIfNull(language);
+        ArgumentNullException.ThrowIfNull(modelVersion);
 
         var outputGpkg = await CreateGpkgWithImports(geoPackage, dssMiniXtf, defaultOrgsXtf, userOrgsXtf, cancellationToken);
 
@@ -115,7 +118,7 @@ public sealed class GeopackageGenerationProcess
         {
             outputGpkg = await ImportCheckerCsvsAsync(outputGpkg, checkerCsvT, checkerCsvA, checkerCsvFp, cancellationToken);
             outputGpkg = await ImportErrorMatrixAsync(outputGpkg, errorMatrix, cancellationToken);
-            outputGpkg = await CreateAnalyticsAsync(outputGpkg, language, cancellationToken);
+            outputGpkg = await CreateAnalyticsAsync(outputGpkg, language, modelVersion, cancellationToken);
         }
 
         return new GeopackageGenerationResult
@@ -266,6 +269,7 @@ public sealed class GeopackageGenerationProcess
     private async Task<IPipelineFile> CreateAnalyticsAsync(
         IPipelineFile sourceGpkg,
         string language,
+        string modelVersion,
         CancellationToken cancellationToken)
     {
         var target = pipelineFileManager.CreateWritableCopy(sourceGpkg, GeneratedGeopackageName);
@@ -279,7 +283,11 @@ public sealed class GeopackageGenerationProcess
             ["T", "A", "FP"]);
 
         viewCreator.CreateCheckerCsvClassifiedView("v_checker_csv_classified", "v_checker_csv_all", "error_matrix", language);
-        viewCreator.CreateAdditionalViews();
+        viewCreator.CreateAdditionalViews(modelVersion);
+        viewCreator.AddGpkgContents();
+
+        new StatisticsMaterializer(connection, logger)
+            .Materialize("ca_statistics_attribute", "v_statistics_attribute");
 
         var materializer = new ErrorDataMaterializer(connection, logger);
         materializer.CreateBuildView("v_ca_error_data_build", "v_checker_csv_classified", "error_matrix", "reader_error_rules", language);

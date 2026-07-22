@@ -61,6 +61,8 @@ public sealed class ErrorOverviewExportProcess
     /// <param name="overviewFilterFields">Attribute keys for pivot report filter fields.</param>
     /// <param name="overviewValueField">Attribute key for the pivot count value field.</param>
     /// <param name="overviewValueName">Display name for the pivot value column.</param>
+    /// <param name="cantonErrorObjectSheet">Sheet name for the raw data export in the canton error Excel workbook.</param>
+    /// <param name="cantonErrorColumnMapping">Maps attribute keys to canton Excel column letters for error objects.</param>
     /// <param name="pipelineFileManager">Pipeline file manager for output file allocation.</param>
     /// <param name="logger">Logger.</param>
     public ErrorOverviewExportProcess(
@@ -76,6 +78,8 @@ public sealed class ErrorOverviewExportProcess
         IList<string>? overviewFilterFields,
         string? overviewValueField,
         string? overviewValueName,
+        string cantonErrorObjectSheet,
+        IDictionary<string, string> cantonErrorColumnMapping,
         IPipelineFileManager pipelineFileManager,
         ILogger logger)
     {
@@ -129,12 +133,14 @@ public sealed class ErrorOverviewExportProcess
     /// When configured, adds pivot table overview sheets for WK and GEP priorities.
     /// </summary>
     /// <param name="geopackage">GeoPackage containing the materialized error tables.</param>
+    /// <param name="cantonErrorMatrixTemplate">Excel template for the canton specific error matrix.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>An <see cref="ErrorOverviewExportResult"/> with the exported Excel file and a localized status message.</returns>
     [PipelineProcessRun]
-    public async Task<ErrorOverviewExportResult> RunAsync(IPipelineFile geopackage, CancellationToken cancellationToken = default)
+    public async Task<ErrorOverviewExportResult> RunAsync(IPipelineFile geopackage, IPipelineFile cantonErrorMatrixTemplate, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(geopackage);
+        ArgumentNullException.ThrowIfNull(cantonErrorMatrixTemplate);
 
         var gpkgPath = geopackage.GetLocalPath();
 

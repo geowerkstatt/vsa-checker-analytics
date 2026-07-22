@@ -112,12 +112,37 @@ internal sealed class ViewCreator
     }
 
     /// <summary>
-    /// Executes the embedded <c>AdditionalViews.sql</c> script, which creates the additional VSA
-    /// views and registers each one in the GeoPackage metadata right after its <c>CREATE VIEW</c>:
-    /// every view in <c>gpkg_contents</c>, and the spatial views also in <c>gpkg_geometry_columns</c>.
+    /// Executes the embedded <c>AdditionalViews.sql</c> script (the error and spatial VSA views,
+    /// which register themselves in the GeoPackage metadata right after their <c>CREATE VIEW</c>:
+    /// in <c>gpkg_contents</c>, spatial ones also in <c>gpkg_geometry_columns</c>), followed by the
+    /// model-version-specific <c>StatisticsViews_{version}.sql</c> script (the <c>v_statistics_*</c>
+    /// views, registered separately by <see cref="AddGpkgContents"/>). The statistics views are split
+    /// per model version because their column set differs between 2020 and 2020.1.
     /// </summary>
-    internal void CreateAdditionalViews()
-        => EmbeddedSql.Execute(connection, "AdditionalViews.sql");
+    /// <param name="modelVersion">Data model version (<c>"2020"</c> or <c>"2020.1"</c>).</param>
+    internal void CreateAdditionalViews(string modelVersion)
+    {
+        EmbeddedSql.Execute(connection, "AdditionalViews.sql");
+        EmbeddedSql.Execute(connection, StatisticsViewsResource(modelVersion));
+    }
+
+    private static string StatisticsViewsResource(string modelVersion) => modelVersion switch
+    {
+        "2020" => "StatisticsViews_2020.sql",
+        "2020.1" => "StatisticsViews_2020_1.sql",
+        _ => throw new NotSupportedException(
+            $"No statistics views are defined for data model version '{modelVersion}'."),
+    };
+
+    /// <summary>
+    /// Executes the embedded <c>GpkgContentsInsert.sql</c> script, which registers the
+    /// <c>v_statistics_*</c> views (created by <see cref="CreateAdditionalViews"/> but not
+    /// registered there) in <c>gpkg_contents</c> as <c>attributes</c> layers, so QGIS/GDAL
+    /// surface them in the GeoPackage layer tree. Uses <c>INSERT OR REPLACE</c>, so running it
+    /// more than once is safe.
+    /// </summary>
+    internal void AddGpkgContents()
+        => EmbeddedSql.Execute(connection, "GpkgContentsInsert.sql");
 
     [SuppressMessage("Security", "CA2100", Justification = "Table name is an internal pipeline constant, not user input.")]
     private List<string> GetColumnNames(string tableName)

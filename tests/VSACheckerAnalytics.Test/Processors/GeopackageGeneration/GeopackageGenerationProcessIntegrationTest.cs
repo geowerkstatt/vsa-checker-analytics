@@ -35,6 +35,7 @@ public class GeopackageGenerationProcessIntegrationTest
             ["checkerCsvFp"] = new InputValue.StepOutputReference(UpstreamStepId, "checker_csv_fp"),
             ["errorMatrix"] = new InputValue.StepOutputReference(UpstreamStepId, "error_matrix"),
             ["language"] = new InputValue.StepOutputReference(UpstreamStepId, "language"),
+            ["modelVersion"] = new InputValue.StepOutputReference(UpstreamStepId, "model_version"),
         };
 
     private PipelineProcessFactory pipelineProcessFactory = null!;
@@ -129,6 +130,17 @@ public class GeopackageGenerationProcessIntegrationTest
         command.CommandText = "SELECT data_type FROM gpkg_contents WHERE table_name = 'ca_error_data'";
         Assert.AreEqual("attributes", command.ExecuteScalar(), "ca_error_data should be registered as an attributes table.");
 
+        command.CommandText = "SELECT data_type FROM gpkg_contents WHERE table_name = 'ca_statistics_attribute'";
+        Assert.AreEqual("attributes", command.ExecuteScalar(), "ca_statistics_attribute should be registered as an attributes table.");
+
+        command.CommandText = "SELECT COUNT(*) FROM ca_statistics_attribute";
+        Assert.IsGreaterThan(0L, (long)(command.ExecuteScalar() ?? 0L));
+
+        // 2020.1 lacks obj_id_gesamteinzugsgebiet_ist_optimiert; StatisticsViews_2020_1.sql keeps the
+        // attribute row but reports a NULL count instead of referencing the missing column.
+        command.CommandText = "SELECT COUNT(*) FROM ca_statistics_attribute WHERE tabelle = 'sk_regenrueckhaltebecken_kanal' AND attribut = 'obj_id_gesamteinzugsgebiet_ist_optimiert' AND anzahl_null IS NULL";
+        Assert.AreEqual(1L, (long)(command.ExecuteScalar() ?? 0L), "2020.1 should keep the missing attribute row with a NULL count.");
+
         command.CommandText = "SELECT COUNT(*) FROM gpkg_geometry_columns WHERE table_name = 'v_vsa_knoten' AND column_name = 'geom'";
         Assert.AreEqual(1L, (long)(command.ExecuteScalar() ?? 0L), "v_vsa_knoten geometry column should be declared.");
     }
@@ -151,7 +163,7 @@ public class GeopackageGenerationProcessIntegrationTest
     public async Task RunGeopackageGenerationPipeline_WithFrenchReaderErrors()
     {
         const string readerCsv = "reader_errors_2020_1_f_sample_fp_err.csv";
-        var result = await RunPipelineAsync(includeUserOrgs: false, "FR", readerCsv, readerCsv, readerCsv);
+        var result = await RunPipelineAsync(includeUserOrgs: false, "FR", "2020.1", readerCsv, readerCsv, readerCsv);
 
         Assert.AreEqual(StepState.Success, result.StepState);
 
@@ -178,7 +190,42 @@ public class GeopackageGenerationProcessIntegrationTest
         Assert.AreEqual(2L, CountErrorData(connection, "detail LIKE '%EigentuemerRef%' AND error LIKE '%PROPRIETAIRERef%'"));
     }
 
-    private async Task<(StepState StepState, StepResult StepResult)> RunPipelineAsync(bool includeUserOrgs, string language, string checkerCsvT, string checkerCsvA, string checkerCsvFp)
+    [TestMethod]
+    public async Task RunGeopackageGenerationPipeline_2020Template_MaterializesStatistics()
+    {
+        var result = await RunPipelineAsync(
+            includeUserOrgs: false,
+            "DE",
+            "2020",
+            "transferdatensatz_2020_1_d_LV95_T-20231205_mini_t_err.csv",
+            "transferdatensatz_2020_1_d_LV95_T-20231205_mini_a_err.csv",
+            "transferdatensatz_2020_1_d_LV95_T-20231205_mini_fp_err.csv");
+
+        Assert.AreEqual(StepState.Success, result.StepState);
+
+        var gpkgFile = result.StepResult.Outputs["generatedGeopackage"].Data as IPipelineFile;
+        Assert.IsNotNull(gpkgFile);
+
+        string gpkgPath;
+        using (var stream = gpkgFile.OpenReadFileStream())
+        {
+            gpkgPath = stream.Name;
+        }
+
+        using var connection = new SqliteConnection($"Data Source={gpkgPath};Mode=ReadOnly;Pooling=false");
+        connection.Open();
+        using var command = connection.CreateCommand();
+
+        // The 2020 statistics views reference columns absent in 2020.1; version selection must pick
+        // StatisticsViews_2020.sql so materialization succeeds against the 2020 schema.
+        command.CommandText = "SELECT data_type FROM gpkg_contents WHERE table_name = 'ca_statistics_attribute'";
+        Assert.AreEqual("attributes", command.ExecuteScalar(), "ca_statistics_attribute should be registered as an attributes table.");
+
+        command.CommandText = "SELECT COUNT(*) FROM ca_statistics_attribute";
+        Assert.IsGreaterThan(0L, (long)(command.ExecuteScalar() ?? 0L));
+    }
+
+    private async Task<(StepState StepState, StepResult StepResult)> RunPipelineAsync(bool includeUserOrgs, string language, string modelVersion, string checkerCsvT, string checkerCsvA, string checkerCsvFp)
     {
         var stepConfig = new StepConfig
         {
@@ -210,8 +257,9 @@ public class GeopackageGenerationProcessIntegrationTest
             .Logger(new Mock<ILogger>().Object)
             .Build();
 
+        var templateFile = modelVersion == "2020.1" ? "template_ca_dssmini_2020_1_d.gpkg" : "template_ca_dssmini_2020_d.gpkg";
         var upstream = new StepResult();
-        upstream.Outputs["gpkg_template"] = FileOutput(CopyFromTestdata("template_ca_dssmini_2020_1_d.gpkg"));
+        upstream.Outputs["gpkg_template"] = FileOutput(CopyFromTestdata(templateFile));
         upstream.Outputs["gep"] = FileOutput(CreateFile("dssMini.xtf", "dss-bytes"));
         upstream.Outputs["standard_org_table"] = FileOutput(CreateFile("defaultOrgs.xtf", "default-bytes"));
         upstream.Outputs["user_org_table"] = includeUserOrgs
@@ -222,6 +270,7 @@ public class GeopackageGenerationProcessIntegrationTest
         upstream.Outputs["checker_csv_fp"] = FileOutput(CopyFromTestdata(checkerCsvFp));
         upstream.Outputs["error_matrix"] = FileOutput(CopyFromTestdata("errorMatrix.xlsx"));
         upstream.Outputs["language"] = new StepOutput { Data = language, Action = [] };
+        upstream.Outputs["model_version"] = new StepOutput { Data = modelVersion, Action = [] };
 
         var context = new PipelineContext
         {
@@ -240,6 +289,7 @@ public class GeopackageGenerationProcessIntegrationTest
         => RunPipelineAsync(
             includeUserOrgs,
             "DE",
+            "2020.1",
             "transferdatensatz_2020_1_d_LV95_T-20231205_mini_t_err.csv",
             "transferdatensatz_2020_1_d_LV95_T-20231205_mini_a_err.csv",
             "transferdatensatz_2020_1_d_LV95_T-20231205_mini_fp_err.csv");
