@@ -116,7 +116,7 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// <returns>A <see cref="VsaMatcherResult"/> with the routed files, extracted metadata, loaded resources, and a localized status message.</returns>
     [PipelineProcessRun]
     public async Task<VsaMatcherResult> RunAsync(
-        IPipelineFile[] uploadFiles,
+        IPipelineFile[] files,
         IPipelineFile[] unzippedFiles,
         CancellationToken cancellationToken)
     {
