@@ -56,10 +56,12 @@ Attribut `wk` als erstes Zeilenfeld, das GEP-Blatt das Attribut `gep`.
 
 ## Output
 
-| Key             | Typ             | Beschreibung                                   |
+`RunAsync` gibt ein `ErrorOverviewExportResult` mit den folgenden Properties zurück:
+
+| Property             | Typ             | Beschreibung                                   |
 |-----------------|-----------------|------------------------------------------------|
-| `errorOverview` | `IPipelineFile` | Die erzeugte Excel-Arbeitsmappe (`error-overview.xlsx`). |
-| `status_message` | `LocalizedText` | Lokalisierte Statusmeldung mit der Anzahl exportierter Fehler. Wird über die Output-Action `StatusMessage` in der Oberfläche angezeigt. |
+| `ErrorOverview` | `IPipelineFile` | Die erzeugte Excel-Arbeitsmappe (`error-overview.xlsx`). |
+| `StatusMessage` | `LocalizedText` | Lokalisierte Statusmeldung mit der Anzahl exportierter Fehler. Wird über die Output-Action `StatusMessage` in der Oberfläche angezeigt. |
 
 ## Verarbeitung
 

@@ -31,10 +31,12 @@ Prozessoren aus.
 
 ## Output
 
-| Key                   | Typ              | Beschreibung                                                                 |
+`RunAsync` gibt ein `GeopackageGenerationResult` mit den folgenden Properties zurück:
+
+| Property                   | Typ              | Beschreibung                                                                 |
 |-----------------------|------------------|-----------------------------------------------------------------------------|
-| `generatedGeopackage` | `IPipelineFile?` | Das befüllte GeoPackage mit dem Namen `generated.gpkg`. `null`, wenn ein ili2gpkg-Importschritt fehlgeschlagen ist. |
-| `status_message`      | `LocalizedText`  | Lokalisierte Statusmeldung: eine Erfolgszusammenfassung oder ein Hinweis auf einen fehlgeschlagenen INTERLIS-Import, wenn `generatedGeopackage` `null` ist. Wird über die Output-Action `StatusMessage` in der Oberfläche angezeigt. |
+| `GeneratedGeopackage` | `IPipelineFile?` | Das befüllte GeoPackage mit dem Namen `generated.gpkg`. `null`, wenn ein ili2gpkg-Importschritt fehlgeschlagen ist. |
+| `StatusMessage`      | `LocalizedText`  | Lokalisierte Statusmeldung: eine Erfolgszusammenfassung oder ein Hinweis auf einen fehlgeschlagenen INTERLIS-Import, wenn `GeneratedGeopackage` `null` ist. Wird über die Output-Action `StatusMessage` in der Oberfläche angezeigt. |
 
 ## Anreicherungsschritte und Zwischenstände
 
@@ -209,6 +211,6 @@ und `gpkg_geometry_columns` eingetragen (siehe
 
 Wenn ein `ili2gpkg`-Importschritt ein nicht erfolgreiches Ergebnis meldet,
 protokolliert der Prozess die Worker-Ausgabe auf Debug-Level und gibt `null` für
-`generatedGeopackage` zurück. Die verbleibenden Anreicherungsschritte werden
+`GeneratedGeopackage` zurück. Die verbleibenden Anreicherungsschritte werden
 übersprungen. Nachgelagerte Prozessoren erkennen das fehlende GPKG über ihre
 eigene Pre-Condition und brechen die Pipeline ab.

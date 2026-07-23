@@ -113,9 +113,9 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// <param name="files">The originally uploaded files (GEP transfer file, optional org table, ZIP).</param>
     /// <param name="unzippedFiles">Files extracted from the GEP checker ZIP by a preceding unzip step.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
-    /// <returns>A dictionary of named outputs for downstream pipeline steps, including a localized <c>status_message</c>.</returns>
+    /// <returns>A <see cref="VsaMatcherResult"/> with the routed files, extracted metadata, loaded resources, and a localized status message.</returns>
     [PipelineProcessRun]
-    public async Task<Dictionary<string, object?>> RunAsync(
+    public async Task<VsaMatcherResult> RunAsync(
         IPipelineFile[] files,
         IPipelineFile[] unzippedFiles,
         CancellationToken cancellationToken)
@@ -161,18 +161,18 @@ internal sealed class VsaMatcherProcess : IDisposable
             statusMessage = NoGepFoundStatusMessage;
         }
 
-        return new Dictionary<string, object?>
+        return new VsaMatcherResult
         {
-            { "gep", gepMatches.Select(m => m.File).ToArray() },
-            { "model_version", ModelVersionToString(modelVersion) },
-            { "language", LanguageToString(language) },
-            { "user_org_table", userOrgTables },
-            { "checker_csv_a", checkerCsvsA },
-            { "checker_csv_fp", checkerCsvsFp },
-            { "checker_csv_t", checkerCsvsT },
-            { "gpkg_template", gpkgTemplate },
-            { "standard_org_table", standardOrgTable },
-            { "status_message", statusMessage },
+            Gep = gepMatches.Select(m => m.File).ToArray(),
+            ModelVersion = ModelVersionToString(modelVersion),
+            Language = LanguageToString(language),
+            UserOrgTable = userOrgTables,
+            CheckerCsvA = checkerCsvsA,
+            CheckerCsvFp = checkerCsvsFp,
+            CheckerCsvT = checkerCsvsT,
+            GpkgTemplate = gpkgTemplate,
+            StandardOrgTable = standardOrgTable,
+            StatusMessage = statusMessage,
         };
     }
 

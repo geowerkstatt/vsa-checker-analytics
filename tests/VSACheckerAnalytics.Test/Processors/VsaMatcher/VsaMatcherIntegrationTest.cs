@@ -22,15 +22,15 @@ public class VsaMatcherIntegrationTest
 
     private static readonly List<OutputConfig> VsaMatcherOutputs =
     [
-        new() { Take = "gep", As = "gep" },
-        new() { Take = "model_version", As = "model_version" },
-        new() { Take = "language", As = "language" },
-        new() { Take = "user_org_table", As = "user_org_table" },
-        new() { Take = "checker_csv_a", As = "checker_csv_a" },
-        new() { Take = "checker_csv_fp", As = "checker_csv_fp" },
-        new() { Take = "checker_csv_t", As = "checker_csv_t" },
-        new() { Take = "gpkg_template", As = "gpkg_template" },
-        new() { Take = "standard_org_table", As = "standard_org_table" },
+        new() { Take = "Gep", As = "gep" },
+        new() { Take = "ModelVersion", As = "model_version" },
+        new() { Take = "Language", As = "language" },
+        new() { Take = "UserOrgTable", As = "user_org_table" },
+        new() { Take = "CheckerCsvA", As = "checker_csv_a" },
+        new() { Take = "CheckerCsvFp", As = "checker_csv_fp" },
+        new() { Take = "CheckerCsvT", As = "checker_csv_t" },
+        new() { Take = "GpkgTemplate", As = "gpkg_template" },
+        new() { Take = "StandardOrgTable", As = "standard_org_table" },
     ];
 
     private Mock<HttpMessageHandler> httpMessageHandlerMock = null!;

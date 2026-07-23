@@ -18,7 +18,6 @@ public sealed class ErrorOverviewExportProcess
 {
     private const string ErrorDataTable = "ca_error_data";
     private const string ErrorObjectTable = "ca_error_object";
-    private const string StatusMessageOutputKey = "status_message";
 
     private static readonly LocalizedText ErrorOverviewStatusMessageFormat = new Dictionary<string, string>
     {
@@ -131,9 +130,9 @@ public sealed class ErrorOverviewExportProcess
     /// </summary>
     /// <param name="geopackage">GeoPackage containing the materialized error tables.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A dictionary with the exported Excel file under <c>errorOverview</c>.</returns>
+    /// <returns>An <see cref="ErrorOverviewExportResult"/> with the exported Excel file and a localized status message.</returns>
     [PipelineProcessRun]
-    public async Task<Dictionary<string, object?>> RunAsync(IPipelineFile geopackage, CancellationToken cancellationToken = default)
+    public async Task<ErrorOverviewExportResult> RunAsync(IPipelineFile geopackage, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(geopackage);
 
@@ -169,10 +168,10 @@ public sealed class ErrorOverviewExportProcess
         var statusMessage = ErrorOverviewStatusMessageFormat
             .Map(msg => string.Format(CultureInfo.InvariantCulture, msg, errorCount));
 
-        return new Dictionary<string, object?>
+        return new ErrorOverviewExportResult
         {
-            { "error_overview", outputFile },
-            { StatusMessageOutputKey, statusMessage },
+            ErrorOverview = outputFile,
+            StatusMessage = statusMessage,
         };
     }
 

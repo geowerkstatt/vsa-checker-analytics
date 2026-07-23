@@ -45,11 +45,10 @@ public sealed class NetworkTopologyPatcherProcessTest
 
         var result = await patcherProcess.RunAsync(input, CancellationToken.None);
 
-        Assert.IsTrue(result.ContainsKey("patchedGeopackage"));
-        Assert.IsNotNull(result["patchedGeopackage"]);
-        var output = Assert.IsInstanceOfType<IPipelineFile>(result["patchedGeopackage"]);
+        var output = result.PatchedGeopackage;
+        Assert.IsNotNull(output);
 
-        var statusMessage = Assert.IsInstanceOfType<LocalizedText>(result["status_message"]);
+        var statusMessage = result.StatusMessage;
         StringAssert.Contains(statusMessage["en"]!, "edges created");
 
         Assert.AreNotSame(input, output, "Process must write to a fresh copy, not mutate the input.");
@@ -162,7 +161,8 @@ public sealed class NetworkTopologyPatcherProcessTest
         var patcherProcess = new NetworkTopologyPatcherProcess(fileManager, NullLogger.Instance);
 
         var result = await patcherProcess.RunAsync(input, CancellationToken.None);
-        var output = Assert.IsInstanceOfType<IPipelineFile>(result["patchedGeopackage"]);
+        var output = result.PatchedGeopackage;
+        Assert.IsNotNull(output);
 
         string outputPath;
         using (var fs = output.OpenReadFileStream())
@@ -198,7 +198,8 @@ public sealed class NetworkTopologyPatcherProcessTest
             var patcherProcess = new NetworkTopologyPatcherProcess(fileManager, NullLogger.Instance);
 
             var result = await patcherProcess.RunAsync(input, CancellationToken.None);
-            var output = Assert.IsInstanceOfType<IPipelineFile>(result["patchedGeopackage"]);
+            var output = result.PatchedGeopackage;
+            Assert.IsNotNull(output);
 
             string outputPath;
             using (var fs = output.OpenReadFileStream())
@@ -236,7 +237,8 @@ public sealed class NetworkTopologyPatcherProcessTest
 
             // Must not throw: the unreadable CompoundCurve verlauf is skipped, not fatal.
             var result = await patcherProcess.RunAsync(input, CancellationToken.None);
-            var output = Assert.IsInstanceOfType<IPipelineFile>(result["patchedGeopackage"]);
+            var output = result.PatchedGeopackage;
+            Assert.IsNotNull(output);
 
             string outputPath;
             using (var fs = output.OpenReadFileStream())

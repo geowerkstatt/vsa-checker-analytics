@@ -71,12 +71,12 @@ public sealed class GeopackageGenerationProcessTest
             Assert.IsTrue(inv.Args.ImportTid);
         }
 
-        var output = (IPipelineFile)result["generatedGeopackage"]!;
+        var output = result.GeneratedGeopackage;
         Assert.IsNotNull(output);
         using var stream = output.OpenReadFileStream();
         Assert.IsGreaterThan(0, stream.Length);
 
-        var statusMessage = (LocalizedText)result["status_message"]!;
+        var statusMessage = result.StatusMessage;
         Assert.AreEqual("GeoPackage created and enriched with checker data, error matrix and analysis views.", statusMessage["en"]);
     }
 
@@ -131,9 +131,9 @@ public sealed class GeopackageGenerationProcessTest
             "DE",
             cancellationToken: CancellationToken.None);
 
-        Assert.IsNull(result["generatedGeopackage"]);
+        Assert.IsNull(result.GeneratedGeopackage);
 
-        var statusMessage = (LocalizedText)result["status_message"]!;
+        var statusMessage = result.StatusMessage;
         Assert.AreEqual("GeoPackage could not be created: INTERLIS import failed.", statusMessage["en"]);
     }
 

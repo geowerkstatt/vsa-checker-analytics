@@ -20,7 +20,7 @@ public class ErrorOverviewExportProcessIntegrationTest
 
     private static readonly List<OutputConfig> ErrorOverviewExportOutputs =
     [
-        new() { Take = "error_overview", As = "errorOverview" },
+        new() { Take = "ErrorOverview", As = "errorOverview" },
     ];
 
     private static readonly IReadOnlyDictionary<string, InputValue> ErrorOverviewExportInputs =

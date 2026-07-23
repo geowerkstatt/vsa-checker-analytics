@@ -32,20 +32,20 @@ Die `RunAsync`-Methode erhält zwei Sammlungen:
 
 ## Outputs
 
-`RunAsync` gibt ein `Dictionary<string, object?>` mit den folgenden Keys zurück:
+`RunAsync` gibt ein `VsaMatcherResult` mit den folgenden Properties zurück:
 
-| Key                 | Typ               | Beschreibung                                                                 |
+| Property            | Typ               | Beschreibung                                                                 |
 |---------------------|-------------------|-----------------------------------------------------------------------------|
-| `gep`               | `IPipelineFile[]` | Alle hochgeladenen Dateien, die als GEP-Transferdateien identifiziert wurden. Die Post-Condition des Schritts stellt sicher, dass genau eine vorhanden ist. |
-| `model_version`     | `string?`         | `"2020"` oder `"2020.1"`, abgeleitet aus dem GEP-ILI-Modellnamen. Nur gesetzt, wenn genau eine GEP-Datei gefunden wird. Für die weitere Verarbeitung zwingend; die Post-Condition des Schritts stellt ihre Präsenz sicher. |
-| `language`          | `string?`         | `"DE"` oder `"FR"`, abgeleitet aus dem GEP-ILI-Modellnamen. Nur gesetzt, wenn genau eine GEP-Datei gefunden wird. Für die weitere Verarbeitung zwingend; die Post-Condition des Schritts stellt ihre Präsenz sicher. |
-| `user_org_table`    | `IPipelineFile[]` | Alle hochgeladenen Dateien, die als benutzerdefinierte Organisationstabellen identifiziert wurden. Die Post-Condition des Schritts stellt sicher, dass null oder eine vorhanden ist. |
-| `checker_csv_a`     | `IPipelineFile[]` | Checker-CSVs für ARA (a), erkannt am Dateinamen mit der Endung `_a_err`. Die Post-Condition des Schritts stellt sicher, dass genau eine vorhanden ist. |
-| `checker_csv_fp`    | `IPipelineFile[]` | Checker-CSVs für Fachprüfungen (FP), erkannt am Dateinamen mit der Endung `_fp_err`. Die Post-Condition des Schritts stellt sicher, dass genau eine vorhanden ist. |
-| `checker_csv_t`     | `IPipelineFile[]` | Checker-CSVs für Trägerschaft (T), erkannt am Dateinamen mit der Endung `_t_err`. Die Post-Condition des Schritts stellt sicher, dass genau eine vorhanden ist. |
-| `gpkg_template`     | `IPipelineFile?`  | Aus den Application Resources kopiertes GeoPackage-Template, passend zur Modellversion. Für die weitere Verarbeitung zwingend; die Post-Condition des Schritts stellt seine Präsenz sicher. |
-| `standard_org_table`| `IPipelineFile?`  | Aus dem VSA-Repository bezogene Standard-Organisationstabelle, passend zur Modellversion. Für die weitere Verarbeitung zwingend; die Post-Condition des Schritts stellt ihre Präsenz sicher. |
-| `status_message`    | `LocalizedText`   | Lokalisierte Statusmeldung, die das Identifizierungsergebnis zusammenfasst (erkannte Modellversion und Sprache sowie die Anzahl gefundener Checker-CSVs, oder ein Hinweis auf eine fehlende bzw. mehrere GEP-Dateien). Wird über die Output-Action `StatusMessage` in der Oberfläche angezeigt. |
+| `Gep`               | `IPipelineFile[]` | Alle hochgeladenen Dateien, die als GEP-Transferdateien identifiziert wurden. Die Post-Condition des Schritts stellt sicher, dass genau eine vorhanden ist. |
+| `ModelVersion`     | `string?`         | `"2020"` oder `"2020.1"`, abgeleitet aus dem GEP-ILI-Modellnamen. Nur gesetzt, wenn genau eine GEP-Datei gefunden wird. Für die weitere Verarbeitung zwingend; die Post-Condition des Schritts stellt ihre Präsenz sicher. |
+| `Language`          | `string?`         | `"DE"` oder `"FR"`, abgeleitet aus dem GEP-ILI-Modellnamen. Nur gesetzt, wenn genau eine GEP-Datei gefunden wird. Für die weitere Verarbeitung zwingend; die Post-Condition des Schritts stellt ihre Präsenz sicher. |
+| `UserOrgTable`    | `IPipelineFile[]` | Alle hochgeladenen Dateien, die als benutzerdefinierte Organisationstabellen identifiziert wurden. Die Post-Condition des Schritts stellt sicher, dass null oder eine vorhanden ist. |
+| `CheckerCsvA`     | `IPipelineFile[]` | Checker-CSVs für ARA (a), erkannt am Dateinamen mit der Endung `_a_err`. Die Post-Condition des Schritts stellt sicher, dass genau eine vorhanden ist. |
+| `CheckerCsvFp`    | `IPipelineFile[]` | Checker-CSVs für Fachprüfungen (FP), erkannt am Dateinamen mit der Endung `_fp_err`. Die Post-Condition des Schritts stellt sicher, dass genau eine vorhanden ist. |
+| `CheckerCsvT`     | `IPipelineFile[]` | Checker-CSVs für Trägerschaft (T), erkannt am Dateinamen mit der Endung `_t_err`. Die Post-Condition des Schritts stellt sicher, dass genau eine vorhanden ist. |
+| `GpkgTemplate`     | `IPipelineFile?`  | Aus den Application Resources kopiertes GeoPackage-Template, passend zur Modellversion. Für die weitere Verarbeitung zwingend; die Post-Condition des Schritts stellt seine Präsenz sicher. |
+| `StandardOrgTable`| `IPipelineFile?`  | Aus dem VSA-Repository bezogene Standard-Organisationstabelle, passend zur Modellversion. Für die weitere Verarbeitung zwingend; die Post-Condition des Schritts stellt ihre Präsenz sicher. |
+| `StatusMessage`    | `LocalizedText`   | Lokalisierte Statusmeldung, die das Identifizierungsergebnis zusammenfasst (erkannte Modellversion und Sprache sowie die Anzahl gefundener Checker-CSVs, oder ein Hinweis auf eine fehlende bzw. mehrere GEP-Dateien). Wird über die Output-Action `StatusMessage` in der Oberfläche angezeigt. |
 
 ## Dateiidentifikation
 
@@ -83,8 +83,8 @@ Nur `.csv`-Dateien innerhalb des `check`-Verzeichnisses (gesetzt vom
 `UnzipProcess` über `OriginalRelativePath`) werden berücksichtigt. Der Dateiname
 (ohne Endung) wird anschliessend gegen Regex-Muster abgeglichen.
 
-| Output-Key       | Muster      | Beispiel-Treffer           |
+| Output-Property  | Muster      | Beispiel-Treffer           |
 |------------------|-------------|----------------------------|
-| `checker_csv_a`  | `_a_err$`   | `check/gep_a_err.csv`     |
-| `checker_csv_fp` | `_fp_err$`  | `check/gep_fp_err.csv`    |
-| `checker_csv_t`  | `_t_err$`   | `check/gep_t_err.csv`     |
+| `CheckerCsvA`  | `_a_err$`   | `check/gep_a_err.csv`     |
+| `CheckerCsvFp` | `_fp_err$`  | `check/gep_fp_err.csv`    |
+| `CheckerCsvT`  | `_t_err$`   | `check/gep_t_err.csv`     |
