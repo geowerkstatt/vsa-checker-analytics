@@ -11,10 +11,10 @@ public sealed class NetworkTopologyPatcherResult
     /// The GeoPackage copy enriched with the reconstructed network topology layers,
     /// or <see langword="null"/> when the reconstruction failed.
     /// </summary>
-    public IPipelineFile? PatchedGeopackage { get; set; }
+    public IPipelineFile? PatchedGeopackage { get; init; }
 
     /// <summary>
     /// A localized status message describing the outcome.
     /// </summary>
-    public required LocalizedText StatusMessage { get; set; }
+    public required LocalizedText StatusMessage { get; init; }
 }

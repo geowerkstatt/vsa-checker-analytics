@@ -10,10 +10,10 @@ public sealed class ErrorOverviewExportResult
     /// <summary>
     /// The exported Excel workbook containing the error overview.
     /// </summary>
-    public required IPipelineFile ErrorOverview { get; set; }
+    public required IPipelineFile ErrorOverview { get; init; }
 
     /// <summary>
     /// A localized status message describing the outcome.
     /// </summary>
-    public required LocalizedText StatusMessage { get; set; }
+    public required LocalizedText StatusMessage { get; init; }
 }

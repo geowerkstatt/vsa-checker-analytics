@@ -11,10 +11,10 @@ public sealed class GeopackageGenerationResult
     /// The generated GeoPackage, enriched with checker data, error matrix and analysis views,
     /// or <see langword="null"/> when the INTERLIS import failed.
     /// </summary>
-    public IPipelineFile? GeneratedGeopackage { get; set; }
+    public IPipelineFile? GeneratedGeopackage { get; init; }
 
     /// <summary>
     /// A localized status message describing the outcome.
     /// </summary>
-    public required LocalizedText StatusMessage { get; set; }
+    public required LocalizedText StatusMessage { get; init; }
 }
