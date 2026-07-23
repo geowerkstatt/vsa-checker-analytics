@@ -27,7 +27,7 @@ Die `RunAsync`-Methode erhält zwei Sammlungen:
 
 | Parameter       | Quelle             | Typ                  | Beschreibung                                                        |
 |-----------------|--------------------|----------------------|--------------------------------------------------------------------|
-| `uploadFiles`   | Benutzer-Upload    | `IPipelineFileList`  | Die ursprünglich hochgeladenen Dateien (GEP-Transferdatei, optionale Organisationstabelle, ZIP). |
+| `files`         | Benutzer-Upload    | `IPipelineFile[]`  | Die ursprünglich hochgeladenen Dateien (GEP-Transferdatei, optionale Organisationstabelle, ZIP). |
 | `unzippedFiles` | ZIP Unpacker       | `IPipelineFile[]`    | Vom vorangehenden Entpackschritt aus dem GEP-Checker-ZIP extrahierte Dateien. 3*3 Dateien, 9 insgesamt: CSV, XTF und Log für jede der drei VSA-Prüfklassen (a, FP, T). |
 
 ## Outputs
