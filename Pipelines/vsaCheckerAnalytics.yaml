@@ -96,17 +96,14 @@ pipelines:
           fr: Correspondance des fichiers GEP Checker (ZIP)
           it: Corrispondenza file GEP Checker (ZIP)
         process_id: zip_file_matcher
-        output:
-          - take: MatchedFiles
-            as: gep_checker_files
-          - take: StatusMessage
-            as: status_message
-            action:
+        output_actions:
+          - property: StatusMessage
+            actions:
               - StatusMessage
         conditions:
           post:
             fail_conditions:
-              - expression: "Length([gep_checker_file_matcher.gep_checker_files]) != 1"
+              - expression: "Length([gep_checker_file_matcher.MatchedFiles]) != 1"
                 message:
                   de: "Genau eine GEP-Checker-Datei ist erforderlich"
                   en: "Exactly one GEP Checker file is required"
@@ -120,13 +117,10 @@ pipelines:
           it: Estrazione del file GEP Checker
         process_id: unzipper
         input:
-          zipFile: "${step_output(gep_checker_file_matcher.gep_checker_files)}"
-        output:
-          - take: ExtractedFiles
-            as: gep_checker_files
-          - take: StatusMessage
-            as: status_message
-            action:
+          zipFile: "${step_output(gep_checker_file_matcher.MatchedFiles)}"
+        output_actions:
+          - property: StatusMessage
+            actions:
               - StatusMessage
       - id: vsa_matcher
         display_name:
@@ -137,70 +131,51 @@ pipelines:
         process_id: vsa_matcher
         input:
           files: "${upload()}"
-          unzippedFiles: "${step_output(gep_checker_unzipper.gep_checker_files)}"
-        output:
-          - take: Gep
-            as: gep
-          - take: ModelVersion
-            as: model_version
-          - take: Language
-            as: language
-          - take: UserOrgTable
-            as: user_org_table
-          - take: CheckerCsvA
-            as: checker_csv_a
-          - take: CheckerCsvFp
-            as: checker_csv_fp
-          - take: CheckerCsvT
-            as: checker_csv_t
-          - take: GpkgTemplate
-            as: gpkg_template
-          - take: StandardOrgTable
-            as: standard_org_table
-          - take: StatusMessage
-            as: status_message
-            action:
+          unzippedFiles: "${step_output(gep_checker_unzipper.ExtractedFiles)}"
+        output_actions:
+          - property: StatusMessage
+            actions:
               - StatusMessage
         conditions:
           post:
             fail_conditions:
-              - expression: "Length([vsa_matcher.gep]) != 1"
+              - expression: "Length([vsa_matcher.Gep]) != 1"
                 message:
                   de: "Ein GEP File notwendig"
                   en: "Exactly one GEP file is required"
                   fr: "Un fichier GEP est requis"
                   it: "È necessario un file GEP"
-              - expression: "Length([vsa_matcher.user_org_table]) > 1"
+              - expression: "Length([vsa_matcher.UserOrgTable]) > 1"
                 message:
                   de: "Mehrere benutzerdefinierte Organisationstabellen gefunden"
                   en: "Multiple user-defined organisation tables found"
                   fr: "Plusieurs tables d'organisation définies par l'utilisateur trouvées"
                   it: "Trovate più tabelle di organizzazione definite dall'utente"
-              - expression: "Length([vsa_matcher.checker_csv_a]) != 1"
+              - expression: "Length([vsa_matcher.CheckerCsvA]) != 1"
                 message:
                   de: "Ein Checker CSV ARA-Einzugsgebiet File notwendig"
                   en: "Exactly one checker CSV file for ARA catchment area is required"
                   fr: "Un fichier CSV du vérificateur pour le bassin versant ARA est requis"
                   it: "È necessario un file CSV del controllo per il bacino ARA"
-              - expression: "Length([vsa_matcher.checker_csv_fp]) != 1"
+              - expression: "Length([vsa_matcher.CheckerCsvFp]) != 1"
                 message:
                   de: "Ein Checker CSV Fachprüfungen File notwendig"
                   en: "Exactly one checker CSV file for technical inspections is required"
                   fr: "Un fichier CSV du vérificateur pour les examens techniques est requis"
                   it: "È necessario un file CSV del controllo per le verifiche tecniche"
-              - expression: "Length([vsa_matcher.checker_csv_t]) != 1"
+              - expression: "Length([vsa_matcher.CheckerCsvT]) != 1"
                 message:
                   de: "Ein Checker CSV Trägerschaft File notwendig"
                   en: "Exactly one checker CSV file for sponsorship is required"
                   fr: "Un fichier CSV du vérificateur pour l'organisme responsable est requis"
                   it: "È necessario un file CSV del controllo per l'ente responsabile"
-              - expression: "[vsa_matcher.gpkg_template] == null"
+              - expression: "[vsa_matcher.GpkgTemplate] == null"
                 message:
                   de: "Ein GPKG Template File notwendig"
                   en: "Exactly one GPKG template file is required"
                   fr: "Un fichier de modèle GPKG est requis"
                   it: "È necessario un file modello GPKG"
-              - expression: "[vsa_matcher.standard_org_table] == null"
+              - expression: "[vsa_matcher.StandardOrgTable] == null"
                 message:
                   de: "Ein Standard-Organisations-Tabellen File notwendig"
                   en: "Exactly one standard organisation table file is required"
@@ -214,26 +189,23 @@ pipelines:
           it: GeoPackage Generation
         process_id: geopackage_generation
         input:
-          geoPackage: "${step_output(vsa_matcher.gpkg_template)}"
-          dssMiniXtf: "${step_output(vsa_matcher.gep)}"
-          defaultOrgsXtf: "${step_output(vsa_matcher.standard_org_table)}"
-          userOrgsXtf: "${step_output(vsa_matcher.user_org_table)}"
-          checkerCsvT: "${step_output(vsa_matcher.checker_csv_t)}"
-          checkerCsvA: "${step_output(vsa_matcher.checker_csv_a)}"
-          checkerCsvFp: "${step_output(vsa_matcher.checker_csv_fp)}"
+          geoPackage: "${step_output(vsa_matcher.GpkgTemplate)}"
+          dssMiniXtf: "${step_output(vsa_matcher.Gep)}"
+          defaultOrgsXtf: "${step_output(vsa_matcher.StandardOrgTable)}"
+          userOrgsXtf: "${step_output(vsa_matcher.UserOrgTable)}"
+          checkerCsvT: "${step_output(vsa_matcher.CheckerCsvT)}"
+          checkerCsvA: "${step_output(vsa_matcher.CheckerCsvA)}"
+          checkerCsvFp: "${step_output(vsa_matcher.CheckerCsvFp)}"
           errorMatrix: "${file(ErrorMatrix_v3.xlsx)}"
-          language: "${step_output(vsa_matcher.language)}"
-        output:
-          - take: GeneratedGeopackage
-            as: generatedGeopackage
-          - take: StatusMessage
-            as: status_message
-            action:
+          language: "${step_output(vsa_matcher.Language)}"
+        output_actions:
+          - property: StatusMessage
+            actions:
               - StatusMessage
         conditions:
           post:
             fail_conditions:
-              - expression: "[geopackage_generation.generatedGeopackage] == null"
+              - expression: "[geopackage_generation.GeneratedGeopackage] == null"
                 message:
                   de: "Der Import der Daten in das GeoPackage ist fehlgeschlagen"
                   en: "The import of the data into the GeoPackage has failed"
@@ -247,15 +219,13 @@ pipelines:
           it: Esportazione panoramica degli errori
         process_id: error_overview_export
         input:
-          geopackage: "${step_output(geopackage_generation.generatedGeopackage)}"
-        output:
-          - take: ErrorOverview
-            as: errorOverview
-            action:
+          geopackage: "${step_output(geopackage_generation.GeneratedGeopackage)}"
+        output_actions:
+          - property: ErrorOverview
+            actions:
               - Download
-          - take: StatusMessage
-            as: status_message
-            action:
+          - property: StatusMessage
+            actions:
               - StatusMessage
       - id: network_topology_patcher
         display_name:
@@ -265,20 +235,18 @@ pipelines:
           it: Patcher topologia di rete
         process_id: network_topology_patcher
         input:
-          geoPackage: "${step_output(geopackage_generation.generatedGeopackage)}"
-        output:
-          - take: PatchedGeopackage
-            as: patchedGeopackage
-            action:
+          geoPackage: "${step_output(geopackage_generation.GeneratedGeopackage)}"
+        output_actions:
+          - property: PatchedGeopackage
+            actions:
               - Download
-          - take: StatusMessage
-            as: status_message
-            action:
+          - property: StatusMessage
+            actions:
               - StatusMessage
         conditions:
           post:
             fail_conditions:
-              - expression: "[network_topology_patcher.patchedGeopackage] == null"
+              - expression: "[network_topology_patcher.PatchedGeopackage] == null"
                 message:
                   de: "Die Rekonstruktion der Netzwerktopologie ist fehlgeschlagen"
                   en: "Network topology reconstruction failed"
