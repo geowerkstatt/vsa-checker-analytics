@@ -63,7 +63,10 @@ Attribut `wk` als erstes Zeilenfeld, das GEP-Blatt das Attribut `gep`.
 Vorlage ab. Anders als die Fehlerdatenblätter hat das Rohdatenblatt **keine
 Kopfzeile**: die Statistikzeilen werden ab Zeile 1 geschrieben. Für dieses Mapping
 gibt es keine Startup-Validierung; es adressiert schlicht die Spalten, die die
-Vorlage im Rohdatenblatt erwartet.
+Vorlage im Rohdatenblatt erwartet. Die View liefert zusätzlich eine
+`sortierung`-Spalte, die die Zeilenreihenfolge festlegt und beim Rücklesen für
+`ORDER BY sortierung` verwendet wird (nicht ins Excel geschrieben); so entsprechen
+die Zeilen den fest verdrahteten Zellbezügen der Validierungsblätter der Vorlage.
 
 ## Inputs
 
@@ -105,7 +108,7 @@ Vorlage im Rohdatenblatt erwartet.
    - Über `IPipelineFileManager.CreateWritableCopy` wird eine eigene, beschreibbare
      Kopie der Vorlage `ErrorMatrixKanton.xlsx` angelegt und in place bearbeitet.
    - Ist die Tabelle `ca_statistics_attribute` vorhanden, werden ihre Zeilen
-     (`ORDER BY rowid`) aus derselben schreibgeschützten Verbindung in das
+     (`ORDER BY sortierung`) aus derselben schreibgeschützten Verbindung in das
      Rohdatenblatt (`cantonErrorObjectSheet`) geschrieben: jeder Attribut-Key in die
      per `cantonErrorColumnMapping` definierte Spalte, ab Zeile 1 und ohne Kopfzeile.
      Zellwerte behalten ihren SQLite-Typ (Ganzzahl / Gleitkommazahl bleiben

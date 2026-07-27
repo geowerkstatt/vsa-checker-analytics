@@ -19,6 +19,7 @@ public sealed class ErrorOverviewExportProcess
     private const string ErrorDataTable = "ca_error_data";
     private const string ErrorObjectTable = "ca_error_object";
     private const string StatisticsTable = "ca_statistics_attribute";
+    private const string StatisticsOrderColumn = "sortierung";
     private const string CantonMatrixFileName = "kantonale_fehlermatrix";
 
     private static readonly LocalizedText ErrorOverviewStatusMessageFormat = new Dictionary<string, string>
@@ -234,8 +235,12 @@ public sealed class ErrorOverviewExportProcess
         var attributes = cantonColumns.Keys.ToArray();
         var columnList = string.Join(", ", attributes.Select(a => $"\"{a}\""));
 
+        // Order explicitly by the statistics view's sortierung column, not by rowid: the canton
+        // template's validation sheets reference raw_data rows by fixed cell, so the rows must match
+        // the sortierung order the template was built against. Relying on rowid would silently depend
+        // on the materialization happening to insert in the view's ORDER BY order.
         using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT {columnList} FROM \"{StatisticsTable}\" ORDER BY rowid";
+        command.CommandText = $"SELECT {columnList} FROM \"{StatisticsTable}\" ORDER BY \"{StatisticsOrderColumn}\"";
         using var reader = command.ExecuteReader();
 
         var rowNumber = 1;
