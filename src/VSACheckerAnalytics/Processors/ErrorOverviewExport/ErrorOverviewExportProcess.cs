@@ -270,7 +270,6 @@ public sealed class ErrorOverviewExportProcess
         logger.LogInformation("Wrote {RowCount} row(s) into canton raw data sheet '{Sheet}'.", rowNumber - 1, cantonSheetName);
     }
 
-    [SuppressMessage("Security", "CA2100", Justification = "Table name is an internal pipeline constant, not user input.")]
     private static bool TableExists(SqliteConnection connection, string tableName)
     {
         using var command = connection.CreateCommand();
