@@ -170,13 +170,7 @@ public class GeopackageGenerationProcessIntegrationTest
         var gpkgFile = result.StepResult.Outputs["generatedGeopackage"].Data as IPipelineFile;
         Assert.IsNotNull(gpkgFile);
 
-        string gpkgPath;
-        using (var stream = gpkgFile.OpenReadFileStream())
-        {
-            gpkgPath = stream.Name;
-        }
-
-        using var connection = new SqliteConnection($"Data Source={gpkgPath};Mode=ReadOnly;Pooling=false");
+        using var connection = new SqliteConnection($"Data Source={gpkgFile.GetLocalPath()};Mode=ReadOnly;Pooling=false");
         connection.Open();
 
         // Six distinct real reader errors (ErrorId 15), all known via the base row, mapped reader -> igcheck.
@@ -206,13 +200,7 @@ public class GeopackageGenerationProcessIntegrationTest
         var gpkgFile = result.StepResult.Outputs["generatedGeopackage"].Data as IPipelineFile;
         Assert.IsNotNull(gpkgFile);
 
-        string gpkgPath;
-        using (var stream = gpkgFile.OpenReadFileStream())
-        {
-            gpkgPath = stream.Name;
-        }
-
-        using var connection = new SqliteConnection($"Data Source={gpkgPath};Mode=ReadOnly;Pooling=false");
+        using var connection = new SqliteConnection($"Data Source={gpkgFile.GetLocalPath()};Mode=ReadOnly;Pooling=false");
         connection.Open();
         using var command = connection.CreateCommand();
 
