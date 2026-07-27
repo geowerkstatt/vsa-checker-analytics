@@ -476,7 +476,6 @@ internal sealed class ErrorDataMaterializer
     private static string ClassColumn(string language) =>
         string.Equals(language, "FR", StringComparison.OrdinalIgnoreCase) ? "class_fr" : "class_de";
 
-    [SuppressMessage("Security", "CA2100", Justification = "Table names are internal pipeline constants, not user input.")]
     private bool TableExists(string tableName)
     {
         using var command = connection.CreateCommand();
