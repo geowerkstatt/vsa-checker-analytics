@@ -19,7 +19,7 @@
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
-    <PackageReference Include="GeoWerkstatt.Geopilot.PipelineCore" Version="2.0.0-preview.376">
+    <PackageReference Include="GeoWerkstatt.Geopilot.PipelineCore" Version="2.0.0-preview.377">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
