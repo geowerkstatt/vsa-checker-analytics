@@ -58,6 +58,18 @@ public sealed class ErrorOverviewExportProcessTest
         { "gep_max", "E" },
     };
 
+    private static readonly Dictionary<string, string> CantonErrorColumnMapping = new()
+    {
+        { "tabelle", "A" },
+        { "attribut", "B" },
+        { "anzahl_total", "C" },
+        { "anzahl_paa", "D" },
+        { "anzahl_saa", "E" },
+        { "anzahl_null", "F" },
+        { "anzahl_null_paa", "G" },
+        { "anzahl_null_saa", "H" },
+    };
+
     private string inputDirectory = null!;
     private TestPipelineFileManager fileManager = null!;
 
@@ -97,7 +109,7 @@ public sealed class ErrorOverviewExportProcessTest
         var geopackage = CreateTestGeoPackage(SeedStandardData);
         var process = CreateProcess();
 
-        var result = await process.RunAsync(geopackage);
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
 
         var statusMessage = result.StatusMessage;
         Assert.AreEqual("Error overview created: 2 errors exported.", statusMessage["en"]);
@@ -127,7 +139,7 @@ public sealed class ErrorOverviewExportProcessTest
         var geopackage = CreateTestGeoPackage(SeedStandardData);
         var process = CreateProcess();
 
-        var result = await process.RunAsync(geopackage);
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
 
         using var workbook = OpenOutputWorkbook(result);
 
@@ -150,7 +162,7 @@ public sealed class ErrorOverviewExportProcessTest
         var geopackage = CreateTestGeoPackage(SeedStandardData);
         var process = CreateProcess();
 
-        var result = await process.RunAsync(geopackage);
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
 
         using var workbook = OpenOutputWorkbook(result);
 
@@ -176,7 +188,7 @@ public sealed class ErrorOverviewExportProcessTest
         });
         var process = CreateProcess();
 
-        var result = await process.RunAsync(geopackage);
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
 
         using var workbook = OpenOutputWorkbook(result);
         var dataSheet = workbook.Worksheet("Error Data");
@@ -193,7 +205,7 @@ public sealed class ErrorOverviewExportProcessTest
         var geopackage = CreateTestGeoPackage();
         var process = CreateProcess();
 
-        var result = await process.RunAsync(geopackage);
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
 
         using var workbook = OpenOutputWorkbook(result);
 
@@ -212,7 +224,7 @@ public sealed class ErrorOverviewExportProcessTest
         var geopackage = CreateTestGeoPackage(SeedStandardData);
         var process = CreateProcess(overviewWkSheet: "Uebersicht_WK", overviewGepSheet: "Uebersicht_GEP");
 
-        var result = await process.RunAsync(geopackage);
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
 
         using var workbook = OpenOutputWorkbook(result);
         Assert.AreEqual(4, workbook.Worksheets.Count);
@@ -226,11 +238,46 @@ public sealed class ErrorOverviewExportProcessTest
         var geopackage = CreateTestGeoPackage(SeedStandardData);
         var process = CreateProcess(overviewWkSheet: "Uebersicht_WK");
 
-        var result = await process.RunAsync(geopackage);
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
 
         using var workbook = OpenOutputWorkbook(result);
         Assert.AreEqual(3, workbook.Worksheets.Count);
         Assert.IsTrue(workbook.Worksheet("Uebersicht_WK").PivotTables.Contains("Uebersicht_WK"));
+    }
+
+    [TestMethod]
+    public async Task RunAsync_FillsCantonRawDataFromStatistics()
+    {
+        var geopackage = CreateTestGeoPackage(SeedStatistics);
+        var process = CreateProcess();
+
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
+
+        var cantonFile = result.CantonErrorMatrix;
+
+        using var fileStream = cantonFile.OpenReadFileStream();
+        var memoryStream = new MemoryStream();
+        fileStream.CopyTo(memoryStream);
+        memoryStream.Position = 0;
+        using var workbook = new XLWorkbook(memoryStream);
+        var raw = workbook.Worksheet("raw_data");
+
+        // No header row: statistics start at row 1, columns per cantonErrorColumnMapping, ordered as materialized.
+        Assert.AreEqual("knoten", raw.Cell("A1").GetString());
+        Assert.AreEqual("funktion", raw.Cell("B1").GetString());
+        Assert.AreEqual(5, raw.Cell("C1").GetValue<int>());
+        Assert.AreEqual(1, raw.Cell("F1").GetValue<int>());
+
+        Assert.AreEqual("leitung", raw.Cell("A2").GetString());
+        Assert.AreEqual("material", raw.Cell("B2").GetString());
+        Assert.AreEqual(3, raw.Cell("C2").GetValue<int>());
+
+        // anzahl_paa (column D) is NULL for leitung/material and must stay an empty cell.
+        Assert.IsTrue(raw.Cell("D2").IsEmpty());
+
+        // The workbook must open on the validation sheet, not on the raw data sheet we wrote into.
+        Assert.IsTrue(workbook.Worksheet("Validierung_Teststufe_1").TabActive);
+        Assert.IsFalse(raw.TabActive);
     }
 
     [TestMethod]
@@ -249,6 +296,8 @@ public sealed class ErrorOverviewExportProcessTest
             overviewFilterFields: OverviewFilterFields,
             overviewValueField: "fid",
             overviewValueName: "Count",
+            cantonErrorObjectSheet: "raw_data",
+            cantonErrorColumnMapping: CantonErrorColumnMapping,
             pipelineFileManager: fileManager,
             logger: NullLogger.Instance));
 
@@ -279,6 +328,8 @@ public sealed class ErrorOverviewExportProcessTest
             overviewFilterFields: hasOverview ? OverviewFilterFields : null,
             overviewValueField: hasOverview ? "fid" : null,
             overviewValueName: hasOverview ? "Anzahl Fehler" : null,
+            cantonErrorObjectSheet: "raw_data",
+            cantonErrorColumnMapping: CantonErrorColumnMapping,
             pipelineFileManager: fileManager,
             logger: NullLogger.Instance);
     }
@@ -312,6 +363,18 @@ public sealed class ErrorOverviewExportProcessTest
         return new TestPipelineFile(gpkgPath);
     }
 
+    private TestPipelineFile CreateCantonTemplate()
+    {
+        var templatePath = Path.Combine(inputDirectory, $"canton-template-{Guid.NewGuid():N}.xlsx");
+
+        using var workbook = new XLWorkbook();
+        workbook.AddWorksheet("Validierung_Teststufe_1");
+        workbook.AddWorksheet("raw_data");
+        workbook.SaveAs(templatePath);
+
+        return new TestPipelineFile(templatePath);
+    }
+
     private static void SeedStandardData(SqliteConnection connection)
     {
         var sql = """
@@ -321,6 +384,22 @@ public sealed class ErrorOverviewExportProcessTest
 
             INSERT INTO ca_error_object (tid, class, count_error, wk_max, gep_max)
             VALUES ('LT001', 'Leitung', 2, 2, 2)
+            """;
+        ExecuteNonQuery(connection, sql);
+    }
+
+    private static void SeedStatistics(SqliteConnection connection)
+    {
+        var sql = """
+            CREATE TABLE ca_statistics_attribute (
+                tabelle TEXT, attribut TEXT, anzahl_total INTEGER,
+                anzahl_paa INTEGER, anzahl_saa INTEGER, anzahl_null INTEGER,
+                anzahl_null_paa INTEGER, anzahl_null_saa INTEGER);
+
+            INSERT INTO ca_statistics_attribute
+                (tabelle, attribut, anzahl_total, anzahl_paa, anzahl_saa, anzahl_null, anzahl_null_paa, anzahl_null_saa)
+            VALUES ('knoten', 'funktion', 5, 2, 3, 1, 0, 1),
+                   ('leitung', 'material', 3, NULL, NULL, 0, NULL, NULL)
             """;
         ExecuteNonQuery(connection, sql);
     }

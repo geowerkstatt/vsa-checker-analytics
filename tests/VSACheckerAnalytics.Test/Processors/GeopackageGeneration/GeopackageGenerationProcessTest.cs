@@ -54,6 +54,7 @@ public sealed class GeopackageGenerationProcessTest
             CreateTestCsvFp(),
             CreateTestErrorMatrix(),
             "DE",
+            "2020",
             cancellationToken: CancellationToken.None);
 
         Assert.HasCount(2, fake.Invocations);
@@ -101,6 +102,7 @@ public sealed class GeopackageGenerationProcessTest
             CreateTestCsvFp(),
             CreateTestErrorMatrix(),
             "DE",
+            "2020",
             cancellationToken: CancellationToken.None);
 
         Assert.HasCount(3, fake.Invocations);
@@ -129,6 +131,7 @@ public sealed class GeopackageGenerationProcessTest
             CreateTestCsvFp(),
             CreateTestErrorMatrix(),
             "DE",
+            "2020",
             cancellationToken: CancellationToken.None);
 
         Assert.IsNull(result.GeneratedGeopackage);

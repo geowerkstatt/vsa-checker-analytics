@@ -18,6 +18,8 @@ public sealed class ErrorOverviewExportProcess
 {
     private const string ErrorDataTable = "ca_error_data";
     private const string ErrorObjectTable = "ca_error_object";
+    private const string StatisticsTable = "ca_statistics_attribute";
+    private const string CantonMatrixFileName = "kantonale_fehlermatrix";
 
     private static readonly LocalizedText ErrorOverviewStatusMessageFormat = new Dictionary<string, string>
     {
@@ -43,6 +45,8 @@ public sealed class ErrorOverviewExportProcess
     private readonly ExcelSheet errorObjectSheet;
     private readonly PivotSheetConfig? overviewWkConfig;
     private readonly PivotSheetConfig? overviewGepConfig;
+    private readonly string cantonSheetName;
+    private readonly IReadOnlyDictionary<string, string> cantonColumns;
     private readonly IPipelineFileManager pipelineFileManager;
     private readonly ILogger logger;
 
@@ -61,6 +65,8 @@ public sealed class ErrorOverviewExportProcess
     /// <param name="overviewFilterFields">Attribute keys for pivot report filter fields.</param>
     /// <param name="overviewValueField">Attribute key for the pivot count value field.</param>
     /// <param name="overviewValueName">Display name for the pivot value column.</param>
+    /// <param name="cantonErrorObjectSheet">Sheet name for the raw data export in the canton error Excel workbook.</param>
+    /// <param name="cantonErrorColumnMapping">Maps attribute keys to canton Excel column letters for error objects.</param>
     /// <param name="pipelineFileManager">Pipeline file manager for output file allocation.</param>
     /// <param name="logger">Logger.</param>
     public ErrorOverviewExportProcess(
@@ -76,6 +82,8 @@ public sealed class ErrorOverviewExportProcess
         IList<string>? overviewFilterFields,
         string? overviewValueField,
         string? overviewValueName,
+        string cantonErrorObjectSheet,
+        IDictionary<string, string> cantonErrorColumnMapping,
         IPipelineFileManager pipelineFileManager,
         ILogger logger)
     {
@@ -83,12 +91,17 @@ public sealed class ErrorOverviewExportProcess
         ArgumentNullException.ThrowIfNull(errorDataColumnMapping);
         ArgumentNullException.ThrowIfNull(errorObjectAttributeMapping);
         ArgumentNullException.ThrowIfNull(errorObjectColumnMapping);
+        ArgumentNullException.ThrowIfNull(cantonErrorObjectSheet);
+        ArgumentNullException.ThrowIfNull(cantonErrorColumnMapping);
 
         this.pipelineFileManager = pipelineFileManager ?? throw new ArgumentNullException(nameof(pipelineFileManager));
         this.logger = logger ?? NullLogger.Instance;
 
         this.errorDataSheet = BuildSheetConfig(ErrorDataTable, errorDataSheet, errorDataAttributeMapping, errorDataColumnMapping);
         this.errorObjectSheet = BuildSheetConfig(ErrorObjectTable, errorObjectSheet, errorObjectAttributeMapping, errorObjectColumnMapping);
+
+        this.cantonSheetName = cantonErrorObjectSheet;
+        this.cantonColumns = new Dictionary<string, string>(cantonErrorColumnMapping, StringComparer.Ordinal);
 
         if (overviewWkSheet is not null || overviewGepSheet is not null)
         {
@@ -129,12 +142,14 @@ public sealed class ErrorOverviewExportProcess
     /// When configured, adds pivot table overview sheets for WK and GEP priorities.
     /// </summary>
     /// <param name="geopackage">GeoPackage containing the materialized error tables.</param>
+    /// <param name="cantonErrorMatrixTemplate">Excel template for the canton specific error matrix.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>An <see cref="ErrorOverviewExportResult"/> with the exported Excel file and a localized status message.</returns>
+    /// <returns>An <see cref="ErrorOverviewExportResult"/> with the error overview, the filled canton error matrix, and a localized status message.</returns>
     [PipelineProcessRun]
-    public async Task<ErrorOverviewExportResult> RunAsync(IPipelineFile geopackage, CancellationToken cancellationToken = default)
+    public async Task<ErrorOverviewExportResult> RunAsync(IPipelineFile geopackage, IPipelineFile cantonErrorMatrixTemplate, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(geopackage);
+        ArgumentNullException.ThrowIfNull(cantonErrorMatrixTemplate);
 
         var gpkgPath = geopackage.GetLocalPath();
 
@@ -165,14 +180,102 @@ public sealed class ErrorOverviewExportProcess
 
         logger.LogInformation("Exported error overview to <{FileName}>.", outputFile.OriginalFileName);
 
+        cancellationToken.ThrowIfCancellationRequested();
+        var cantonMatrix = ExportCantonMatrix(cantonErrorMatrixTemplate, connection);
+
         var statusMessage = ErrorOverviewStatusMessageFormat
             .Map(msg => string.Format(CultureInfo.InvariantCulture, msg, errorCount));
 
         return new ErrorOverviewExportResult
         {
             ErrorOverview = outputFile,
+            CantonErrorMatrix = cantonMatrix,
             StatusMessage = statusMessage,
         };
+    }
+
+    /// <summary>
+    /// Fills the canton error matrix by writing the <c>ca_statistics_attribute</c> rows into a
+    /// writable copy of <paramref name="template"/>. The workbook's validation sheets reference the
+    /// raw data sheet by fixed cell, so values are written in place (existing contents cleared, no
+    /// rows deleted) to keep those references intact.
+    /// </summary>
+    private IPipelineFile ExportCantonMatrix(IPipelineFile template, SqliteConnection connection)
+    {
+        var copy = pipelineFileManager.CreateWritableCopy(template, CantonMatrixFileName);
+
+        using (var workbook = new XLWorkbook(copy.GetLocalPath()))
+        {
+            FillCantonRawData(workbook.Worksheet(cantonSheetName), connection);
+
+            // Writing into the raw data sheet makes it the active tab; restore the first sheet (the
+            // canton's landing/validation sheet) so the workbook opens there, not on the raw data.
+            workbook.Worksheets.First().SetTabActive();
+            workbook.Save();
+        }
+
+        logger.LogInformation("Exported canton error matrix to <{FileName}>.", copy.OriginalFileName);
+        return copy;
+    }
+
+    [SuppressMessage("Security", "CA2100", Justification = "Column and table names are internal pipeline constants, not user input.")]
+    private void FillCantonRawData(IXLWorksheet worksheet, SqliteConnection connection)
+    {
+        if (!TableExists(connection, StatisticsTable))
+        {
+            logger.LogWarning("Table '{Table}' not found; canton raw data sheet '{Sheet}' left empty.", StatisticsTable, cantonSheetName);
+            return;
+        }
+
+        // Clear existing values in place so the sheet's cells survive and the workbook's validation
+        // formulas that reference them stay valid; deleting rows would turn those into #REF!.
+        worksheet.RangeUsed()?.Clear(XLClearOptions.Contents);
+
+        var attributes = cantonColumns.Keys.ToArray();
+        var columnList = string.Join(", ", attributes.Select(a => $"\"{a}\""));
+
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT {columnList} FROM \"{StatisticsTable}\" ORDER BY rowid";
+        using var reader = command.ExecuteReader();
+
+        var rowNumber = 1;
+        while (reader.Read())
+        {
+            for (var i = 0; i < attributes.Length; i++)
+            {
+                if (reader.IsDBNull(i))
+                {
+                    continue;
+                }
+
+                var cell = worksheet.Cell($"{cantonColumns[attributes[i]]}{rowNumber}");
+                var value = reader.GetValue(i);
+                if (value is long longValue)
+                {
+                    cell.Value = longValue;
+                }
+                else if (value is double doubleValue)
+                {
+                    cell.Value = doubleValue;
+                }
+                else
+                {
+                    cell.Value = value?.ToString() ?? string.Empty;
+                }
+            }
+
+            rowNumber++;
+        }
+
+        logger.LogInformation("Wrote {RowCount} row(s) into canton raw data sheet '{Sheet}'.", rowNumber - 1, cantonSheetName);
+    }
+
+    private static bool TableExists(SqliteConnection connection, string tableName)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = @name";
+        command.Parameters.AddWithValue("@name", tableName);
+        return (long)(command.ExecuteScalar() ?? 0L) > 0;
     }
 
     private static ExcelSheet BuildSheetConfig(

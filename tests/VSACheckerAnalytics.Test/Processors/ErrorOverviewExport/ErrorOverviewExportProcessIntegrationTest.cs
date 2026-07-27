@@ -1,4 +1,5 @@
-﻿using Geopilot.Pipeline;
+﻿using ClosedXML.Excel;
+using Geopilot.Pipeline;
 using Geopilot.Pipeline.Config;
 using Geopilot.Pipeline.Process;
 using Geopilot.PipelineCore.Pipeline;
@@ -27,6 +28,7 @@ public class ErrorOverviewExportProcessIntegrationTest
         new Dictionary<string, InputValue>
         {
             ["geopackage"] = new InputValue.StepOutputReference(UpstreamStepId, "generatedGeopackage"),
+            ["cantonErrorMatrixTemplate"] = new InputValue.StepOutputReference(UpstreamStepId, "cantonErrorMatrixTemplate"),
         };
 
     private PipelineProcessFactory pipelineProcessFactory = null!;
@@ -107,6 +109,20 @@ public class ErrorOverviewExportProcessIntegrationTest
                         { "overviewFilterFields", new List<object> { "check_type", "funktionhierarchisch", "eigentuemer", "status" } },
                         { "overviewValueField", "fid" },
                         { "overviewValueName", "Anzahl Fehler" },
+                        { "cantonErrorObjectSheet", "raw_data" },
+                        {
+                            "cantonErrorColumnMapping", new Parameterization
+                            {
+                                { "tabelle", "A" },
+                                { "attribut", "B" },
+                                { "anzahl_total", "C" },
+                                { "anzahl_paa", "D" },
+                                { "anzahl_saa", "E" },
+                                { "anzahl_null", "F" },
+                                { "anzahl_null_paa", "G" },
+                                { "anzahl_null_saa", "H" },
+                            }
+                        },
                     }
                 },
             },
@@ -168,6 +184,9 @@ public class ErrorOverviewExportProcessIntegrationTest
         var upstream = new StepResult();
         upstream.Outputs["generatedGeopackage"] = FileOutput(CreateTestGeoPackage());
 
+        // Stand-in for the ${file(ErrorMatrixKanton.xlsx)} resource injected in production.
+        upstream.Outputs["cantonErrorMatrixTemplate"] = FileOutput(CreateCantonTemplate());
+
         var context = new PipelineContext
         {
             Upload = [],
@@ -222,5 +241,16 @@ public class ErrorOverviewExportProcessIntegrationTest
         cmd.ExecuteNonQuery();
 
         return new TestPipelineFile(gpkgPath);
+    }
+
+    private TestPipelineFile CreateCantonTemplate()
+    {
+        var templatePath = Path.Combine(tempDir, $"canton-template-{Guid.NewGuid():N}.xlsx");
+
+        using var workbook = new XLWorkbook();
+        workbook.AddWorksheet("raw_data");
+        workbook.SaveAs(templatePath);
+
+        return new TestPipelineFile(templatePath);
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using VsaCheckerAnalytics.TestHelpers;
@@ -119,7 +120,7 @@ public class ViewCreatorTest
         using var connection = CreateOpenConnection();
 
         var viewCreator = new ViewCreator(connection);
-        viewCreator.CreateAdditionalViews();
+        viewCreator.CreateAdditionalViews("2020");
 
         // Each view is registered as a GeoPackage layer right at its creation: spatial views as
         // features (with a geometry column), the errorlist data views as attributes.
@@ -170,6 +171,26 @@ public class ViewCreatorTest
             "v_error_error_haltung",
             "v_error_category_knoten",
             "v_error_category_haltung",
+            "v_statistics_alr",
+            "v_statistics_knoten",
+            "v_statistics_leitung",
+            "v_statistics_massnahme",
+            "v_statistics_organisation",
+            "v_statistics_rohrprofil",
+            "v_statistics_rohrprofil_geometrie",
+            "v_statistics_teileinzugsgebiet",
+            "v_statistics_ueberlauf_foerderaggregat",
+            "v_statistics_bauwerkskomponente",
+            "v_statistics_sk_autonome_messstelle",
+            "v_statistics_sk_duekeroberhaupt",
+            "v_statistics_sk_einleitstelle",
+            "v_statistics_sk_pumpwerk",
+            "v_statistics_sk_regenrueckhaltebecken_kanal",
+            "v_statistics_sk_regenueberlauf",
+            "v_statistics_sk_regenueberlaufbecken",
+            "v_statistics_sk_trennbauwerk",
+            "v_statistics_sk_uebrige",
+            "v_statistics_attribute",
         };
 
         var actualViews = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -184,6 +205,33 @@ public class ViewCreatorTest
         foreach (var expected in expectedViews)
         {
             Assert.Contains(expected, actualViews, $"Expected view '{expected}' was not created.");
+        }
+    }
+
+    [TestMethod]
+    public void AddGpkgContents_RegistersEveryStatisticsViewAsAttributes()
+    {
+        using var connection = CreateOpenConnection();
+
+        var viewCreator = new ViewCreator(connection);
+        viewCreator.CreateAdditionalViews("2020");
+        viewCreator.AddGpkgContents();
+
+        // AddGpkgContents is the sole place the statistics views get registered, so every
+        // v_statistics_* view created by AdditionalViews.sql must appear in gpkg_contents;
+        // this guards against a new statistics view being added without its registration row.
+        var statisticsViews = QueryColumn(
+            connection,
+            "SELECT name FROM sqlite_master WHERE type = 'view' AND name LIKE 'v_statistics%'");
+        Assert.IsNotEmpty(statisticsViews, "AdditionalViews.sql created no statistics views to register.");
+
+        var registeredAttributes = new HashSet<string>(
+            QueryColumn(connection, "SELECT table_name FROM gpkg_contents WHERE data_type = 'attributes'"),
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var view in statisticsViews)
+        {
+            Assert.Contains(view, registeredAttributes, $"Statistics view '{view}' is not registered in gpkg_contents.");
         }
     }
 
@@ -232,5 +280,21 @@ public class ViewCreatorTest
         command.CommandText = "SELECT is_known FROM \"v_checker_csv_classified\" WHERE \"ErrorId\" = @id";
         command.Parameters.AddWithValue("@id", errorId);
         return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+    }
+
+    [SuppressMessage("Security", "CA2100", Justification = "Query strings are internal test constants, not user input.")]
+    private static List<string> QueryColumn(SqliteConnection connection, string sql)
+    {
+        var values = new List<string>();
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            values.Add(reader.GetString(0));
+        }
+
+        return values;
     }
 }

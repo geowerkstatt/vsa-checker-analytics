@@ -16,9 +16,8 @@ namespace VsaCheckerAnalytics.Processors.VsaMatcher;
 /// The VSA Matcher receives the original user upload (GEP transfer file and optional
 /// organisation table) together with the unzipped GEP checker output. It identifies each
 /// file by INTERLIS model name or filename pattern, extracts the data-model version
-/// (2020 / 2020.1) from the GEP header, selects version-matching application resources
-/// (GeoPackage template, error matrix, QGIS project), and fetches the standard organisation
-/// table from the public VSA repository.
+/// (2020 / 2020.1) from the GEP header, selects the version-matching GeoPackage template,
+/// and fetches the standard organisation table from the public VSA repository.
 /// </para>
 /// <para>
 /// ILI model filters use exact name matching (case-insensitive). A file matches when its
@@ -182,7 +181,7 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// </summary>
     private GepMatch[] FindGepFiles(IPipelineFile[] files)
     {
-        var xtfFiles = files.WithExtensions(new HashSet<string> { "xtf" });
+        var xtfFiles = files.Where(file => string.Equals(file.FileExtension, "xtf", StringComparison.OrdinalIgnoreCase));
         var matches = new List<GepMatch>();
 
         foreach (var file in xtfFiles)
@@ -222,7 +221,7 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// </summary>
     private IPipelineFile[] FindOrgTables(IPipelineFile[] files)
     {
-        var xtfFiles = files.WithExtensions(new HashSet<string> { "xtf" });
+        var xtfFiles = files.Where(file => string.Equals(file.FileExtension, "xtf", StringComparison.OrdinalIgnoreCase));
         var orgTables = new List<IPipelineFile>();
 
         foreach (var file in xtfFiles)
