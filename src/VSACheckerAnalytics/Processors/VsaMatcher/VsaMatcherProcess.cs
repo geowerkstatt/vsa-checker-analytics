@@ -181,7 +181,7 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// </summary>
     private GepMatch[] FindGepFiles(IPipelineFile[] files)
     {
-        var xtfFiles = files.WithExtensions(new HashSet<string> { "xtf" });
+        var xtfFiles = files.Where(file => string.Equals(file.FileExtension, "xtf", StringComparison.OrdinalIgnoreCase));
         var matches = new List<GepMatch>();
 
         foreach (var file in xtfFiles)
@@ -221,7 +221,7 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// </summary>
     private IPipelineFile[] FindOrgTables(IPipelineFile[] files)
     {
-        var xtfFiles = files.WithExtensions(new HashSet<string> { "xtf" });
+        var xtfFiles = files.Where(file => string.Equals(file.FileExtension, "xtf", StringComparison.OrdinalIgnoreCase));
         var orgTables = new List<IPipelineFile>();
 
         foreach (var file in xtfFiles)
