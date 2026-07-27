@@ -6,6 +6,11 @@ GeoPackage und exportiert sie in eine Excel-Arbeitsmappe (XLSX) mit zwei
 konfigurierbaren Datenblättern und optionalen Pivot-Übersichtsblättern für die
 WK- und GEP-Prioritäten.
 
+Zusätzlich befüllt der Prozess eine Kopie der kantonalen Fehlermatrix-Vorlage
+(`ErrorMatrixKanton.xlsx`) mit der Attribut-Statistik aus `ca_statistics_attribute`
+und gibt sie als zweiten Download zurück. Es entstehen also zwei Ausgabedateien:
+die Fehlerübersicht und die kantonale Fehlermatrix.
+
 Dieser Prozessor implementiert den Teil "Fehlerübersicht" des
 [Excel Mapper](architektur.md#excel-mapper), der in der Architektur beschrieben
 ist.
@@ -31,6 +36,8 @@ Excel-Layout keine Codeänderungen erfordern.
 | `overviewFilterFields`         | `IList<string>?`             | Attribut-Keys für die Pivot-Berichtsfilterfelder.               |
 | `overviewValueField`           | `string?`                    | Attribut-Key für das Pivot-Zählwertfeld.                        |
 | `overviewValueName`            | `string?`                    | Anzeigename für die Pivot-Wertespalte.                          |
+| `cantonErrorObjectSheet`       | `string`                     | Blattname des Rohdatenblatts in der kantonalen Fehlermatrix-Vorlage (`raw_data`). |
+| `cantonErrorColumnMapping`     | `IDictionary<string,string>` | Bildet Attribut-Keys von `ca_statistics_attribute` auf Excel-Spaltenbuchstaben im Rohdatenblatt ab. |
 
 ### Mapping-Validierung
 
@@ -48,11 +55,22 @@ Wenn entweder `overviewWkSheet` oder `overviewGepSheet` gesetzt ist, müssen all
 Konstruktionszeit zu einer `ArgumentException`. Das WK-Blatt verwendet das
 Attribut `wk` als erstes Zeilenfeld, das GEP-Blatt das Attribut `gep`.
 
+### Kantonale Fehlermatrix
+
+`cantonErrorColumnMapping` bildet die acht Spalten von `ca_statistics_attribute`
+(`tabelle`, `attribut`, `anzahl_total`, `anzahl_paa`, `anzahl_saa`, `anzahl_null`,
+`anzahl_null_paa`, `anzahl_null_saa`) auf Spaltenbuchstaben des Rohdatenblatts der
+Vorlage ab. Anders als die Fehlerdatenblätter hat das Rohdatenblatt **keine
+Kopfzeile**: die Statistikzeilen werden ab Zeile 1 geschrieben. Für dieses Mapping
+gibt es keine Startup-Validierung; es adressiert schlicht die Spalten, die die
+Vorlage im Rohdatenblatt erwartet.
+
 ## Inputs
 
 | Parameter    | Quelle                | Typ             | Beschreibung                                            |
 |--------------|-----------------------|-----------------|--------------------------------------------------------|
-| `geopackage` | Geopackage Generation | `IPipelineFile` | Das befüllte GeoPackage mit `ca_error_data` und `ca_error_object`. |
+| `geopackage` | Geopackage Generation | `IPipelineFile` | Das befüllte GeoPackage mit `ca_error_data`, `ca_error_object` und `ca_statistics_attribute`. |
+| `cantonErrorMatrixTemplate` | Ressourcen (`${file()}`) | `IPipelineFile` | Excel-Vorlage der kantonalen Fehlermatrix (`ErrorMatrixKanton.xlsx`), direkt aus dem Ressourcenverzeichnis injiziert. |
 
 ## Output
 
@@ -60,7 +78,8 @@ Attribut `wk` als erstes Zeilenfeld, das GEP-Blatt das Attribut `gep`.
 
 | Property             | Typ             | Beschreibung                                   |
 |-----------------|-----------------|------------------------------------------------|
-| `ErrorOverview` | `IPipelineFile` | Die erzeugte Excel-Arbeitsmappe (`error-overview.xlsx`). |
+| `ErrorOverview` | `IPipelineFile` | Die erzeugte Excel-Arbeitsmappe (`error-overview.xlsx`). Wird über die Output-Action `Download` bereitgestellt. |
+| `CantonErrorMatrix` | `IPipelineFile` | Beschreibbare Kopie der Vorlage `ErrorMatrixKanton.xlsx` mit der in das Rohdatenblatt geschriebenen Attribut-Statistik (`kantonale_fehlermatrix.xlsx`). Wird über die Output-Action `Download` bereitgestellt. |
 | `StatusMessage` | `LocalizedText` | Lokalisierte Statusmeldung mit der Anzahl exportierter Fehler. Wird über die Output-Action `StatusMessage` in der Oberfläche angezeigt. |
 
 ## Verarbeitung
@@ -81,4 +100,21 @@ Attribut `wk` als erstes Zeilenfeld, das GEP-Blatt das Attribut `gep`.
    Berichtsfiltern und einer Zählaggregation. Spalte A wird auf Breite 105 und
    Spalte B auf Breite 13 gesetzt.
 4. Die Arbeitsmappe wird über ClosedXML in eine Pipeline-Output-Datei
-   geschrieben.
+   geschrieben (`ErrorOverview`).
+5. Die kantonale Fehlermatrix wird befüllt (`ExportCantonMatrix`):
+   - Über `IPipelineFileManager.CreateWritableCopy` wird eine eigene, beschreibbare
+     Kopie der Vorlage `ErrorMatrixKanton.xlsx` angelegt und in place bearbeitet.
+   - Ist die Tabelle `ca_statistics_attribute` vorhanden, werden ihre Zeilen
+     (`ORDER BY rowid`) aus derselben schreibgeschützten Verbindung in das
+     Rohdatenblatt (`cantonErrorObjectSheet`) geschrieben: jeder Attribut-Key in die
+     per `cantonErrorColumnMapping` definierte Spalte, ab Zeile 1 und ohne Kopfzeile.
+     Zellwerte behalten ihren SQLite-Typ (Ganzzahl / Gleitkommazahl bleiben
+     numerisch); NULL-Werte werden übersprungen, die Zelle bleibt leer.
+   - Fehlt `ca_statistics_attribute` (z.B. bei minimalen Testfixtures), bleibt das
+     Rohdatenblatt leer und es wird eine Warnung protokolliert.
+   - Vor dem Schreiben werden die Inhalte des benutzten Bereichs geleert, aber
+     **keine Zeilen gelöscht**: die Validierungsblätter der Vorlage verweisen per
+     fester Zelle auf das Rohdatenblatt, ein Zeilenlöschen würde diese Referenzen zu
+     `#REF!` machen.
+   - Zum Schluss wird das erste Arbeitsblatt wieder aktiviert, damit die Mappe beim
+     Öffnen auf dem Validierungsblatt steht und nicht auf dem Rohdatenblatt.
