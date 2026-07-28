@@ -1,8 +1,7 @@
-﻿using Geopilot.PipelineCore.Pipeline;
+﻿using Geopilot.PipelineCore.Ilitools;
+using Geopilot.PipelineCore.Pipeline;
 using Microsoft.Extensions.Logging.Abstractions;
-using System.Reflection;
-using VsaCheckerAnalytics.Ili2Gpkg;
-using VsaCheckerAnalytics.Processors.GeopackageGeneration;
+using System.Text;
 using VsaCheckerAnalytics.TestHelpers;
 
 namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
@@ -38,7 +37,7 @@ public sealed class GeopackageGenerationProcessTest
         {
             OnInvocation = inv =>
             {
-                Assert.IsGreaterThan(0, inv.GeoPackageText.Length, "GeoPackage stream should not be empty when client is invoked.");
+                Assert.IsGreaterThan(0, inv.GeoPackageContent.Length, "GeoPackage stream should not be empty when client is invoked.");
                 Assert.IsGreaterThan(0, inv.TransferFileText.Length, "Transfer file stream should not be empty when client is invoked.");
             },
         };
@@ -61,11 +60,10 @@ public sealed class GeopackageGenerationProcessTest
         Assert.AreEqual("default-bytes", fake.Invocations[0].TransferFileText);
         Assert.AreEqual("dss-bytes", fake.Invocations[1].TransferFileText);
 
-        Assert.AreEqual("gpkg-bytes", fake.Invocations[0].GeoPackageText);
+        Assert.AreEqual("gpkg-bytes", Encoding.UTF8.GetString(fake.Invocations[0].GeoPackageContent));
 
         foreach (var inv in fake.Invocations)
         {
-            Assert.IsFalse(inv.Args.DoSchemaImport);
             Assert.IsTrue(inv.Args.SkipReferenceErrors);
             Assert.IsTrue(inv.Args.SkipGeometryErrors);
             Assert.IsTrue(inv.Args.DisableValidation);
@@ -143,13 +141,9 @@ public sealed class GeopackageGenerationProcessTest
     private GeopackageGenerationProcess CreateProcess(IIli2GpkgClient client)
     {
         var process = new GeopackageGenerationProcess(
-            jobsDirectory: Path.GetTempPath(),
+            client,
             pipelineFileManager: fileManager,
             logger: NullLogger.Instance);
-
-        typeof(GeopackageGenerationProcess)
-            .GetField("ili2GpkgClient", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .SetValue(process, client);
 
         return process;
     }
