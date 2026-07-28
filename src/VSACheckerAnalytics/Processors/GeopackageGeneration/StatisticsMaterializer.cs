@@ -33,10 +33,11 @@ internal sealed class StatisticsMaterializer
 
     /// <summary>
     /// Materializes <paramref name="viewName"/> into a new table <paramref name="tableName"/> and
-    /// registers it in the GeoPackage metadata as a non-spatial <c>attributes</c> layer. The row
-    /// order produced by the view is preserved. Assumes the table does not yet exist, because each
-    /// pipeline run starts from a fresh GeoPackage copy. Does nothing when the GeoPackage has no DSS
-    /// feature tables to aggregate.
+    /// registers it in the GeoPackage metadata as a non-spatial <c>attributes</c> layer. The physical
+    /// row order of the copy is not treated as a contract; consumers that need a specific order select
+    /// an explicit ordering column (<c>v_statistics_attribute</c> carries <c>sortierung</c> for that
+    /// purpose). Assumes the table does not yet exist, because each pipeline run starts from a fresh
+    /// GeoPackage copy. Does nothing when the GeoPackage has no DSS feature tables to aggregate.
     /// </summary>
     /// <param name="tableName">Name of the table to create.</param>
     /// <param name="viewName">Name of the statistics view to materialize.</param>

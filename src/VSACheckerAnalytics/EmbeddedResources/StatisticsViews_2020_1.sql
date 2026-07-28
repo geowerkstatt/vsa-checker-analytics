@@ -9326,7 +9326,7 @@ FROM "sk_uebrige"
 -- Gesamt-View in Tabellen- und Attributreihenfolge
 DROP VIEW IF EXISTS v_statistics_attribute;
 CREATE VIEW v_statistics_attribute AS
-SELECT tabelle, attribut, anzahl_total, anzahl_paa, anzahl_saa, anzahl_null, anzahl_null_paa, anzahl_null_saa
+SELECT sortierung, tabelle, attribut, anzahl_total, anzahl_paa, anzahl_saa, anzahl_null, anzahl_null_paa, anzahl_null_saa
 FROM
 (
     SELECT * FROM v_statistics_alr
