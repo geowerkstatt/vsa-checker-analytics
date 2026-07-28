@@ -9,12 +9,6 @@ GeoPackage-Metadaten registriert, damit GIS-Clients wie QGIS sie als Layer
 finden. Er gibt ein einzelnes befülltes GeoPackage für die nachgelagerten
 Prozessoren aus.
 
-## Konfiguration
-
-| Parameter             | Typ                    | Beschreibung                                                                                  |
-|-----------------------|------------------------|----------------------------------------------------------------------------------------------|
-| `jobsDirectory`       | `string`               | Lokaler Pfad, den der `ili2gpkg`-Worker als `ILI2GPKG_JOBS_DIR` eingehängt hat. Dient dem Dateiaustausch zwischen Plugin und Worker. |
-
 ## Inputs
 
 | Parameter         | Quelle       | Typ              | Beschreibung                                                                          |
@@ -53,7 +47,7 @@ Zwischenstände inspizierbar bleiben:
 ## Interlis-Import
 
 Die Organisations- und GEP-Transferdateien werden nacheinander über
-`IIli2GpkgClient.ImportToGeoPackageAsync` in das Template-GeoPackage importiert.
+`IIli2GpkgClient.ImportAsync` in das Template-GeoPackage importiert.
 Jeder Import liest den aktuellen GeoPackage-Stream plus eine XTF und schreibt das
 Ergebnis in eine neu angelegte `gpkg-step-{label}.gpkg`-Datei, die zum Input des
 nächsten Schritts wird.
@@ -210,7 +204,7 @@ und `gpkg_geometry_columns` eingetragen (siehe
 ## Fehlerverhalten
 
 Wenn ein `ili2gpkg`-Importschritt ein nicht erfolgreiches Ergebnis meldet,
-protokolliert der Prozess die Worker-Ausgabe auf Debug-Level und gibt `null` für
+protokolliert der Prozess die Ausgabe auf Debug-Level und gibt `null` für
 `GeneratedGeopackage` zurück. Die verbleibenden Anreicherungsschritte werden
 übersprungen. Nachgelagerte Prozessoren erkennen das fehlende GPKG über ihre
 eigene Pre-Condition und brechen die Pipeline ab.
