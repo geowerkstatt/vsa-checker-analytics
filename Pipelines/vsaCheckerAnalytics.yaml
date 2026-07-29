@@ -81,6 +81,16 @@ processes:
         - "status"
       overviewValueField: "fid"
       overviewValueName: "Anzahl Fehler"
+      cantonErrorObjectSheet: "raw_data"
+      cantonErrorColumnMapping:
+        tabelle: A
+        attribut: B
+        anzahl_total: C
+        anzahl_paa: D
+        anzahl_saa: E
+        anzahl_null: F
+        anzahl_null_paa: G
+        anzahl_null_saa: H
 pipelines:
   - id: vsa_checker_analytics
     display_name:
@@ -96,6 +106,8 @@ pipelines:
           fr: Correspondance des fichiers GEP Checker (ZIP)
           it: Corrispondenza file GEP Checker (ZIP)
         process_id: zip_file_matcher
+        input:
+          files: "${upload()}"
         output_actions:
           - property: StatusMessage
             actions:
@@ -198,6 +210,7 @@ pipelines:
           checkerCsvFp: "${step_output(vsa_matcher.CheckerCsvFp)}"
           errorMatrix: "${file(ErrorMatrix_v3.xlsx)}"
           language: "${step_output(vsa_matcher.Language)}"
+          modelVersion: "${step_output(vsa_matcher.ModelVersion)}"
         output_actions:
           - property: StatusMessage
             actions:
@@ -220,8 +233,12 @@ pipelines:
         process_id: error_overview_export
         input:
           geopackage: "${step_output(geopackage_generation.GeneratedGeopackage)}"
+          cantonErrorMatrixTemplate: "${file(ErrorMatrixKanton.xlsx)}"
         output_actions:
           - property: ErrorOverview
+            actions:
+              - Download
+          - property: CantonErrorMatrix
             actions:
               - Download
           - property: StatusMessage

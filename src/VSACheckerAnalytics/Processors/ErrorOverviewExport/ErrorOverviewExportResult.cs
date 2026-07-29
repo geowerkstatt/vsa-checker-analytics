@@ -13,6 +13,11 @@ public sealed class ErrorOverviewExportResult
     public required IPipelineFile ErrorOverview { get; init; }
 
     /// <summary>
+    /// A writable copy of the canton error matrix template with the statistics filled into its raw data sheet.
+    /// </summary>
+    public required IPipelineFile CantonErrorMatrix { get; init; }
+
+    /// <summary>
     /// A localized status message describing the outcome.
     /// </summary>
     public required LocalizedText StatusMessage { get; init; }
