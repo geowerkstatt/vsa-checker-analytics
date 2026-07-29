@@ -10,7 +10,7 @@ namespace VsaCheckerAnalytics.TestHelpers;
 public sealed class FakeIli2GpkgClient : IIli2GpkgClient
 {
     [SuppressMessage("Performance", "CA1819:Properties should not return arrays", Justification = "Only used for tests")]
-    public sealed record Invocation(byte[] GeoPackageContent, string TransferFileText, Ili2GpkgArgs Args);
+    public sealed record Invocation(byte[] GeoPackageContent, IReadOnlyList<string> TransferFileTexts, Ili2GpkgArgs Args);
 
     private static readonly Lazy<byte[]> MinimalGeoPackage = new(() =>
     {
@@ -101,9 +101,9 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
         ArgumentNullException.ThrowIfNull(inputFile);
         ArgumentNullException.ThrowIfNull(outputFile);
         ArgumentNullException.ThrowIfNull(transferFiles);
-        if (transferFiles.Count != 1)
+        if (transferFiles.Count == 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(transferFiles), "Only one transfer file is allowed");
+            throw new ArgumentOutOfRangeException(nameof(transferFiles), "At least one transfer file is required");
         }
 
         using var inputStream = inputFile.OpenReadFileStream();
@@ -111,11 +111,15 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
         await inputStream.CopyToAsync(memoryStream, cancellationToken).ConfigureAwait(false);
         var gpkgContent = memoryStream.ToArray();
 
-        using var transferStream = transferFiles[0].OpenReadFileStream();
-        using var xtfReader = new StreamReader(transferStream, Encoding.UTF8, leaveOpen: true);
-        var xtfText = await xtfReader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        var xtfTexts = new List<string>(transferFiles.Count);
+        foreach (var transferFile in transferFiles)
+        {
+            using var transferStream = transferFile.OpenReadFileStream();
+            using var xtfReader = new StreamReader(transferStream, Encoding.UTF8, leaveOpen: true);
+            xtfTexts.Add(await xtfReader.ReadToEndAsync(cancellationToken).ConfigureAwait(false));
+        }
 
-        var invocation = new Invocation(gpkgContent, xtfText, args);
+        var invocation = new Invocation(gpkgContent, xtfTexts, args);
         invocations.Add(invocation);
         OnInvocation?.Invoke(invocation);
 

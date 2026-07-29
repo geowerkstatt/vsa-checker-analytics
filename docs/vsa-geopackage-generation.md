@@ -29,7 +29,7 @@ Prozessoren aus.
 
 | Property                   | Typ              | Beschreibung                                                                 |
 |-----------------------|------------------|-----------------------------------------------------------------------------|
-| `GeneratedGeopackage` | `IPipelineFile?` | Das befüllte GeoPackage mit dem Namen `generated.gpkg`. `null`, wenn ein ili2gpkg-Importschritt fehlgeschlagen ist. |
+| `GeneratedGeopackage` | `IPipelineFile?` | Das befüllte GeoPackage mit dem Namen `generated.gpkg`. `null`, wenn der ili2gpkg-Import fehlgeschlagen ist. |
 | `StatusMessage`      | `LocalizedText`  | Lokalisierte Statusmeldung: eine Erfolgszusammenfassung oder ein Hinweis auf einen fehlgeschlagenen INTERLIS-Import, wenn `GeneratedGeopackage` `null` ist. Wird über die Output-Action `StatusMessage` in der Oberfläche angezeigt. |
 
 ## Anreicherungsschritte und Zwischenstände
@@ -39,17 +39,17 @@ Fehlermatrix-Import und Analytics. Jede Phase schreibt in eine neu angelegte
 Pipeline-Datei, die zum Input der nächsten Phase wird, sodass die
 Zwischenstände inspizierbar bleiben:
 
-1. INTERLIS-Import: `gpkg-step-{label}.gpkg` (eine Datei pro Importschritt)
+1. INTERLIS-Import: `gpkg-with-xtfs.gpkg` (Batch-Import der Transferdateien)
 2. Checker-CSV-Import: `gpkg-with-csvs.gpkg`
 3. Fehlermatrix-Import: `gpkg-with-error-matrix.gpkg`
 4. Analytics: `generated.gpkg` (finaler Output)
 
 ## Interlis-Import
 
-Die Organisations- und GEP-Transferdateien werden nacheinander über
-`IIli2GpkgClient.ImportAsync` in das Template-GeoPackage importiert.
-Jeder Import liest den aktuellen GeoPackage-Stream plus eine XTF und schreibt das
-Ergebnis in eine neu angelegte `gpkg-step-{label}.gpkg`-Datei, die zum Input des
+Die Organisations- und GEP-Transferdateien werden in einem Batch-Import über
+`IIli2GpkgClient.ImportAsync` in das Template-GeoPackage importiert. Der
+Import liest den GeoPackage-Stream plus die XTF-Dateien und schreibt das
+Ergebnis in eine neu angelegte `gpkg-with-xtfs.gpkg`-Datei, die zum Input des
 nächsten Schritts wird.
 
 Import-Reihenfolge:
@@ -60,7 +60,7 @@ Import-Reihenfolge:
 
 ### ili2gpkg-Argumente
 
-Die folgenden `ili2gpkg`-Flags werden für jeden Importschritt gesetzt:
+Die folgenden `ili2gpkg`-Flags werden für den Import gesetzt:
 
 | Argument                | Wert | Begründung                                                               |
 |-------------------------|------|-------------------------------------------------------------------------|
@@ -203,7 +203,7 @@ und `gpkg_geometry_columns` eingetragen (siehe
 
 ## Fehlerverhalten
 
-Wenn ein `ili2gpkg`-Importschritt ein nicht erfolgreiches Ergebnis meldet,
+Wenn der `ili2gpkg`-Batch-Import ein nicht erfolgreiches Ergebnis meldet,
 protokolliert der Prozess die Ausgabe auf Debug-Level und gibt `null` für
 `GeneratedGeopackage` zurück. Die verbleibenden Anreicherungsschritte werden
 übersprungen. Nachgelagerte Prozessoren erkennen das fehlende GPKG über ihre

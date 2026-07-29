@@ -137,57 +137,32 @@ public sealed class GeopackageGenerationProcess
             StrokeArcs = true,
         };
 
-        var steps = new List<(string Label, IPipelineFile Xtf)>
-        {
-            ("defaultOrgs", defaultOrgsXtf),
-        };
+        var transferFiles = new List<IPipelineFile> { defaultOrgsXtf };
         if (userOrgsXtf is not null)
         {
-            steps.Add(("userOrgs", userOrgsXtf));
+            transferFiles.Add(userOrgsXtf);
         }
 
-        steps.Add(("dssMini", dssMiniXtf));
+        transferFiles.Add(dssMiniXtf);
 
-        var current = geoPackage;
-        try
-        {
-            for (var i = 0; i < steps.Count; i++)
-            {
-                var (label, xtf) = steps[i];
-                var next = pipelineFileManager.GeneratePipelineFile($"gpkg-step-{label}", "gpkg");
-                await RunImportStepAsync(current, xtf, next, label, args, cancellationToken).ConfigureAwait(false);
-                current = next;
-            }
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogDebug(ex.Message);
-            return null;
-        }
+        var outputGpkg = pipelineFileManager.GeneratePipelineFile("gpkg-with-xtfs", "gpkg");
 
-        logger.LogInformation("VsaGeopackageImportProcessor produced populated GeoPackage <{FileName}>.", current.OriginalFileName);
-        return current;
-    }
-
-    private async Task RunImportStepAsync(
-        IPipelineFile gpkgIn,
-        IPipelineFile xtfIn,
-        IPipelineFile gpkgOut,
-        string label,
-        Ili2GpkgArgs args,
-        CancellationToken cancellationToken)
-    {
-        logger.LogDebug("Starting ili2gpkg import <{Label}>.", label);
+        logger.LogDebug("Starting ili2gpkg batch import of {Count} transfer files.", transferFiles.Count);
 
         var result = await ili2GpkgClient
-            .ImportAsync(args, gpkgIn, gpkgOut, [xtfIn], cancellationToken)
+            .ImportAsync(args, geoPackage, outputGpkg, transferFiles, cancellationToken)
             .ConfigureAwait(false);
 
         if (!result.Success)
         {
-            throw new InvalidOperationException(
-                $"ili2gpkg import '{label}' failed.{(string.IsNullOrEmpty(result.Log) ? string.Empty : Environment.NewLine + result.Log)}");
+            logger.LogDebug(
+                "ili2gpkg batch import failed.{Log}",
+                string.IsNullOrEmpty(result.Log) ? string.Empty : Environment.NewLine + result.Log);
+            return null;
         }
+
+        logger.LogInformation("VsaGeopackageImportProcessor produced populated GeoPackage <{FileName}>.", outputGpkg.OriginalFileName);
+        return outputGpkg;
     }
 
     private async Task<IPipelineFile> ImportCheckerCsvsAsync(
