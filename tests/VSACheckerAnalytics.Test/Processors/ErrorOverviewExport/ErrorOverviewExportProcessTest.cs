@@ -262,7 +262,8 @@ public sealed class ErrorOverviewExportProcessTest
         using var workbook = new XLWorkbook(memoryStream);
         var raw = workbook.Worksheet("raw_data");
 
-        // No header row: statistics start at row 1, columns per cantonErrorColumnMapping, ordered as materialized.
+        // No header row: statistics start at row 1, columns per cantonErrorColumnMapping, ordered by
+        // sortierung (knoten sortierung=1 before leitung sortierung=2), not by insertion/rowid order.
         Assert.AreEqual("knoten", raw.Cell("A1").GetString());
         Assert.AreEqual("funktion", raw.Cell("B1").GetString());
         Assert.AreEqual(5, raw.Cell("C1").GetValue<int>());
@@ -390,16 +391,19 @@ public sealed class ErrorOverviewExportProcessTest
 
     private static void SeedStatistics(SqliteConnection connection)
     {
+        // Insert in reverse sortierung order (leitung before knoten) so the rowid/insertion order
+        // differs from the intended sortierung order. The canton export must order by sortierung, so
+        // the rows land where the template's fixed-cell validation formulas expect them.
         var sql = """
             CREATE TABLE ca_statistics_attribute (
-                tabelle TEXT, attribut TEXT, anzahl_total INTEGER,
+                sortierung INTEGER, tabelle TEXT, attribut TEXT, anzahl_total INTEGER,
                 anzahl_paa INTEGER, anzahl_saa INTEGER, anzahl_null INTEGER,
                 anzahl_null_paa INTEGER, anzahl_null_saa INTEGER);
 
             INSERT INTO ca_statistics_attribute
-                (tabelle, attribut, anzahl_total, anzahl_paa, anzahl_saa, anzahl_null, anzahl_null_paa, anzahl_null_saa)
-            VALUES ('knoten', 'funktion', 5, 2, 3, 1, 0, 1),
-                   ('leitung', 'material', 3, NULL, NULL, 0, NULL, NULL)
+                (sortierung, tabelle, attribut, anzahl_total, anzahl_paa, anzahl_saa, anzahl_null, anzahl_null_paa, anzahl_null_saa)
+            VALUES (2, 'leitung', 'material', 3, NULL, NULL, 0, NULL, NULL),
+                   (1, 'knoten', 'funktion', 5, 2, 3, 1, 0, 1)
             """;
         ExecuteNonQuery(connection, sql);
     }
