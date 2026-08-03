@@ -15,29 +15,36 @@ namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 [TestClass]
 public class GeopackageGenerationProcessIntegrationTest
 {
+    private sealed record UpstreamStepResult(
+        IPipelineFile GpkgTemplate,
+        IPipelineFile[] Gep,
+        IPipelineFile StandardOrgTable,
+        IPipelineFile[] UserOrgTable,
+        IPipelineFile[] CheckerCsvA,
+        IPipelineFile[] CheckerCsvT,
+        IPipelineFile[] CheckerCsvFp,
+        IPipelineFile ErrorMatrix,
+        string Language,
+        string ModelVersion);
+
     private const string GeopackageGenerationImplementation = "VsaCheckerAnalytics.Processors.GeopackageGeneration.GeopackageGenerationProcess";
     private const string UpstreamStepId = "vsa_matcher";
     private static readonly string PluginDllPath = typeof(GeopackageGenerationProcess).Assembly.Location;
     private static readonly string ResourceDir = Path.Combine(AppContext.BaseDirectory, "Testdata");
 
-    private static readonly List<OutputConfig> GeopackageGenerationOutputs =
-    [
-        new() { Take = "GeneratedGeopackage", As = "generatedGeopackage" },
-    ];
-
     private static readonly IReadOnlyDictionary<string, InputValue> GeopackageGenerationInputs =
         new Dictionary<string, InputValue>
         {
-            ["geoPackage"] = new InputValue.StepOutputReference(UpstreamStepId, "gpkg_template"),
-            ["dssMiniXtf"] = new InputValue.StepOutputReference(UpstreamStepId, "gep"),
-            ["defaultOrgsXtf"] = new InputValue.StepOutputReference(UpstreamStepId, "standard_org_table"),
-            ["userOrgsXtf"] = new InputValue.StepOutputReference(UpstreamStepId, "user_org_table"),
-            ["checkerCsvT"] = new InputValue.StepOutputReference(UpstreamStepId, "checker_csv_t"),
-            ["checkerCsvA"] = new InputValue.StepOutputReference(UpstreamStepId, "checker_csv_a"),
-            ["checkerCsvFp"] = new InputValue.StepOutputReference(UpstreamStepId, "checker_csv_fp"),
-            ["errorMatrix"] = new InputValue.StepOutputReference(UpstreamStepId, "error_matrix"),
-            ["language"] = new InputValue.StepOutputReference(UpstreamStepId, "language"),
-            ["modelVersion"] = new InputValue.StepOutputReference(UpstreamStepId, "model_version"),
+            ["geoPackage"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.GpkgTemplate)),
+            ["dssMiniXtf"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.Gep)),
+            ["defaultOrgsXtf"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.StandardOrgTable)),
+            ["userOrgsXtf"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.UserOrgTable)),
+            ["checkerCsvT"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.CheckerCsvT)),
+            ["checkerCsvA"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.CheckerCsvA)),
+            ["checkerCsvFp"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.CheckerCsvFp)),
+            ["errorMatrix"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.ErrorMatrix)),
+            ["language"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.Language)),
+            ["modelVersion"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.ModelVersion)),
         };
 
     private PipelineProcessFactory pipelineProcessFactory = null!;
@@ -86,8 +93,8 @@ public class GeopackageGenerationProcessIntegrationTest
 
         Assert.AreEqual(StepState.Success, result.StepState);
 
-        var gpkgFile = result.StepResult.Outputs["generatedGeopackage"].Data as IPipelineFile;
-        Assert.IsNotNull(gpkgFile);
+        var generatedGeopackage = result.StepResult.ExtractProperty(nameof(GeopackageGenerationResult.GeneratedGeopackage));
+        var gpkgFile = Assert.IsInstanceOfType<IPipelineFile>(generatedGeopackage);
 
         string gpkgPath;
         using (var stream = gpkgFile.OpenReadFileStream())
@@ -139,8 +146,8 @@ public class GeopackageGenerationProcessIntegrationTest
 
         Assert.AreEqual(StepState.Success, result.StepState);
 
-        var gpkgFile = result.StepResult.Outputs["generatedGeopackage"].Data as IPipelineFile;
-        Assert.IsNotNull(gpkgFile);
+        var generatedGeopackage = result.StepResult.ExtractProperty(nameof(GeopackageGenerationResult.GeneratedGeopackage));
+        var gpkgFile = Assert.IsInstanceOfType<IPipelineFile>(generatedGeopackage);
 
         using var stream = gpkgFile.OpenReadFileStream();
         Assert.IsGreaterThan(0, stream.Length);
@@ -154,8 +161,8 @@ public class GeopackageGenerationProcessIntegrationTest
 
         Assert.AreEqual(StepState.Success, result.StepState);
 
-        var gpkgFile = result.StepResult.Outputs["generatedGeopackage"].Data as IPipelineFile;
-        Assert.IsNotNull(gpkgFile);
+        var generatedGeopackage = result.StepResult.ExtractProperty(nameof(GeopackageGenerationResult.GeneratedGeopackage));
+        var gpkgFile = Assert.IsInstanceOfType<IPipelineFile>(generatedGeopackage);
 
         using var connection = new SqliteConnection($"Data Source={gpkgFile.GetLocalPath()};Mode=ReadOnly;Pooling=false");
         connection.Open();
@@ -184,8 +191,8 @@ public class GeopackageGenerationProcessIntegrationTest
 
         Assert.AreEqual(StepState.Success, result.StepState);
 
-        var gpkgFile = result.StepResult.Outputs["generatedGeopackage"].Data as IPipelineFile;
-        Assert.IsNotNull(gpkgFile);
+        var generatedGeopackage = result.StepResult.ExtractProperty(nameof(GeopackageGenerationResult.GeneratedGeopackage));
+        var gpkgFile = Assert.IsInstanceOfType<IPipelineFile>(generatedGeopackage);
 
         using var connection = new SqliteConnection($"Data Source={gpkgFile.GetLocalPath()};Mode=ReadOnly;Pooling=false");
         connection.Open();
@@ -207,7 +214,6 @@ public class GeopackageGenerationProcessIntegrationTest
             Id = "geopackage_generation",
             DisplayName = new Dictionary<string, string> { { "en", "GeoPackage Generation" } },
             ProcessId = "geopackage_generation",
-            Output = GeopackageGenerationOutputs,
         };
 
         var processes = new List<ProcessConfig>
@@ -238,25 +244,26 @@ public class GeopackageGenerationProcessIntegrationTest
             .Id("geopackage_generation")
             .DisplayName(new Dictionary<string, string> { { "en", "GeoPackage Generation" } })
             .Inputs(GeopackageGenerationInputs)
-            .OutputConfig(GeopackageGenerationOutputs)
+            .OutputActions([])
             .Process(process)
             .Logger(new Mock<ILogger>().Object)
             .Build();
 
         var templateFile = modelVersion == "2020.1" ? "template_ca_dssmini_2020_1_d.gpkg" : "template_ca_dssmini_2020_d.gpkg";
-        var upstream = new StepResult();
-        upstream.Outputs["gpkg_template"] = FileOutput(CopyFromTestdata(templateFile));
-        upstream.Outputs["gep"] = FileOutput(CreateFile("dssMini.xtf", "dss-bytes"));
-        upstream.Outputs["standard_org_table"] = FileOutput(CreateFile("defaultOrgs.xtf", "default-bytes"));
-        upstream.Outputs["user_org_table"] = includeUserOrgs
-            ? FileOutput(CreateFile("userOrgs.xtf", "user-bytes"))
-            : FileOutput();
-        upstream.Outputs["checker_csv_t"] = FileOutput(CopyFromTestdata(checkerCsvT));
-        upstream.Outputs["checker_csv_a"] = FileOutput(CopyFromTestdata(checkerCsvA));
-        upstream.Outputs["checker_csv_fp"] = FileOutput(CopyFromTestdata(checkerCsvFp));
-        upstream.Outputs["error_matrix"] = FileOutput(CopyFromTestdata("errorMatrix.xlsx"));
-        upstream.Outputs["language"] = new StepOutput { Data = language, Action = [] };
-        upstream.Outputs["model_version"] = new StepOutput { Data = modelVersion, Action = [] };
+        var upstream = new StepResult
+        {
+            Result = new UpstreamStepResult(
+                GpkgTemplate: CopyFromTestdata(templateFile),
+                Gep: [CreateFile("dssMini.xtf", "dss-bytes")],
+                StandardOrgTable: CreateFile("defaultOrgs.xtf", "default-bytes"),
+                UserOrgTable: includeUserOrgs ? [CreateFile("userOrgs.xtf", "user-bytes")] : [],
+                CheckerCsvT: [CopyFromTestdata(checkerCsvT)],
+                CheckerCsvA: [CopyFromTestdata(checkerCsvA)],
+                CheckerCsvFp: [CopyFromTestdata(checkerCsvFp)],
+                ErrorMatrix: CopyFromTestdata("errorMatrix.xlsx"),
+                Language: language,
+                ModelVersion: modelVersion),
+        };
 
         var context = new PipelineContext
         {
@@ -267,9 +274,6 @@ public class GeopackageGenerationProcessIntegrationTest
         var stepResult = await step.Run(context, CancellationToken.None);
         return (step.State, stepResult);
     }
-
-    private static StepOutput FileOutput(params IPipelineFile[] files)
-        => new() { Data = files, Action = [] };
 
     private Task<(StepState StepState, StepResult StepResult)> RunDePipelineAsync(bool includeUserOrgs)
         => RunPipelineAsync(

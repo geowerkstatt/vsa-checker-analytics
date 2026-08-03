@@ -8,7 +8,6 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
-using System.Diagnostics.CodeAnalysis;
 using VsaCheckerAnalytics.TestHelpers;
 
 namespace VsaCheckerAnalytics.Processors.ErrorOverviewExport;
@@ -16,20 +15,17 @@ namespace VsaCheckerAnalytics.Processors.ErrorOverviewExport;
 [TestClass]
 public class ErrorOverviewExportProcessIntegrationTest
 {
+    private sealed record UpstreamStepResult(IPipelineFile? GeneratedGeopackage, IPipelineFile? CantonErrorMatrixTemplate);
+
     private const string ErrorOverviewExportImplementation = "VsaCheckerAnalytics.Processors.ErrorOverviewExport.ErrorOverviewExportProcess";
     private const string UpstreamStepId = "geopackage_generation";
     private static readonly string PluginDllPath = typeof(ErrorOverviewExportProcess).Assembly.Location;
 
-    private static readonly List<OutputConfig> ErrorOverviewExportOutputs =
-    [
-        new() { Take = "ErrorOverview", As = "errorOverview" },
-    ];
-
     private static readonly IReadOnlyDictionary<string, InputValue> ErrorOverviewExportInputs =
         new Dictionary<string, InputValue>
         {
-            ["geopackage"] = new InputValue.StepOutputReference(UpstreamStepId, "generatedGeopackage"),
-            ["cantonErrorMatrixTemplate"] = new InputValue.StepOutputReference(UpstreamStepId, "cantonErrorMatrixTemplate"),
+            ["geopackage"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.GeneratedGeopackage)),
+            ["cantonErrorMatrixTemplate"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.CantonErrorMatrixTemplate)),
         };
 
     private PipelineProcessFactory pipelineProcessFactory = null!;
@@ -160,7 +156,6 @@ public class ErrorOverviewExportProcessIntegrationTest
             Id = "error_overview_export",
             DisplayName = new Dictionary<string, string> { { "en", "Error Overview Export" } },
             ProcessId = "error_overview_export",
-            Output = ErrorOverviewExportOutputs,
         };
 
         var processes = new List<ProcessConfig>
@@ -180,16 +175,15 @@ public class ErrorOverviewExportProcessIntegrationTest
             .Id("error_overview_export")
             .DisplayName(new Dictionary<string, string> { { "en", "Error Overview Export" } })
             .Inputs(ErrorOverviewExportInputs)
-            .OutputConfig(ErrorOverviewExportOutputs)
+            .OutputActions([])
             .Process(process)
             .Logger(new Mock<ILogger>().Object)
             .Build();
 
-        var upstream = new StepResult();
-        upstream.Outputs["generatedGeopackage"] = FileOutput(CreateTestGeoPackage());
-
-        // Stand-in for the ${file(ErrorMatrixKanton.xlsx)} resource injected in production.
-        upstream.Outputs["cantonErrorMatrixTemplate"] = FileOutput(CreateCantonTemplate());
+        var upstream = new StepResult
+        {
+            Result = new UpstreamStepResult(CreateTestGeoPackage(), CreateCantonTemplate()),
+        };
 
         var context = new PipelineContext
         {
@@ -201,17 +195,13 @@ public class ErrorOverviewExportProcessIntegrationTest
 
         Assert.AreEqual(StepState.Success, step.State);
 
-        var outputFile = result.Outputs["errorOverview"].Data as IPipelineFile;
-        Assert.IsNotNull(outputFile);
+        var errorOverview = result.ExtractProperty(nameof(ErrorOverviewExportResult.ErrorOverview));
+        var outputFile = Assert.IsInstanceOfType<IPipelineFile>(errorOverview);
 
         using var stream = outputFile.OpenReadFileStream();
         Assert.IsGreaterThan(0, stream.Length);
     }
 
-    private static StepOutput FileOutput(params IPipelineFile[] files)
-        => new() { Data = files, Action = [] };
-
-    [SuppressMessage("Security", "CA2100", Justification = "Test queries use hardcoded SQL, not user input.")]
     private TestPipelineFile CreateTestGeoPackage()
     {
         var gpkgPath = Path.Combine(tempDir, $"test-{Guid.NewGuid():N}.gpkg");

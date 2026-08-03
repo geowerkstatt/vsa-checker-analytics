@@ -396,3 +396,6 @@ MigrationBackup/
 
 # Local dev-certs output
 certs/
+
+# Local gpkg test output
+gpkg-output/
