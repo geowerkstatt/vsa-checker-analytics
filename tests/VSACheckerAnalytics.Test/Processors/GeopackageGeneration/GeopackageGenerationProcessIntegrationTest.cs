@@ -1,11 +1,13 @@
 ﻿using Geopilot.Pipeline;
 using Geopilot.Pipeline.Config;
+using Geopilot.Pipeline.Ilitools;
 using Geopilot.Pipeline.Process;
 using Geopilot.PipelineCore.Pipeline;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using System.Reflection;
 using VsaCheckerAnalytics.TestHelpers;
 
 namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
@@ -41,8 +43,6 @@ public class GeopackageGenerationProcessIntegrationTest
     private PipelineProcessFactory pipelineProcessFactory = null!;
     private Mock<ILoggerFactory> loggerFactoryMock = null!;
     private string tempDir = null!;
-    private string jobsDir = null!;
-    private FakeIli2GpkgWorker worker = null!;
 
     [TestInitialize]
     public void SetUp()
@@ -50,40 +50,27 @@ public class GeopackageGenerationProcessIntegrationTest
         tempDir = Path.Combine(Path.GetTempPath(), "gpkg-gen-integration-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(tempDir);
 
-        jobsDir = Path.Combine(tempDir, "ili2gpkg-jobs");
-        Directory.CreateDirectory(jobsDir);
-
-        worker = new FakeIli2GpkgWorker(jobsDir);
-        worker.Start();
-
         var pipelineOptions = new PipelineOptions
         {
             Definition = "unused",
             Plugins = [PluginDllPath],
-            ProcessConfigs = new Dictionary<string, Parameterization>
-            {
-                {
-                    GeopackageGenerationImplementation, new Parameterization
-                    {
-                        { "jobsDirectory", jobsDir },
-                    }
-                },
-            },
         };
 
         var pipelineOptionsMock = new Mock<IOptions<PipelineOptions>>();
         pipelineOptionsMock.SetupGet(o => o.Value).Returns(pipelineOptions);
 
+        var ilitoolsOptionsMock = new Mock<IOptions<IlitoolsOptions>>();
+        ilitoolsOptionsMock.SetupGet(o => o.Value).Returns(new IlitoolsOptions { IlitoolsWrapperAddress = "http://fake-uri" });
+
         loggerFactoryMock = new Mock<ILoggerFactory>();
         loggerFactoryMock.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(new Mock<ILogger>().Object);
 
-        pipelineProcessFactory = new PipelineProcessFactory(pipelineOptionsMock.Object, loggerFactoryMock.Object);
+        pipelineProcessFactory = new PipelineProcessFactory(pipelineOptionsMock.Object, ilitoolsOptionsMock.Object, loggerFactoryMock.Object);
     }
 
     [TestCleanup]
     public void Cleanup()
     {
-        worker?.Dispose();
         pipelineProcessFactory?.Dispose();
         if (Directory.Exists(tempDir))
         {
@@ -236,6 +223,17 @@ public class GeopackageGenerationProcessIntegrationTest
             .JobId(Guid.NewGuid())
             .Build();
 
+        var fakeIli2GpkgClient = new FakeIli2GpkgClient
+        {
+            // pass the input gpkg content through to the output
+            OutputSelector = invocation => invocation.GeoPackageContent,
+        };
+
+        var processType = process.GetType();
+        processType
+            .GetField("ili2GpkgClient", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .SetValue(process, fakeIli2GpkgClient);
+
         using var step = PipelineStep.Builder()
             .Id("geopackage_generation")
             .DisplayName(new Dictionary<string, string> { { "en", "GeoPackage Generation" } })
@@ -304,67 +302,5 @@ public class GeopackageGenerationProcessIntegrationTest
         var target = Path.Combine(tempDir, fileName);
         File.Copy(source, target, overwrite: true);
         return new TestPipelineFile(target);
-    }
-
-    /// <summary>
-    /// Watches the ili2gpkg jobs directory and responds to each submitted job by writing
-    /// success.log + output.ready, so the real <c>Ili2GpkgClient</c> proceeds without a
-    /// real worker container. The input <c>dbfile.gpkg</c> already contains a valid SQLite
-    /// database (the template gpkg), so we leave it in place to be copied back as the result.
-    /// </summary>
-    private sealed class FakeIli2GpkgWorker : IDisposable
-    {
-        private readonly string jobsDir;
-        private readonly CancellationTokenSource cts = new();
-        private Task? loop;
-
-        public FakeIli2GpkgWorker(string jobsDir)
-        {
-            this.jobsDir = jobsDir;
-        }
-
-        public void Start()
-        {
-            loop = Task.Run(() => RunLoopAsync(cts.Token));
-        }
-
-        private async Task RunLoopAsync(CancellationToken cancellationToken)
-        {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                try
-                {
-                    foreach (var jobDir in Directory.EnumerateDirectories(jobsDir))
-                    {
-                        var inputReady = Path.Combine(jobDir, "input.ready");
-                        var outputReady = Path.Combine(jobDir, "output.ready");
-                        if (File.Exists(inputReady) && !File.Exists(outputReady))
-                        {
-                            File.WriteAllText(Path.Combine(jobDir, "success.log"), "fake worker ok");
-                            File.WriteAllText(outputReady, string.Empty);
-                        }
-                    }
-                }
-                catch (DirectoryNotFoundException)
-                {
-                    // Jobs dir was cleaned up; exit.
-                    return;
-                }
-                catch (IOException)
-                {
-                    // Transient — keep polling.
-                }
-
-                await Task.Delay(20, cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        public void Dispose()
-        {
-            cts.Cancel();
-            try { loop?.Wait(TimeSpan.FromSeconds(2)); }
-            catch (AggregateException) { }
-            cts.Dispose();
-        }
     }
 }

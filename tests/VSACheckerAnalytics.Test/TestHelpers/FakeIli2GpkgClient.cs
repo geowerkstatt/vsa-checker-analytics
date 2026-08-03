@@ -1,13 +1,16 @@
-﻿using Microsoft.Data.Sqlite;
+﻿using Geopilot.PipelineCore.Ilitools;
+using Geopilot.PipelineCore.Pipeline;
+using Microsoft.Data.Sqlite;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
-using VsaCheckerAnalytics.Ili2Gpkg;
 
 namespace VsaCheckerAnalytics.TestHelpers;
 
 /// <summary>Hand-rolled <see cref="IIli2GpkgClient"/> test double recording invocations.</summary>
 public sealed class FakeIli2GpkgClient : IIli2GpkgClient
 {
-    public sealed record Invocation(string GeoPackageText, string TransferFileText, Ili2GpkgArgs Args);
+    [SuppressMessage("Performance", "CA1819:Properties should not return arrays", Justification = "Only used for tests")]
+    public sealed record Invocation(byte[] GeoPackageContent, IReadOnlyList<string> TransferFileTexts, Ili2GpkgArgs Args);
 
     private static readonly Lazy<byte[]> MinimalGeoPackage = new(() =>
     {
@@ -82,33 +85,57 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
     /// <summary>Bytes written to the output stream on success. Defaults to a minimal valid GeoPackage.</summary>
     public Func<Invocation, byte[]> OutputSelector { get; set; } = _ => MinimalGeoPackage.Value;
 
-    public async Task<Ili2GpkgImportResult> ImportToGeoPackageAsync(
-        Stream geoPackageInput,
-        Stream transferFileInput,
-        Stream geoPackageOutput,
+    public Task<Ili2GpkgResult> SchemaImportAsync(
         Ili2GpkgArgs args,
+        IPipelineFile modelFile,
+        IPipelineFile gpkgFile,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+    public async Task<Ili2GpkgResult> ImportAsync(
+        Ili2GpkgArgs args,
+        IPipelineFile inputFile,
+        IPipelineFile outputFile,
+        IReadOnlyList<IPipelineFile> transferFiles,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(geoPackageInput);
-        ArgumentNullException.ThrowIfNull(transferFileInput);
-        ArgumentNullException.ThrowIfNull(geoPackageOutput);
+        ArgumentNullException.ThrowIfNull(inputFile);
+        ArgumentNullException.ThrowIfNull(outputFile);
+        ArgumentNullException.ThrowIfNull(transferFiles);
+        if (transferFiles.Count == 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(transferFiles), "At least one transfer file is required");
+        }
 
-        using var gpkgReader = new StreamReader(geoPackageInput, Encoding.UTF8, leaveOpen: true);
-        var gpkgText = await gpkgReader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        using var inputStream = inputFile.OpenReadFileStream();
+        using var memoryStream = new MemoryStream((int)inputStream.Length);
+        await inputStream.CopyToAsync(memoryStream, cancellationToken).ConfigureAwait(false);
+        var gpkgContent = memoryStream.ToArray();
 
-        using var xtfReader = new StreamReader(transferFileInput, Encoding.UTF8, leaveOpen: true);
-        var xtfText = await xtfReader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        var xtfTexts = new List<string>(transferFiles.Count);
+        foreach (var transferFile in transferFiles)
+        {
+            using var transferStream = transferFile.OpenReadFileStream();
+            using var xtfReader = new StreamReader(transferStream, Encoding.UTF8, leaveOpen: true);
+            xtfTexts.Add(await xtfReader.ReadToEndAsync(cancellationToken).ConfigureAwait(false));
+        }
 
-        var invocation = new Invocation(gpkgText, xtfText, args);
+        var invocation = new Invocation(gpkgContent, xtfTexts, args);
         invocations.Add(invocation);
         OnInvocation?.Invoke(invocation);
 
         var success = ResultSelector(invocation);
         if (success)
         {
-            await geoPackageOutput.WriteAsync(OutputSelector(invocation), cancellationToken).ConfigureAwait(false);
+            using var outputStream = outputFile.OpenWriteFileStream();
+            await outputStream.WriteAsync(OutputSelector(invocation), cancellationToken).ConfigureAwait(false);
         }
 
-        return new Ili2GpkgImportResult(success, success ? "ok" : "fail");
+        return new Ili2GpkgResult(success, success ? "ok" : "fail");
     }
+
+    public Task<Ili2GpkgResult> ExportAsync(
+        Ili2GpkgArgs args,
+        IPipelineFile gpkgFile,
+        IPipelineFile transferFile,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException();
 }

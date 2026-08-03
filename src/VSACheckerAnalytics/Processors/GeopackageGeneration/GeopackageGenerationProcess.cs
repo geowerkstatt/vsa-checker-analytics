@@ -1,11 +1,11 @@
-﻿using Geopilot.PipelineCore.Pipeline;
+﻿using Geopilot.PipelineCore.Ilitools;
+using Geopilot.PipelineCore.Pipeline;
 using Geopilot.PipelineCore.Pipeline.Process;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Text;
 using VsaCheckerAnalytics.Geopackage;
-using VsaCheckerAnalytics.Ili2Gpkg;
 
 namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 
@@ -45,31 +45,24 @@ public sealed class GeopackageGenerationProcess
 
     private static readonly string[] CsvJoinIndexColumns = ["ErrorId", "Model", "Class"];
 
-#pragma warning disable CA1859 // Use concrete types when possible for improved performance
     private readonly IIli2GpkgClient ili2GpkgClient;
-#pragma warning restore CA1859 // Use concrete types when possible for improved performance
     private readonly IPipelineFileManager pipelineFileManager;
     private readonly ILogger logger;
 
     /// <summary>
     /// Initializes a new <see cref="GeopackageGenerationProcess"/>.
     /// </summary>
-    /// <param name="jobsDirectory">Local path the ili2gpkg worker has mounted as <c>ILI2GPKG_JOBS_DIR</c>.</param>
+    /// <param name="ili2GpkgClient">The ili2gpkg client.</param>
     /// <param name="pipelineFileManager">Pipeline file manager used to allocate the output GeoPackage.</param>
     /// <param name="logger">Logger.</param>
     public GeopackageGenerationProcess(
-        string jobsDirectory,
+        IIli2GpkgClient ili2GpkgClient,
         IPipelineFileManager pipelineFileManager,
         ILogger logger)
     {
+        this.ili2GpkgClient = ili2GpkgClient ?? throw new ArgumentNullException(nameof(ili2GpkgClient));
         this.pipelineFileManager = pipelineFileManager ?? throw new ArgumentNullException(nameof(pipelineFileManager));
         this.logger = logger ?? NullLogger.Instance;
-
-        var options = new Ili2GpkgClientOptions
-        {
-            JobsDirectory = jobsDirectory,
-        };
-        this.ili2GpkgClient = new Ili2GpkgClient(options, this.logger);
     }
 
     /// <summary>
@@ -144,61 +137,32 @@ public sealed class GeopackageGenerationProcess
             StrokeArcs = true,
         };
 
-        var steps = new List<(string Label, IPipelineFile Xtf)>
-        {
-            ("defaultOrgs", defaultOrgsXtf),
-        };
+        var transferFiles = new List<IPipelineFile> { defaultOrgsXtf };
         if (userOrgsXtf is not null)
         {
-            steps.Add(("userOrgs", userOrgsXtf));
+            transferFiles.Add(userOrgsXtf);
         }
 
-        steps.Add(("dssMini", dssMiniXtf));
+        transferFiles.Add(dssMiniXtf);
 
-        var current = geoPackage;
-        try
-        {
-            for (var i = 0; i < steps.Count; i++)
-            {
-                var (label, xtf) = steps[i];
-                var next = pipelineFileManager.GeneratePipelineFile($"gpkg-step-{label}", "gpkg");
-                await RunImportStepAsync(current, xtf, next, label, args, cancellationToken).ConfigureAwait(false);
-                current = next;
-            }
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogDebug(ex.Message);
-            return null;
-        }
+        var outputGpkg = pipelineFileManager.GeneratePipelineFile("gpkg-with-xtfs", "gpkg");
 
-        logger.LogInformation("VsaGeopackageImportProcessor produced populated GeoPackage <{FileName}>.", current.OriginalFileName);
-        return current;
-    }
-
-    private async Task RunImportStepAsync(
-        IPipelineFile gpkgIn,
-        IPipelineFile xtfIn,
-        IPipelineFile gpkgOut,
-        string label,
-        Ili2GpkgArgs args,
-        CancellationToken cancellationToken)
-    {
-        logger.LogDebug("Starting ili2gpkg import <{Label}>.", label);
-
-        await using var gpkgInStream = gpkgIn.OpenReadFileStream();
-        await using var xtfInStream = xtfIn.OpenReadFileStream();
-        await using var gpkgOutStream = gpkgOut.OpenWriteFileStream();
+        logger.LogDebug("Starting ili2gpkg batch import of {Count} transfer files.", transferFiles.Count);
 
         var result = await ili2GpkgClient
-            .ImportToGeoPackageAsync(gpkgInStream, xtfInStream, gpkgOutStream, args, cancellationToken)
+            .ImportAsync(args, geoPackage, outputGpkg, transferFiles, cancellationToken)
             .ConfigureAwait(false);
 
         if (!result.Success)
         {
-            throw new InvalidOperationException(
-                $"ili2gpkg import '{label}' failed.{(string.IsNullOrEmpty(result.Log) ? string.Empty : Environment.NewLine + result.Log)}");
+            logger.LogDebug(
+                "ili2gpkg batch import failed.{Log}",
+                string.IsNullOrEmpty(result.Log) ? string.Empty : Environment.NewLine + result.Log);
+            return null;
         }
+
+        logger.LogInformation("VsaGeopackageImportProcessor produced populated GeoPackage <{FileName}>.", outputGpkg.OriginalFileName);
+        return outputGpkg;
     }
 
     private async Task<IPipelineFile> ImportCheckerCsvsAsync(
