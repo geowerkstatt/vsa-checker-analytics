@@ -15,24 +15,13 @@ namespace VsaCheckerAnalytics.Processors.VsaMatcher;
 [TestClass]
 public class VsaMatcherIntegrationTest
 {
+    private sealed record UpstreamStepResult(IPipelineFile[] ExtractedFiles);
+
     private const string VsaMatcherImplementation = "VsaCheckerAnalytics.Processors.VsaMatcher.VsaMatcherProcess";
     private const string OrgTableUrl2020 = "http://test.local/org_2020.xtf";
     private const string OrgTableUrl20201 = "http://test.local/org_2020_1.xtf";
     private static readonly string PluginDllPath = typeof(VsaMatcherProcess).Assembly.Location;
     private static readonly string ResourceDir = Path.Combine(AppContext.BaseDirectory, "Testdata");
-
-    private static readonly List<OutputConfig> VsaMatcherOutputs =
-    [
-        new() { Take = "Gep", As = "gep" },
-        new() { Take = "ModelVersion", As = "model_version" },
-        new() { Take = "Language", As = "language" },
-        new() { Take = "UserOrgTable", As = "user_org_table" },
-        new() { Take = "CheckerCsvA", As = "checker_csv_a" },
-        new() { Take = "CheckerCsvFp", As = "checker_csv_fp" },
-        new() { Take = "CheckerCsvT", As = "checker_csv_t" },
-        new() { Take = "GpkgTemplate", As = "gpkg_template" },
-        new() { Take = "StandardOrgTable", As = "standard_org_table" },
-    ];
 
     private Mock<HttpMessageHandler> httpMessageHandlerMock = null!;
     private HttpClient httpClient = null!;
@@ -103,7 +92,6 @@ public class VsaMatcherIntegrationTest
             Id = "vsa_matcher",
             DisplayName = new Dictionary<string, string> { { "en", "VSA Matching" } },
             ProcessId = "vsa_matcher",
-            Output = VsaMatcherOutputs,
         };
 
         var processes = new List<ProcessConfig>
@@ -122,30 +110,27 @@ public class VsaMatcherIntegrationTest
         var inputConfig = new Dictionary<string, InputValue>
         {
             ["files"] = new InputValue.UploadReference(),
-            ["unzippedFiles"] = new InputValue.StepOutputReference("unzipper", "extracted_files"),
+            ["unzippedFiles"] = new InputValue.StepOutputReference("unzipper", nameof(UpstreamStepResult.ExtractedFiles)),
         };
 
         using var step = PipelineStep.Builder()
             .Id("vsa_matcher")
             .DisplayName(new Dictionary<string, string> { { "en", "VSA Matching" } })
             .Inputs(inputConfig)
-            .OutputConfig(VsaMatcherOutputs)
+            .OutputActions([])
             .Process(process)
             .Logger(new Mock<ILogger>().Object)
             .Build();
 
         ReplaceHttpClient(step.Process);
 
-        var unzipResult = new StepResult();
-        unzipResult.Outputs["extracted_files"] = new StepOutput
+        var unzipResult = new StepResult
         {
-            Data = new IPipelineFile[]
-            {
+            Result = new UpstreamStepResult([
                 CreateCsvFile("gep_a_err.csv", "check"),
                 CreateCsvFile("gep_fp_err.csv", "check"),
                 CreateCsvFile("gep_t_err.csv", "check"),
-            },
-            Action = [],
+            ]),
         };
 
         var context = new PipelineContext
@@ -158,25 +143,21 @@ public class VsaMatcherIntegrationTest
 
         Assert.AreEqual(StepState.Success, step.State);
 
-        var gepFiles = result.Outputs["gep"].Data as IPipelineFile[];
-        Assert.IsNotNull(gepFiles);
+        var gepFiles = Assert.IsInstanceOfType<IPipelineFile[]>(result.ExtractProperty(nameof(VsaMatcherResult.Gep)));
         Assert.HasCount(1, gepFiles);
 
-        Assert.AreEqual("2020", result.Outputs["model_version"].Data);
-        Assert.AreEqual("DE", result.Outputs["language"].Data);
+        Assert.AreEqual("2020", result.ExtractProperty(nameof(VsaMatcherResult.ModelVersion)));
+        Assert.AreEqual("DE", result.ExtractProperty(nameof(VsaMatcherResult.Language)));
 
-        var checkerCsvA = result.Outputs["checker_csv_a"].Data as IPipelineFile[];
-        var checkerCsvFp = result.Outputs["checker_csv_fp"].Data as IPipelineFile[];
-        var checkerCsvT = result.Outputs["checker_csv_t"].Data as IPipelineFile[];
-        Assert.IsNotNull(checkerCsvA);
-        Assert.IsNotNull(checkerCsvFp);
-        Assert.IsNotNull(checkerCsvT);
+        var checkerCsvA = Assert.IsInstanceOfType<IPipelineFile[]>(result.ExtractProperty(nameof(VsaMatcherResult.CheckerCsvA)));
+        var checkerCsvFp = Assert.IsInstanceOfType<IPipelineFile[]>(result.ExtractProperty(nameof(VsaMatcherResult.CheckerCsvFp)));
+        var checkerCsvT = Assert.IsInstanceOfType<IPipelineFile[]>(result.ExtractProperty(nameof(VsaMatcherResult.CheckerCsvT)));
         Assert.HasCount(1, checkerCsvA);
         Assert.HasCount(1, checkerCsvFp);
         Assert.HasCount(1, checkerCsvT);
 
-        Assert.IsNotNull(result.Outputs["gpkg_template"].Data);
-        Assert.IsNotNull(result.Outputs["standard_org_table"].Data);
+        Assert.IsNotNull(result.ExtractProperty(nameof(VsaMatcherResult.GpkgTemplate)));
+        Assert.IsNotNull(result.ExtractProperty(nameof(VsaMatcherResult.StandardOrgTable)));
     }
 
     private void ReplaceHttpClient(object process)

@@ -138,4 +138,17 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
         IPipelineFile gpkgFile,
         IPipelineFile transferFile,
         CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+    public Task<Ili2GpkgResult> UpdateAsync(
+        Ili2GpkgArgs args,
+        IPipelineFile inputFile,
+        IPipelineFile outputFile,
+        IReadOnlyList<IPipelineFile> transferFiles,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+    public Task<Ili2GpkgResult> ValidateAsync(
+        Ili2GpkgArgs args,
+        IPipelineFile gpkgFile,
+        IPipelineFile xtfLogFile,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException();
 }
