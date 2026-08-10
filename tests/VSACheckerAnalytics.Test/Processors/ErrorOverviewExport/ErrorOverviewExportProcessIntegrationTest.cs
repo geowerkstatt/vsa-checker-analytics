@@ -1,13 +1,6 @@
-﻿using ClosedXML.Excel;
-using Geopilot.Pipeline;
-using Geopilot.Pipeline.Config;
-using Geopilot.Pipeline.Ilitools;
-using Geopilot.Pipeline.Process;
+﻿using Geopilot.Pipeline;
 using Geopilot.PipelineCore.Pipeline;
 using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Moq;
 using VsaCheckerAnalytics.TestHelpers;
 
 namespace VsaCheckerAnalytics.Processors.ErrorOverviewExport;
@@ -15,196 +8,55 @@ namespace VsaCheckerAnalytics.Processors.ErrorOverviewExport;
 [TestClass]
 public class ErrorOverviewExportProcessIntegrationTest
 {
-    private sealed record UpstreamStepResult(IPipelineFile? GeneratedGeopackage, IPipelineFile? CantonErrorMatrixTemplate);
-
-    private const string ErrorOverviewExportImplementation = "VsaCheckerAnalytics.Processors.ErrorOverviewExport.ErrorOverviewExportProcess";
+    private const string StepId = "error_overview_export";
     private const string UpstreamStepId = "geopackage_generation";
-    private static readonly string PluginDllPath = typeof(ErrorOverviewExportProcess).Assembly.Location;
 
-    private static readonly IReadOnlyDictionary<string, InputValue> ErrorOverviewExportInputs =
-        new Dictionary<string, InputValue>
-        {
-            ["geopackage"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.GeneratedGeopackage)),
-            ["cantonErrorMatrixTemplate"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.CantonErrorMatrixTemplate)),
-        };
+    /// <summary>
+    /// Stands in for the result of <see cref="UpstreamStepId"/>. Only the property the definition references
+    /// via <c>${step_output(geopackage_generation.GeneratedGeopackage)}</c> is needed.
+    /// </summary>
+    private sealed record UpstreamStepResult(IPipelineFile GeneratedGeopackage);
 
-    private PipelineProcessFactory pipelineProcessFactory = null!;
-    private string tempDir = null!;
+    private TestPipelineHost host = null!;
 
     [TestInitialize]
-    public void SetUp()
-    {
-        tempDir = Path.Combine(Path.GetTempPath(), "error-export-integration-" + Guid.NewGuid().ToString("N")[..8]);
-        Directory.CreateDirectory(tempDir);
-
-        var pipelineOptions = new PipelineOptions
-        {
-            Definition = "unused",
-            Plugins = [PluginDllPath],
-            ProcessConfigs = new Dictionary<string, Parameterization>
-            {
-                {
-                    ErrorOverviewExportImplementation, new Parameterization
-                    {
-                        { "errorDataSheet", "Error Data" },
-                        {
-                            "errorDataAttributeMapping", new Parameterization
-                            {
-                                { "tid", "TID" },
-                                { "class", "Klasse" },
-                                { "errorid", "Fehler-ID" },
-                                { "wk", "WK" },
-                                { "gep", "GEP" },
-                                { "error", "Fehlertyp" },
-                                { "check_type", "Prueftyp" },
-                                { "funktionhierarchisch", "Funktionhierarchisch" },
-                                { "eigentuemer", "Eigentuemer" },
-                                { "status", "Status" },
-                                { "fid", "FID" },
-                            }
-                        },
-                        {
-                            "errorDataColumnMapping", new Parameterization
-                            {
-                                { "tid", "A" },
-                                { "class", "B" },
-                                { "errorid", "C" },
-                                { "wk", "D" },
-                                { "gep", "E" },
-                                { "error", "F" },
-                                { "check_type", "G" },
-                                { "funktionhierarchisch", "H" },
-                                { "eigentuemer", "I" },
-                                { "status", "J" },
-                                { "fid", "K" },
-                            }
-                        },
-                        { "errorObjectSheet", "Error Object" },
-                        {
-                            "errorObjectAttributeMapping", new Parameterization
-                            {
-                                { "tid", "TID" },
-                                { "class", "Klasse" },
-                                { "count_error", "Anzahl Fehler" },
-                                { "wk_max", "WK Maximum" },
-                                { "gep_max", "GEP Maximum" },
-                            }
-                        },
-                        {
-                            "errorObjectColumnMapping", new Parameterization
-                            {
-                                { "tid", "A" },
-                                { "class", "B" },
-                                { "count_error", "C" },
-                                { "wk_max", "D" },
-                                { "gep_max", "E" },
-                            }
-                        },
-                        { "overviewWkSheet", "Uebersicht WK" },
-                        { "overviewGepSheet", "Uebersicht GEP" },
-                        { "overviewRowFields", new List<object> { "class", "error" } },
-                        { "overviewFilterFields", new List<object> { "check_type", "funktionhierarchisch", "eigentuemer", "status" } },
-                        { "overviewValueField", "fid" },
-                        { "overviewValueName", "Anzahl Fehler" },
-                        { "cantonErrorObjectSheet", "raw_data" },
-                        {
-                            "cantonErrorColumnMapping", new Parameterization
-                            {
-                                { "tabelle", "A" },
-                                { "attribut", "B" },
-                                { "anzahl_total", "C" },
-                                { "anzahl_paa", "D" },
-                                { "anzahl_saa", "E" },
-                                { "anzahl_null", "F" },
-                                { "anzahl_null_paa", "G" },
-                                { "anzahl_null_saa", "H" },
-                            }
-                        },
-                    }
-                },
-            },
-        };
-
-        var pipelineOptionsMock = new Mock<IOptions<PipelineOptions>>();
-        pipelineOptionsMock.SetupGet(o => o.Value).Returns(pipelineOptions);
-
-        var ilitoolsOptionsMock = new Mock<IOptions<IlitoolsOptions>>();
-        ilitoolsOptionsMock.SetupGet(o => o.Value).Returns(new IlitoolsOptions { IlitoolsWrapperAddress = "http://fake-uri" });
-
-        var loggerFactoryMock = new Mock<ILoggerFactory>();
-        loggerFactoryMock.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(new Mock<ILogger>().Object);
-
-        pipelineProcessFactory = new PipelineProcessFactory(pipelineOptionsMock.Object, ilitoolsOptionsMock.Object, loggerFactoryMock.Object);
-    }
+    public void SetUp() => host = TestPipelineHost.Create();
 
     [TestCleanup]
-    public void Cleanup()
-    {
-        pipelineProcessFactory?.Dispose();
-        if (Directory.Exists(tempDir))
-        {
-            try { Directory.Delete(tempDir, recursive: true); }
-            catch (IOException) { }
-        }
-    }
+    public void Cleanup() => host?.Dispose();
 
     [TestMethod]
-    public async Task RunErrorOverviewExportPipeline()
+    public async Task RunErrorOverviewExportStep()
     {
-        var stepConfig = new StepConfig
-        {
-            Id = "error_overview_export",
-            DisplayName = new Dictionary<string, string> { { "en", "Error Overview Export" } },
-            ProcessId = "error_overview_export",
-        };
-
-        var processes = new List<ProcessConfig>
-        {
-            new() { Id = "error_overview_export", Implementation = ErrorOverviewExportImplementation },
-        };
-
-        var process = pipelineProcessFactory.Builder()
-            .PipelineId("test")
-            .StepConfig(stepConfig)
-            .Processes(processes)
-            .PipelineDirectory(tempDir)
-            .JobId(Guid.NewGuid())
-            .Build();
-
-        using var step = PipelineStep.Builder()
-            .Id("error_overview_export")
-            .DisplayName(new Dictionary<string, string> { { "en", "Error Overview Export" } })
-            .Inputs(ErrorOverviewExportInputs)
-            .OutputActions([])
-            .Process(process)
-            .Logger(new Mock<ILogger>().Object)
-            .Build();
-
-        var upstream = new StepResult
-        {
-            Result = new UpstreamStepResult(CreateTestGeoPackage(), CreateCantonTemplate()),
-        };
+        using var pipeline = host.CreatePipeline();
+        var step = pipeline.Steps.Single(s => s.Id == StepId);
 
         var context = new PipelineContext
         {
             Upload = [],
-            StepResults = new Dictionary<string, StepResult> { { UpstreamStepId, upstream } },
+            StepResults = new Dictionary<string, StepResult>
+            {
+                [UpstreamStepId] = new() { Result = new UpstreamStepResult(CreateTestGeoPackage()) },
+            },
         };
 
         var result = await step.Run(context, CancellationToken.None);
 
         Assert.AreEqual(StepState.Success, step.State);
 
-        var errorOverview = result.ExtractProperty(nameof(ErrorOverviewExportResult.ErrorOverview));
-        var outputFile = Assert.IsInstanceOfType<IPipelineFile>(errorOverview);
+        var errorOverview = Assert.IsInstanceOfType<IPipelineFile>(result.ExtractProperty(nameof(ErrorOverviewExportResult.ErrorOverview)));
+        using var overviewStream = errorOverview.OpenReadFileStream();
+        Assert.IsGreaterThan(0, overviewStream.Length);
 
-        using var stream = outputFile.OpenReadFileStream();
-        Assert.IsGreaterThan(0, stream.Length);
+        // The canton matrix is filled from the template wired in the definition via ${file(ErrorMatrixKanton.xlsx)}.
+        var cantonMatrix = Assert.IsInstanceOfType<IPipelineFile>(result.ExtractProperty(nameof(ErrorOverviewExportResult.CantonErrorMatrix)));
+        using var cantonStream = cantonMatrix.OpenReadFileStream();
+        Assert.IsGreaterThan(0, cantonStream.Length);
     }
 
     private TestPipelineFile CreateTestGeoPackage()
     {
-        var gpkgPath = Path.Combine(tempDir, $"test-{Guid.NewGuid():N}.gpkg");
+        var gpkgPath = Path.Combine(host.WorkingDirectory, $"test-{Guid.NewGuid():N}.gpkg");
 
         using var connection = new SqliteConnection($"Data Source={gpkgPath};Pooling=false");
         connection.Open();
@@ -235,16 +87,5 @@ public class ErrorOverviewExportProcessIntegrationTest
         cmd.ExecuteNonQuery();
 
         return new TestPipelineFile(gpkgPath);
-    }
-
-    private TestPipelineFile CreateCantonTemplate()
-    {
-        var templatePath = Path.Combine(tempDir, $"canton-template-{Guid.NewGuid():N}.xlsx");
-
-        using var workbook = new XLWorkbook();
-        workbook.AddWorksheet("raw_data");
-        workbook.SaveAs(templatePath);
-
-        return new TestPipelineFile(templatePath);
     }
 }

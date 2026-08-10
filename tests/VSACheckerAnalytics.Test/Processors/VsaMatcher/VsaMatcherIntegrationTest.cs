@@ -1,142 +1,68 @@
 ﻿using Geopilot.Pipeline;
-using Geopilot.Pipeline.Config;
-using Geopilot.Pipeline.Ilitools;
-using Geopilot.Pipeline.Process;
 using Geopilot.PipelineCore.Pipeline;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moq;
 using Moq.Protected;
 using System.Net;
-using System.Reflection;
+using VsaCheckerAnalytics.TestHelpers;
 
 namespace VsaCheckerAnalytics.Processors.VsaMatcher;
 
 [TestClass]
 public class VsaMatcherIntegrationTest
 {
+    private const string StepId = "vsa_matcher";
+    private const string UpstreamStepId = "gep_checker_unzipper";
+
+    /// <summary>
+    /// Stands in for the result of <see cref="UpstreamStepId"/>. Only the property the definition references
+    /// via <c>${step_output(gep_checker_unzipper.ExtractedFiles)}</c> is needed.
+    /// </summary>
     private sealed record UpstreamStepResult(IPipelineFile[] ExtractedFiles);
 
-    private const string VsaMatcherImplementation = "VsaCheckerAnalytics.Processors.VsaMatcher.VsaMatcherProcess";
-    private const string OrgTableUrl2020 = "http://test.local/org_2020.xtf";
-    private const string OrgTableUrl20201 = "http://test.local/org_2020_1.xtf";
-    private static readonly string PluginDllPath = typeof(VsaMatcherProcess).Assembly.Location;
-    private static readonly string ResourceDir = Path.Combine(AppContext.BaseDirectory, "Testdata");
-
+    private TestPipelineHost host = null!;
     private Mock<HttpMessageHandler> httpMessageHandlerMock = null!;
     private HttpClient httpClient = null!;
-    private PipelineProcessFactory pipelineProcessFactory = null!;
-    private Mock<ILoggerFactory> loggerFactoryMock = null!;
-    private string tempDir = null!;
 
     [TestInitialize]
     public void SetUp()
     {
-        tempDir = Path.Combine(Path.GetTempPath(), "vsa-matcher-integration-" + Guid.NewGuid().ToString("N")[..8]);
-        Directory.CreateDirectory(tempDir);
+        host = TestPipelineHost.Create();
 
         httpMessageHandlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         httpMessageHandlerMock.Protected().Setup("Dispose", ItExpr.IsAny<bool>());
-        SetupOrgTableMock(OrgTableUrl2020);
-        SetupOrgTableMock(OrgTableUrl20201);
-
-        var pipelineOptions = new PipelineOptions
-        {
-            Definition = "unused",
-            Plugins = [PluginDllPath],
-            ProcessConfigs = new Dictionary<string, Parameterization>
-            {
-                {
-                    VsaMatcherImplementation, new Parameterization
-                    {
-                        { "geoPackageTemplatePath2020", Path.Combine(ResourceDir, "template_ca_dssmini_2020_d.gpkg") },
-                        { "geoPackageTemplatePath20201", Path.Combine(ResourceDir, "template_ca_dssmini_2020_1_d.gpkg") },
-                        { "vsaOrgTableUrl2020", OrgTableUrl2020 },
-                        { "vsaOrgTableUrl20201", OrgTableUrl20201 },
-                    }
-                },
-            },
-        };
-
-        var pipelineOptionsMock = new Mock<IOptions<PipelineOptions>>();
-        pipelineOptionsMock.SetupGet(o => o.Value).Returns(pipelineOptions);
-
-        var ilitoolsOptionsMock = new Mock<IOptions<IlitoolsOptions>>();
-        ilitoolsOptionsMock.SetupGet(o => o.Value).Returns(new IlitoolsOptions { IlitoolsWrapperAddress = "http://fake-uri" });
-
-        loggerFactoryMock = new Mock<ILoggerFactory>();
-        loggerFactoryMock.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(new Mock<ILogger>().Object);
-
-        pipelineProcessFactory = new PipelineProcessFactory(pipelineOptionsMock.Object, ilitoolsOptionsMock.Object, loggerFactoryMock.Object);
+        SetupOrgTableMock(TestPipelineHost.VsaOrgTableUrl2020);
+        SetupOrgTableMock(TestPipelineHost.VsaOrgTableUrl20201);
+        httpClient = new HttpClient(httpMessageHandlerMock.Object);
     }
 
     [TestCleanup]
     public void Cleanup()
     {
         httpClient?.Dispose();
-        pipelineProcessFactory?.Dispose();
-        if (Directory.Exists(tempDir))
-        {
-            try { Directory.Delete(tempDir, recursive: true); }
-            catch (IOException) { }
-        }
+        host?.Dispose();
     }
 
     [TestMethod]
-    public async Task RunVsaMatcherPipeline()
+    public async Task RunVsaMatcherStep()
     {
-        var gepXtfPath = CreateGepXtf("VSADSSMINI_2020_LV95");
-
-        var stepConfig = new StepConfig
-        {
-            Id = "vsa_matcher",
-            DisplayName = new Dictionary<string, string> { { "en", "VSA Matching" } },
-            ProcessId = "vsa_matcher",
-        };
-
-        var processes = new List<ProcessConfig>
-        {
-            new() { Id = "vsa_matcher", Implementation = VsaMatcherImplementation },
-        };
-
-        var process = pipelineProcessFactory.Builder()
-            .PipelineId("test")
-            .StepConfig(stepConfig)
-            .Processes(processes)
-            .PipelineDirectory(tempDir)
-            .JobId(Guid.NewGuid())
-            .Build();
-
-        var inputConfig = new Dictionary<string, InputValue>
-        {
-            ["files"] = new InputValue.UploadReference(),
-            ["unzippedFiles"] = new InputValue.StepOutputReference("unzipper", nameof(UpstreamStepResult.ExtractedFiles)),
-        };
-
-        using var step = PipelineStep.Builder()
-            .Id("vsa_matcher")
-            .DisplayName(new Dictionary<string, string> { { "en", "VSA Matching" } })
-            .Inputs(inputConfig)
-            .OutputActions([])
-            .Process(process)
-            .Logger(new Mock<ILogger>().Object)
-            .Build();
-
-        ReplaceHttpClient(step.Process);
-
-        var unzipResult = new StepResult
-        {
-            Result = new UpstreamStepResult([
-                CreateCsvFile("gep_a_err.csv", "check"),
-                CreateCsvFile("gep_fp_err.csv", "check"),
-                CreateCsvFile("gep_t_err.csv", "check"),
-            ]),
-        };
+        using var pipeline = host.CreatePipeline();
+        var step = pipeline.Steps.Single(s => s.Id == StepId);
+        TestPipelineHost.ReplaceDependency(step, "httpClient", httpClient);
 
         var context = new PipelineContext
         {
-            Upload = [new PipelineFile(gepXtfPath, "gep_vsadssmini_2020.xtf")],
-            StepResults = new Dictionary<string, StepResult> { { "unzipper", unzipResult } },
+            Upload = [new TestPipelineFile(CreateGepXtf("VSADSSMINI_2020_LV95"))],
+            StepResults = new Dictionary<string, StepResult>
+            {
+                [UpstreamStepId] = new()
+                {
+                    Result = new UpstreamStepResult([
+                        CreateCsvFile("gep_a_err.csv"),
+                        CreateCsvFile("gep_fp_err.csv"),
+                        CreateCsvFile("gep_t_err.csv"),
+                    ]),
+                },
+            },
         };
 
         var result = await step.Run(context, CancellationToken.None);
@@ -156,16 +82,9 @@ public class VsaMatcherIntegrationTest
         Assert.HasCount(1, checkerCsvFp);
         Assert.HasCount(1, checkerCsvT);
 
+        // Selected from the templates the deployment ships, addressed through the app-settings config layer.
         Assert.IsNotNull(result.ExtractProperty(nameof(VsaMatcherResult.GpkgTemplate)));
         Assert.IsNotNull(result.ExtractProperty(nameof(VsaMatcherResult.StandardOrgTable)));
-    }
-
-    private void ReplaceHttpClient(object process)
-    {
-        httpClient = new HttpClient(httpMessageHandlerMock.Object);
-        process.GetType()
-            .GetField("httpClient", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .SetValue(process, httpClient);
     }
 
     private void SetupOrgTableMock(string url)
@@ -188,12 +107,12 @@ public class VsaMatcherIntegrationTest
 #pragma warning restore CA2000
     }
 
-    private PipelineFile CreateCsvFile(string fileName, string relativePath)
+    private TestPipelineFile CreateCsvFile(string fileName)
     {
-        var path = Path.Combine(tempDir, relativePath, fileName);
+        var path = Path.Combine(host.WorkingDirectory, "check", fileName);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, "col1;col2\nval1;val2");
-        return new PipelineFile(path, fileName, relativePath);
+        return new TestPipelineFile(path, "check");
     }
 
     private string CreateGepXtf(string modelName)
@@ -209,7 +128,7 @@ public class VsaMatcherIntegrationTest
             + "  <ili:datasection/>\n"
             + "</ili:transfer>";
 
-        var path = Path.Combine(tempDir, "gep.xtf");
+        var path = Path.Combine(host.WorkingDirectory, "gep.xtf");
         File.WriteAllText(path, xtf);
         return path;
     }
