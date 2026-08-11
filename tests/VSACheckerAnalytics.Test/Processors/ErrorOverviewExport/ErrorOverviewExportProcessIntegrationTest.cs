@@ -45,12 +45,12 @@ public class ErrorOverviewExportProcessIntegrationTest
         Assert.AreEqual(StepState.Success, step.State);
 
         var errorOverview = Assert.IsInstanceOfType<IPipelineFile>(result.ExtractProperty(nameof(ErrorOverviewExportResult.ErrorOverview)));
-        using var overviewStream = errorOverview.OpenReadFileStream();
+        using var overviewStream = await errorOverview.OpenReadAsync();
         Assert.IsGreaterThan(0, overviewStream.Length);
 
         // The canton matrix is filled from the template wired in the definition via ${file(ErrorMatrixKanton.xlsx)}.
         var cantonMatrix = Assert.IsInstanceOfType<IPipelineFile>(result.ExtractProperty(nameof(ErrorOverviewExportResult.CantonErrorMatrix)));
-        using var cantonStream = cantonMatrix.OpenReadFileStream();
+        using var cantonStream = await cantonMatrix.OpenReadAsync();
         Assert.IsGreaterThan(0, cantonStream.Length);
     }
 

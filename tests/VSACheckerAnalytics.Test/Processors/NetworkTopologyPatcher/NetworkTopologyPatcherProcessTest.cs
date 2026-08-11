@@ -53,11 +53,7 @@ public sealed class NetworkTopologyPatcherProcessTest
 
         Assert.AreNotSame(input, output, "Process must write to a fresh copy, not mutate the input.");
 
-        string outputPath;
-        using (var fs = output.OpenReadFileStream())
-        {
-            outputPath = fs.Name;
-        }
+        var outputPath = await output.GetLocalPathAsync();
 
         using var connection = new SqliteConnection($"Data Source={outputPath};Pooling=false");
         connection.Open();
@@ -164,11 +160,7 @@ public sealed class NetworkTopologyPatcherProcessTest
         var output = result.PatchedGeopackage;
         Assert.IsNotNull(output);
 
-        string outputPath;
-        using (var fs = output.OpenReadFileStream())
-        {
-            outputPath = fs.Name;
-        }
+        var outputPath = await output.GetLocalPathAsync();
 
         using var connection = new SqliteConnection($"Data Source={outputPath};Pooling=false");
         connection.Open();
@@ -201,11 +193,7 @@ public sealed class NetworkTopologyPatcherProcessTest
             var output = result.PatchedGeopackage;
             Assert.IsNotNull(output);
 
-            string outputPath;
-            using (var fs = output.OpenReadFileStream())
-            {
-                outputPath = fs.Name;
-            }
+            var outputPath = await output.GetLocalPathAsync();
 
             using var connection = new SqliteConnection($"Data Source={outputPath};Pooling=false");
             connection.Open();
@@ -240,11 +228,7 @@ public sealed class NetworkTopologyPatcherProcessTest
             var output = result.PatchedGeopackage;
             Assert.IsNotNull(output);
 
-            string outputPath;
-            using (var fs = output.OpenReadFileStream())
-            {
-                outputPath = fs.Name;
-            }
+            var outputPath = await output.GetLocalPathAsync();
 
             using var connection = new SqliteConnection($"Data Source={outputPath};Pooling=false");
             connection.Open();

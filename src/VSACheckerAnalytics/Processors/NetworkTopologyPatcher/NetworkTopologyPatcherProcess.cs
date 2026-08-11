@@ -60,8 +60,8 @@ public sealed class NetworkTopologyPatcherProcess
     {
         ArgumentNullException.ThrowIfNull(geoPackage);
 
-        var target = pipelineFileManager.CreateWritableCopy(geoPackage, PatchedGeopackageName);
-        var path = target.GetLocalPath();
+        var target = await pipelineFileManager.CreateWritableCopyAsync(geoPackage, PatchedGeopackageName, cancellationToken);
+        var path = await target.GetLocalPathAsync(cancellationToken);
 
         NetworkTopologyResult topologyResult;
         using (var connection = OpenGeoPackage(path))

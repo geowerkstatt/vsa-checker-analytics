@@ -104,8 +104,8 @@ die Zeilen den fest verdrahteten Zellbezügen der Validierungsblätter der Vorla
    Spalte B auf Breite 13 gesetzt.
 4. Die Arbeitsmappe wird über ClosedXML in eine Pipeline-Output-Datei
    geschrieben (`ErrorOverview`).
-5. Die kantonale Fehlermatrix wird befüllt (`ExportCantonMatrix`):
-   - Über `IPipelineFileManager.CreateWritableCopy` wird eine eigene, beschreibbare
+5. Die kantonale Fehlermatrix wird befüllt (`ExportCantonMatrixAsync`):
+   - Über `IPipelineFileManager.CreateWritableCopyAsync` wird eine eigene, beschreibbare
      Kopie der Vorlage `ErrorMatrixKanton.xlsx` angelegt und in place bearbeitet.
    - Ist die Tabelle `ca_statistics_attribute` vorhanden, werden ihre Zeilen
      (`ORDER BY sortierung`) aus derselben schreibgeschützten Verbindung in das

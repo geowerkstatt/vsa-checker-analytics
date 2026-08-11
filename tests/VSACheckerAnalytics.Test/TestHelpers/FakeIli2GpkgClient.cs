@@ -106,7 +106,7 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
             throw new ArgumentOutOfRangeException(nameof(transferFiles), "At least one transfer file is required");
         }
 
-        using var inputStream = inputFile.OpenReadFileStream();
+        using var inputStream = await inputFile.OpenReadAsync(cancellationToken);
         using var memoryStream = new MemoryStream((int)inputStream.Length);
         await inputStream.CopyToAsync(memoryStream, cancellationToken).ConfigureAwait(false);
         var gpkgContent = memoryStream.ToArray();
@@ -114,7 +114,7 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
         var xtfTexts = new List<string>(transferFiles.Count);
         foreach (var transferFile in transferFiles)
         {
-            using var transferStream = transferFile.OpenReadFileStream();
+            using var transferStream = await transferFile.OpenReadAsync(cancellationToken);
             using var xtfReader = new StreamReader(transferStream, Encoding.UTF8, leaveOpen: true);
             xtfTexts.Add(await xtfReader.ReadToEndAsync(cancellationToken).ConfigureAwait(false));
         }

@@ -152,7 +152,7 @@ public sealed class ErrorOverviewExportProcess
         ArgumentNullException.ThrowIfNull(geopackage);
         ArgumentNullException.ThrowIfNull(cantonErrorMatrixTemplate);
 
-        var gpkgPath = geopackage.GetLocalPath();
+        var gpkgPath = await geopackage.GetLocalPathAsync(cancellationToken);
 
         using var connection = OpenGeoPackage(gpkgPath);
         using var workbook = new XLWorkbook();
@@ -182,7 +182,7 @@ public sealed class ErrorOverviewExportProcess
         logger.LogInformation("Exported error overview to <{FileName}>.", outputFile.OriginalFileName);
 
         cancellationToken.ThrowIfCancellationRequested();
-        var cantonMatrix = ExportCantonMatrix(cantonErrorMatrixTemplate, connection);
+        var cantonMatrix = await ExportCantonMatrixAsync(cantonErrorMatrixTemplate, connection, cancellationToken);
 
         var statusMessage = ErrorOverviewStatusMessageFormat
             .Map(msg => string.Format(CultureInfo.InvariantCulture, msg, errorCount));
@@ -201,11 +201,12 @@ public sealed class ErrorOverviewExportProcess
     /// raw data sheet by fixed cell, so values are written in place (existing contents cleared, no
     /// rows deleted) to keep those references intact.
     /// </summary>
-    private IPipelineFile ExportCantonMatrix(IPipelineFile template, SqliteConnection connection)
+    private async Task<IPipelineFile> ExportCantonMatrixAsync(IPipelineFile template, SqliteConnection connection, CancellationToken cancellationToken)
     {
-        var copy = pipelineFileManager.CreateWritableCopy(template, CantonMatrixFileName);
+        var copy = await pipelineFileManager.CreateWritableCopyAsync(template, CantonMatrixFileName, cancellationToken);
+        var copyPath = await copy.GetLocalPathAsync(cancellationToken);
 
-        using (var workbook = new XLWorkbook(copy.GetLocalPath()))
+        using (var workbook = new XLWorkbook(copyPath))
         {
             FillCantonRawData(workbook.Worksheet(cantonSheetName), connection);
 

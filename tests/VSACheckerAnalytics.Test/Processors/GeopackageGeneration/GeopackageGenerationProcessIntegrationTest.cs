@@ -56,12 +56,9 @@ public class GeopackageGenerationProcessIntegrationTest
         var generatedGeopackage = result.StepResult.ExtractProperty(nameof(GeopackageGenerationResult.GeneratedGeopackage));
         var gpkgFile = Assert.IsInstanceOfType<IPipelineFile>(generatedGeopackage);
 
-        string gpkgPath;
-        using (var stream = gpkgFile.OpenReadFileStream())
-        {
-            Assert.IsGreaterThan(0, stream.Length);
-            gpkgPath = stream.Name;
-        }
+        var gpkgPath = await gpkgFile.GetLocalPathAsync();
+
+        Assert.IsGreaterThan(0, new FileInfo(gpkgPath).Length);
 
         // Orphan baseline (drift guard), exercised through the real process: these SK_* checker
         // errors are matrix-defined under the generic "SK" class, not the specific subclass, so
@@ -109,7 +106,7 @@ public class GeopackageGenerationProcessIntegrationTest
         var generatedGeopackage = result.StepResult.ExtractProperty(nameof(GeopackageGenerationResult.GeneratedGeopackage));
         var gpkgFile = Assert.IsInstanceOfType<IPipelineFile>(generatedGeopackage);
 
-        using var stream = gpkgFile.OpenReadFileStream();
+        using var stream = await gpkgFile.OpenReadAsync();
         Assert.IsGreaterThan(0, stream.Length);
     }
 
@@ -124,7 +121,7 @@ public class GeopackageGenerationProcessIntegrationTest
         var generatedGeopackage = result.StepResult.ExtractProperty(nameof(GeopackageGenerationResult.GeneratedGeopackage));
         var gpkgFile = Assert.IsInstanceOfType<IPipelineFile>(generatedGeopackage);
 
-        using var connection = new SqliteConnection($"Data Source={gpkgFile.GetLocalPath()};Mode=ReadOnly;Pooling=false");
+        using var connection = new SqliteConnection($"Data Source={await gpkgFile.GetLocalPathAsync()};Mode=ReadOnly;Pooling=false");
         connection.Open();
 
         // Six distinct real reader errors (ErrorId 15), all known via the base row, mapped reader -> igcheck.
@@ -154,7 +151,7 @@ public class GeopackageGenerationProcessIntegrationTest
         var generatedGeopackage = result.StepResult.ExtractProperty(nameof(GeopackageGenerationResult.GeneratedGeopackage));
         var gpkgFile = Assert.IsInstanceOfType<IPipelineFile>(generatedGeopackage);
 
-        using var connection = new SqliteConnection($"Data Source={gpkgFile.GetLocalPath()};Mode=ReadOnly;Pooling=false");
+        using var connection = new SqliteConnection($"Data Source={await gpkgFile.GetLocalPathAsync()};Mode=ReadOnly;Pooling=false");
         connection.Open();
         using var command = connection.CreateCommand();
 
