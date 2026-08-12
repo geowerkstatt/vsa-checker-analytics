@@ -1,13 +1,6 @@
 ﻿using Geopilot.Pipeline;
-using Geopilot.Pipeline.Config;
-using Geopilot.Pipeline.Ilitools;
-using Geopilot.Pipeline.Process;
 using Geopilot.PipelineCore.Pipeline;
 using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Moq;
-using System.Reflection;
 using VsaCheckerAnalytics.TestHelpers;
 
 namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
@@ -15,6 +8,11 @@ namespace VsaCheckerAnalytics.Processors.GeopackageGeneration;
 [TestClass]
 public class GeopackageGenerationProcessIntegrationTest
 {
+    /// <summary>
+    /// Stands in for the result of <see cref="UpstreamStepId"/>. Only the properties the definition
+    /// references via <c>${step_output(vsa_matcher....)}</c> are needed; the error matrix is not among them,
+    /// it enters the step from the deployment resources via <c>${file(ErrorMatrix_v3.xlsx)}</c>.
+    /// </summary>
     private sealed record UpstreamStepResult(
         IPipelineFile GpkgTemplate,
         IPipelineFile[] Gep,
@@ -23,67 +21,29 @@ public class GeopackageGenerationProcessIntegrationTest
         IPipelineFile[] CheckerCsvA,
         IPipelineFile[] CheckerCsvT,
         IPipelineFile[] CheckerCsvFp,
-        IPipelineFile ErrorMatrix,
         string Language,
         string ModelVersion);
 
-    private const string GeopackageGenerationImplementation = "VsaCheckerAnalytics.Processors.GeopackageGeneration.GeopackageGenerationProcess";
+    private const string StepId = "geopackage_generation";
     private const string UpstreamStepId = "vsa_matcher";
-    private static readonly string PluginDllPath = typeof(GeopackageGenerationProcess).Assembly.Location;
     private static readonly string ResourceDir = Path.Combine(AppContext.BaseDirectory, "Testdata");
 
-    private static readonly IReadOnlyDictionary<string, InputValue> GeopackageGenerationInputs =
-        new Dictionary<string, InputValue>
-        {
-            ["geoPackage"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.GpkgTemplate)),
-            ["dssMiniXtf"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.Gep)),
-            ["defaultOrgsXtf"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.StandardOrgTable)),
-            ["userOrgsXtf"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.UserOrgTable)),
-            ["checkerCsvT"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.CheckerCsvT)),
-            ["checkerCsvA"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.CheckerCsvA)),
-            ["checkerCsvFp"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.CheckerCsvFp)),
-            ["errorMatrix"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.ErrorMatrix)),
-            ["language"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.Language)),
-            ["modelVersion"] = new InputValue.StepOutputReference(UpstreamStepId, nameof(UpstreamStepResult.ModelVersion)),
-        };
+    private TestPipelineHost host = null!;
 
-    private PipelineProcessFactory pipelineProcessFactory = null!;
-    private Mock<ILoggerFactory> loggerFactoryMock = null!;
-    private string tempDir = null!;
+    /// <summary>
+    /// Kept alive for the whole test: disposing the pipeline removes its working directory, and the assertions
+    /// read the generated GeoPackage from there.
+    /// </summary>
+    private IPipeline? pipeline;
 
     [TestInitialize]
-    public void SetUp()
-    {
-        tempDir = Path.Combine(Path.GetTempPath(), "gpkg-gen-integration-" + Guid.NewGuid().ToString("N")[..8]);
-        Directory.CreateDirectory(tempDir);
-
-        var pipelineOptions = new PipelineOptions
-        {
-            Definition = "unused",
-            Plugins = [PluginDllPath],
-        };
-
-        var pipelineOptionsMock = new Mock<IOptions<PipelineOptions>>();
-        pipelineOptionsMock.SetupGet(o => o.Value).Returns(pipelineOptions);
-
-        var ilitoolsOptionsMock = new Mock<IOptions<IlitoolsOptions>>();
-        ilitoolsOptionsMock.SetupGet(o => o.Value).Returns(new IlitoolsOptions { IlitoolsWrapperAddress = "http://fake-uri" });
-
-        loggerFactoryMock = new Mock<ILoggerFactory>();
-        loggerFactoryMock.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(new Mock<ILogger>().Object);
-
-        pipelineProcessFactory = new PipelineProcessFactory(pipelineOptionsMock.Object, ilitoolsOptionsMock.Object, loggerFactoryMock.Object);
-    }
+    public void SetUp() => host = TestPipelineHost.Create();
 
     [TestCleanup]
     public void Cleanup()
     {
-        pipelineProcessFactory?.Dispose();
-        if (Directory.Exists(tempDir))
-        {
-            try { Directory.Delete(tempDir, recursive: true); }
-            catch (IOException) { }
-        }
+        pipeline?.Dispose();
+        host?.Dispose();
     }
 
     [TestMethod]
@@ -209,45 +169,14 @@ public class GeopackageGenerationProcessIntegrationTest
 
     private async Task<(StepState StepState, StepResult StepResult)> RunPipelineAsync(bool includeUserOrgs, string language, string modelVersion, string checkerCsvT, string checkerCsvA, string checkerCsvFp)
     {
-        var stepConfig = new StepConfig
-        {
-            Id = "geopackage_generation",
-            DisplayName = new Dictionary<string, string> { { "en", "GeoPackage Generation" } },
-            ProcessId = "geopackage_generation",
-        };
+        pipeline = host.CreatePipeline();
+        var step = pipeline.Steps.Single(s => s.Id == StepId);
 
-        var processes = new List<ProcessConfig>
-        {
-            new() { Id = "geopackage_generation", Implementation = GeopackageGenerationImplementation },
-        };
-
-        var process = pipelineProcessFactory.Builder()
-            .PipelineId("test")
-            .StepConfig(stepConfig)
-            .Processes(processes)
-            .PipelineDirectory(tempDir)
-            .JobId(Guid.NewGuid())
-            .Build();
-
-        var fakeIli2GpkgClient = new FakeIli2GpkgClient
+        TestPipelineHost.ReplaceDependency(step, "ili2GpkgClient", new FakeIli2GpkgClient
         {
             // pass the input gpkg content through to the output
             OutputSelector = invocation => invocation.GeoPackageContent,
-        };
-
-        var processType = process.GetType();
-        processType
-            .GetField("ili2GpkgClient", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .SetValue(process, fakeIli2GpkgClient);
-
-        using var step = PipelineStep.Builder()
-            .Id("geopackage_generation")
-            .DisplayName(new Dictionary<string, string> { { "en", "GeoPackage Generation" } })
-            .Inputs(GeopackageGenerationInputs)
-            .OutputActions([])
-            .Process(process)
-            .Logger(new Mock<ILogger>().Object)
-            .Build();
+        });
 
         var templateFile = modelVersion == "2020.1" ? "template_ca_dssmini_2020_1_d.gpkg" : "template_ca_dssmini_2020_d.gpkg";
         var upstream = new StepResult
@@ -260,7 +189,6 @@ public class GeopackageGenerationProcessIntegrationTest
                 CheckerCsvT: [CopyFromTestdata(checkerCsvT)],
                 CheckerCsvA: [CopyFromTestdata(checkerCsvA)],
                 CheckerCsvFp: [CopyFromTestdata(checkerCsvFp)],
-                ErrorMatrix: CopyFromTestdata("errorMatrix.xlsx"),
                 Language: language,
                 ModelVersion: modelVersion),
         };
@@ -295,7 +223,7 @@ public class GeopackageGenerationProcessIntegrationTest
 
     private TestPipelineFile CreateFile(string fileName, string content)
     {
-        var path = Path.Combine(tempDir, fileName);
+        var path = Path.Combine(host.WorkingDirectory, fileName);
         File.WriteAllText(path, content);
         return new TestPipelineFile(path);
     }
@@ -303,7 +231,7 @@ public class GeopackageGenerationProcessIntegrationTest
     private TestPipelineFile CopyFromTestdata(string fileName)
     {
         var source = Path.Combine(ResourceDir, fileName);
-        var target = Path.Combine(tempDir, fileName);
+        var target = Path.Combine(host.WorkingDirectory, fileName);
         File.Copy(source, target, overwrite: true);
         return new TestPipelineFile(target);
     }
