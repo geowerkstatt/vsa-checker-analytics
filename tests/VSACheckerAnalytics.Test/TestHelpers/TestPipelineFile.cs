@@ -33,12 +33,13 @@ internal sealed class TestPipelineFile : IPipelineFile
     /// <summary>Gets or sets the value.</summary>
     public string OriginalRelativePath { get; }
 
-    /// <summary>Gets or sets the value.</summary>
-    public FileStream OpenReadFileStream() => new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+    /// <inheritdoc/>
+    public Task<Stream> OpenReadAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<Stream>(new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read));
 
     /// <summary>Gets or sets the value.</summary>
     public FileStream OpenWriteFileStream() => new(filePath, FileMode.CreateNew, FileAccess.Write);
 
     /// <inheritdoc/>
-    public string GetLocalPath() => filePath;
+    public Task<string> GetLocalPathAsync(CancellationToken cancellationToken = default) => Task.FromResult(filePath);
 }

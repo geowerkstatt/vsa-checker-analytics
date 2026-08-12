@@ -119,8 +119,8 @@ internal sealed class VsaMatcherProcess : IDisposable
         IPipelineFile[] unzippedFiles,
         CancellationToken cancellationToken)
     {
-        var gepMatches = FindGepFiles(files);
-        var userOrgTables = FindOrgTables(files);
+        var gepMatches = await FindGepFilesAsync(files, cancellationToken);
+        var userOrgTables = await FindOrgTablesAsync(files, cancellationToken);
 
         var checkerCsvsA = FindCheckerCsvs(unzippedFiles, CheckerCsvPatternA, "ARA (a)");
         var checkerCsvsFp = FindCheckerCsvs(unzippedFiles, CheckerCsvPatternFp, "Fachprüfungen (FP)");
@@ -179,14 +179,14 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// Finds all GEP transfer files among the uploaded XTF files. Each match carries its own
     /// model version and language. Checks version 2020.1 first (more specific) before 2020.
     /// </summary>
-    private GepMatch[] FindGepFiles(IPipelineFile[] files)
+    private async Task<GepMatch[]> FindGepFilesAsync(IPipelineFile[] files, CancellationToken cancellationToken)
     {
         var xtfFiles = files.Where(file => string.Equals(file.FileExtension, "xtf", StringComparison.OrdinalIgnoreCase));
         var matches = new List<GepMatch>();
 
         foreach (var file in xtfFiles)
         {
-            var models = ExtractIliModels(file);
+            var models = await ExtractIliModelsAsync(file, cancellationToken);
 
             if (GepIliModels20201De.Overlaps(models))
             {
@@ -219,14 +219,14 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// <summary>
     /// Finds all user-provided organisation tables among the uploaded XTF files.
     /// </summary>
-    private IPipelineFile[] FindOrgTables(IPipelineFile[] files)
+    private async Task<IPipelineFile[]> FindOrgTablesAsync(IPipelineFile[] files, CancellationToken cancellationToken)
     {
         var xtfFiles = files.Where(file => string.Equals(file.FileExtension, "xtf", StringComparison.OrdinalIgnoreCase));
         var orgTables = new List<IPipelineFile>();
 
         foreach (var file in xtfFiles)
         {
-            var models = ExtractIliModels(file);
+            var models = await ExtractIliModelsAsync(file, cancellationToken);
 
             if (OrgTableIliModels.Overlaps(models))
             {
@@ -282,11 +282,11 @@ internal sealed class VsaMatcherProcess : IDisposable
     /// (default-namespace uppercase elements with <c>NAME</c> attribute).
     /// Returns an empty set if the file cannot be parsed or matches neither format.
     /// </summary>
-    private static HashSet<string> ExtractIliModels(IPipelineFile file)
+    private static async Task<HashSet<string>> ExtractIliModelsAsync(IPipelineFile file, CancellationToken cancellationToken)
     {
         try
         {
-            using var stream = file.OpenReadFileStream();
+            using var stream = await file.OpenReadAsync(cancellationToken);
             var doc = XDocument.Load(stream);
             var root = doc.Root;
             if (root == null)
@@ -311,8 +311,9 @@ internal sealed class VsaMatcherProcess : IDisposable
                 .OfType<string>()
                 .ToHashSet() ?? new HashSet<string>();
         }
-        catch
+        catch (Exception e) when (e is not OperationCanceledException)
         {
+            // A file that is not readable as XTF simply does not match; a cancelled job must still cancel.
             return new HashSet<string>();
         }
     }

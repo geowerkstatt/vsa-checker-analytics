@@ -33,13 +33,13 @@ internal sealed class TestPipelineFileManager : IPipelineFileManager, IDisposabl
     }
 
     /// <inheritdoc/>
-    public IPipelineFile CreateWritableCopy(IPipelineFile source, string name)
+    public async Task<IPipelineFile> CreateWritableCopyAsync(IPipelineFile source, string name, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(source);
         var target = GeneratePipelineFile(source.OriginalRelativePath, name, source.FileExtension);
-        using var sourceStream = source.OpenReadFileStream();
+        using var sourceStream = await source.OpenReadAsync(cancellationToken);
         using var targetStream = target.OpenWriteFileStream();
-        sourceStream.CopyTo(targetStream);
+        await sourceStream.CopyToAsync(targetStream, cancellationToken);
         return target;
     }
 

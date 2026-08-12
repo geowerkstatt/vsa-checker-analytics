@@ -174,9 +174,9 @@ public sealed class GeopackageGenerationProcess
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-        var target = pipelineFileManager.CreateWritableCopy(sourceGpkg, "gpkg-with-csvs");
+        var target = await pipelineFileManager.CreateWritableCopyAsync(sourceGpkg, "gpkg-with-csvs", cancellationToken);
 
-        using var connection = OpenGeoPackage(target.GetLocalPath());
+        using var connection = OpenGeoPackage(await target.GetLocalPathAsync(cancellationToken));
         var csvImporter = new CsvImporter(connection, Encoding.GetEncoding(1252), logger);
 
         await ImportCsvAsync(csvImporter, checkerCsvT, "checker_csv_t", cancellationToken);
@@ -196,7 +196,7 @@ public sealed class GeopackageGenerationProcess
         string tableName,
         CancellationToken cancellationToken)
     {
-        await using var stream = file.OpenReadFileStream();
+        await using var stream = await file.OpenReadAsync(cancellationToken);
         await csvImporter.ImportAsync(stream, tableName, CsvColumns, cancellationToken, CsvJoinIndexColumns)
             .ConfigureAwait(false);
     }
@@ -206,15 +206,15 @@ public sealed class GeopackageGenerationProcess
         IPipelineFile errorMatrix,
         CancellationToken cancellationToken)
     {
-        var target = pipelineFileManager.CreateWritableCopy(sourceGpkg, "gpkg-with-error-matrix");
+        var target = await pipelineFileManager.CreateWritableCopyAsync(sourceGpkg, "gpkg-with-error-matrix", cancellationToken);
 
-        using var connection = OpenGeoPackage(target.GetLocalPath());
+        using var connection = OpenGeoPackage(await target.GetLocalPathAsync(cancellationToken));
 
         EmbeddedSql.Execute(connection, "ErrorMatrixSchema.sql");
 
         var importer = new ErrorMatrixImporter(connection, logger);
 
-        await using var stream = errorMatrix.OpenReadFileStream();
+        await using var stream = await errorMatrix.OpenReadAsync(cancellationToken);
         await importer.ImportAsync(stream, "error_matrix", ErrorMatrixColumns, cancellationToken)
             .ConfigureAwait(false);
 
@@ -236,9 +236,9 @@ public sealed class GeopackageGenerationProcess
         string modelVersion,
         CancellationToken cancellationToken)
     {
-        var target = pipelineFileManager.CreateWritableCopy(sourceGpkg, GeneratedGeopackageName);
+        var target = await pipelineFileManager.CreateWritableCopyAsync(sourceGpkg, GeneratedGeopackageName, cancellationToken);
 
-        using var connection = OpenGeoPackage(target.GetLocalPath());
+        using var connection = OpenGeoPackage(await target.GetLocalPathAsync(cancellationToken));
         var viewCreator = new ViewCreator(connection);
 
         viewCreator.CreateCheckerCsvUnionView(

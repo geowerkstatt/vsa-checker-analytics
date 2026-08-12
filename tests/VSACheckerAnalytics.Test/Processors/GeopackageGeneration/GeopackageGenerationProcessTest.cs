@@ -74,7 +74,7 @@ public sealed class GeopackageGenerationProcessTest
 
         var output = result.GeneratedGeopackage;
         Assert.IsNotNull(output);
-        using var stream = output.OpenReadFileStream();
+        using var stream = await output.OpenReadAsync();
         Assert.IsGreaterThan(0, stream.Length);
 
         var statusMessage = result.StatusMessage;

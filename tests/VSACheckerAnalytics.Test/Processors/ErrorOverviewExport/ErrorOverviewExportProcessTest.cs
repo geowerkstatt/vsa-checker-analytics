@@ -114,7 +114,7 @@ public sealed class ErrorOverviewExportProcessTest
         var statusMessage = result.StatusMessage;
         Assert.AreEqual("Error overview created: 2 errors exported.", statusMessage["en"]);
 
-        using var workbook = OpenOutputWorkbook(result);
+        using var workbook = await OpenOutputWorkbookAsync(result);
         Assert.AreEqual(2, workbook.Worksheets.Count);
 
         var dataSheet = workbook.Worksheet("Error Data");
@@ -141,7 +141,7 @@ public sealed class ErrorOverviewExportProcessTest
 
         var result = await process.RunAsync(geopackage, CreateCantonTemplate());
 
-        using var workbook = OpenOutputWorkbook(result);
+        using var workbook = await OpenOutputWorkbookAsync(result);
 
         var dataSheet = workbook.Worksheet("Error Data");
         Assert.AreEqual("LT001", dataSheet.Cell("A2").GetString());
@@ -164,7 +164,7 @@ public sealed class ErrorOverviewExportProcessTest
 
         var result = await process.RunAsync(geopackage, CreateCantonTemplate());
 
-        using var workbook = OpenOutputWorkbook(result);
+        using var workbook = await OpenOutputWorkbookAsync(result);
 
         var dataSheet = workbook.Worksheet("Error Data");
         Assert.AreEqual(XLDataType.Number, dataSheet.Cell("D2").DataType);
@@ -190,7 +190,7 @@ public sealed class ErrorOverviewExportProcessTest
 
         var result = await process.RunAsync(geopackage, CreateCantonTemplate());
 
-        using var workbook = OpenOutputWorkbook(result);
+        using var workbook = await OpenOutputWorkbookAsync(result);
         var dataSheet = workbook.Worksheet("Error Data");
         var lastRow = dataSheet.LastRowUsed()!.RowNumber();
         Assert.AreEqual("UNK001", dataSheet.Cell($"A{lastRow}").GetString());
@@ -207,7 +207,7 @@ public sealed class ErrorOverviewExportProcessTest
 
         var result = await process.RunAsync(geopackage, CreateCantonTemplate());
 
-        using var workbook = OpenOutputWorkbook(result);
+        using var workbook = await OpenOutputWorkbookAsync(result);
 
         var dataSheet = workbook.Worksheet("Error Data");
         Assert.AreEqual("TID", dataSheet.Cell("A1").GetString());
@@ -226,7 +226,7 @@ public sealed class ErrorOverviewExportProcessTest
 
         var result = await process.RunAsync(geopackage, CreateCantonTemplate());
 
-        using var workbook = OpenOutputWorkbook(result);
+        using var workbook = await OpenOutputWorkbookAsync(result);
         Assert.AreEqual(4, workbook.Worksheets.Count);
         Assert.IsTrue(workbook.Worksheet("Uebersicht_WK").PivotTables.Contains("Uebersicht_WK"));
         Assert.IsTrue(workbook.Worksheet("Uebersicht_GEP").PivotTables.Contains("Uebersicht_GEP"));
@@ -240,7 +240,7 @@ public sealed class ErrorOverviewExportProcessTest
 
         var result = await process.RunAsync(geopackage, CreateCantonTemplate());
 
-        using var workbook = OpenOutputWorkbook(result);
+        using var workbook = await OpenOutputWorkbookAsync(result);
         Assert.AreEqual(3, workbook.Worksheets.Count);
         Assert.IsTrue(workbook.Worksheet("Uebersicht_WK").PivotTables.Contains("Uebersicht_WK"));
     }
@@ -255,9 +255,9 @@ public sealed class ErrorOverviewExportProcessTest
 
         var cantonFile = result.CantonErrorMatrix;
 
-        using var fileStream = cantonFile.OpenReadFileStream();
+        using var fileStream = await cantonFile.OpenReadAsync();
         var memoryStream = new MemoryStream();
-        fileStream.CopyTo(memoryStream);
+        await fileStream.CopyToAsync(memoryStream);
         memoryStream.Position = 0;
         using var workbook = new XLWorkbook(memoryStream);
         var raw = workbook.Worksheet("raw_data");
@@ -417,13 +417,13 @@ public sealed class ErrorOverviewExportProcessTest
         ExecuteNonQuery(connection, sql);
     }
 
-    private static XLWorkbook OpenOutputWorkbook(ErrorOverviewExportResult result)
+    private static async Task<XLWorkbook> OpenOutputWorkbookAsync(ErrorOverviewExportResult result)
     {
         var outputFile = result.ErrorOverview;
 
-        using var fileStream = outputFile.OpenReadFileStream();
+        using var fileStream = await outputFile.OpenReadAsync();
         var memoryStream = new MemoryStream();
-        fileStream.CopyTo(memoryStream);
+        await fileStream.CopyToAsync(memoryStream);
         memoryStream.Position = 0;
         return new XLWorkbook(memoryStream);
     }
