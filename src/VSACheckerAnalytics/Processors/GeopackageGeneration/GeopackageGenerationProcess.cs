@@ -150,7 +150,7 @@ public sealed class GeopackageGenerationProcess
         logger.LogDebug("Starting ili2gpkg batch import of {Count} transfer files.", transferFiles.Count);
 
         var result = await ili2GpkgClient
-            .ImportAsync(args, geoPackage, outputGpkg, transferFiles, cancellationToken)
+            .ImportAsync(args, geoPackage, outputGpkg, transferFiles, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
         if (!result.Success)
