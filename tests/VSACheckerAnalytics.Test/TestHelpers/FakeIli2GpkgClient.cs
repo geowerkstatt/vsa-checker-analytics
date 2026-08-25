@@ -96,6 +96,7 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
         IPipelineFile inputFile,
         IPipelineFile outputFile,
         IReadOnlyList<IPipelineFile> transferFiles,
+        IReadOnlyList<IPipelineFile>? modelFiles = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(inputFile);
@@ -137,6 +138,7 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
         Ili2GpkgArgs args,
         IPipelineFile gpkgFile,
         IPipelineFile transferFile,
+        IReadOnlyList<IPipelineFile>? modelFiles = null,
         CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
     public Task<Ili2GpkgResult> UpdateAsync(
@@ -144,11 +146,13 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
         IPipelineFile inputFile,
         IPipelineFile outputFile,
         IReadOnlyList<IPipelineFile> transferFiles,
+        IReadOnlyList<IPipelineFile>? modelFiles = null,
         CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
     public Task<Ili2GpkgResult> ValidateAsync(
         Ili2GpkgArgs args,
         IPipelineFile gpkgFile,
         IPipelineFile xtfLogFile,
+        IReadOnlyList<IPipelineFile>? modelFiles = null,
         CancellationToken cancellationToken = default) => throw new NotSupportedException();
 }
