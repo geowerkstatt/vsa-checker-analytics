@@ -49,7 +49,7 @@
     LEFT JOIN organisation o2 ON k.eigentuemerref = o2.t_id
     LEFT JOIN organisation o3 ON k.datenherrref = o3.t_id
     LEFT JOIN organisation o4 ON k.datenlieferantref = o4.t_id;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten', 'features', 'v_vsa_knoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten', 'features', 'v_vsa_knoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_vsa_knoten', 'geom', 'POINT', 2056, 0, 0);
 
 CREATE VIEW v_vsa_knoten_abwasserknoten AS SELECT
@@ -96,7 +96,7 @@ CREATE VIEW v_vsa_knoten_abwasserknoten AS SELECT
     LEFT JOIN organisation o3 ON k.datenherrref = o3.t_id
     LEFT JOIN organisation o4 ON k.datenlieferantref = o4.t_id
 WHERE funktion IN ('andere', 'Leitungsknoten', 'seitlicherZugang', 'unbekannt');
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_abwasserknoten', 'features', 'v_vsa_knoten_abwasserknoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_abwasserknoten', 'features', 'v_vsa_knoten_abwasserknoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_vsa_knoten_abwasserknoten', 'geom', 'POINT', 2056, 0, 0);
 
 -- v_wk_knoten_detailgeometrie source
@@ -137,7 +137,7 @@ CREATE VIEW v_vsa_knoten_detailgeometrie AS SELECT
     LEFT JOIN organisation o4 ON k.datenlieferantref = o4.t_id
 WHERE
     k.detailgeometrie IS NOT NULL;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_detailgeometrie', 'features', 'v_vsa_knoten_detailgeometrie', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_detailgeometrie', 'features', 'v_vsa_knoten_detailgeometrie', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_vsa_knoten_detailgeometrie', 'geom', 'POINT', 2056, 0, 0);
 
 -- v_wk_knoten_einleitstelle source
@@ -186,7 +186,7 @@ CREATE VIEW v_vsa_knoten_einleitstelle AS SELECT
     LEFT JOIN organisation o3 ON k.datenherrref = o3.t_id
     LEFT JOIN organisation o4 ON k.datenlieferantref = o4.t_id
 WHERE funktion IN ('Einleitstelle_gewaesserrelevant', 'Einleitstelle_nicht_gewaesserrelevant');
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_einleitstelle', 'features', 'v_vsa_knoten_einleitstelle', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_einleitstelle', 'features', 'v_vsa_knoten_einleitstelle', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_vsa_knoten_einleitstelle', 'geom', 'POINT', 2056, 0, 0);
 
 -- v_wk_knoten_messstelle source
@@ -235,7 +235,7 @@ CREATE VIEW v_vsa_knoten_messstelle AS SELECT
     LEFT JOIN organisation o3 ON k.datenherrref = o3.t_id
     LEFT JOIN organisation o4 ON k.datenlieferantref = o4.t_id
 WHERE funktion IN ('Messstelle');
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_messstelle', 'features', 'v_vsa_knoten_messstelle', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_messstelle', 'features', 'v_vsa_knoten_messstelle', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_vsa_knoten_messstelle', 'geom', 'POINT', 2056, 0, 0);
 
 -- v_wk_knoten_normschacht source
@@ -294,7 +294,7 @@ CREATE VIEW v_vsa_knoten_normschacht AS SELECT
 WHERE funktion IN ('Dachwasserschacht', 'Einlaufschacht', 'Entwaesserungsrinne', 'Geleiseschacht', 'Schlammsammler',
                     'Be_Entlueftung', 'Kontrollschacht', 'Oelabscheider',
                     'Schwimmstoffabscheider', 'Spuelschacht', 'Kontroll_Einsteigschacht');
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_normschacht', 'features', 'v_vsa_knoten_normschacht', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_normschacht', 'features', 'v_vsa_knoten_normschacht', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_vsa_knoten_normschacht', 'geom', 'POINT', 2056, 0, 0);
 
 -- v_wk_knoten_spezialbauwerk source
@@ -349,7 +349,7 @@ WHERE funktion IN ('abflussloseGrube', 'Absturzbauwerk', 'Abwasserfaulraum',
                                   'Regenbecken_Regenrueckhaltebecken', 'Regenbecken_Regenrueckhaltekanal',
                                   'Regenbecken_Stauraumkanal', 'Regenbecken_Verbundbecken', 'Wirbelfallschacht',
                                   'Pumpwerk', 'Trennbauwerk', 'Regenueberlauf');
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_spezialbauwerk', 'features', 'v_vsa_knoten_spezialbauwerk', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_spezialbauwerk', 'features', 'v_vsa_knoten_spezialbauwerk', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_vsa_knoten_spezialbauwerk', 'geom', 'POINT', 2056, 0, 0);
 
 -- v_wk_knoten_text source
@@ -372,7 +372,7 @@ CREATE VIEW v_vsa_knoten_text AS SELECT
     CASE WHEN k.nutzungsart_ist = 'Mischabwasser' THEN '102,0,102' WHEN k.nutzungsart_ist IN ('Niederschlagsabwasser', 'Reinabwasser', 'Bachwasser') THEN '0,0,255' WHEN k.nutzungsart_ist IN ('Schmutzabwasser', 'Industrieabwasser') THEN '255,0,0' WHEN k.nutzungsart_ist = 'entlastetes_Mischabwasser' THEN '0,255,0' WHEN k.nutzungsart_ist = 'andere' THEN '255,127,0' WHEN k.nutzungsart_ist = 'unbekannt' THEN '165,165,165' ELSE '165,165,165' END AS color_usage_current
 FROM knoten k
    JOIN knoten_text kt ON kt.knotenref = k.t_id;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_text', 'features', 'v_vsa_knoten_text', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_text', 'features', 'v_vsa_knoten_text', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_vsa_knoten_text', 'geom', 'POINT', 2056, 0, 0);
 
 -- v_wk_knoten_versickerungsanlage source
@@ -421,7 +421,7 @@ CREATE VIEW v_vsa_knoten_versickerungsanlage AS SELECT
     LEFT JOIN organisation o3 ON k.datenherrref = o3.t_id
     LEFT JOIN organisation o4 ON k.datenlieferantref = o4.t_id
 WHERE funktion IN ('Versickerungsanlage');
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_versickerungsanlage', 'features', 'v_vsa_knoten_versickerungsanlage', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_knoten_versickerungsanlage', 'features', 'v_vsa_knoten_versickerungsanlage', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_vsa_knoten_versickerungsanlage', 'geom', 'POINT', 2056, 0, 0);
 
 -- v_wk_leitung source
@@ -482,7 +482,7 @@ FROM
     LEFT JOIN organisation o2 ON h.eigentuemerref = o2.t_id
     LEFT JOIN organisation o3 ON h.datenherrref = o3.t_id
     LEFT JOIN organisation o4 ON h.datenlieferantref = o4.t_id;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_leitung', 'features', 'v_vsa_leitung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_leitung', 'features', 'v_vsa_leitung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_vsa_leitung', 'geom', 'LINESTRING', 2056, 0, 0);
 
 -- v_wk_leitung_text source
@@ -508,7 +508,7 @@ CREATE VIEW v_vsa_leitung_text AS SELECT
     CASE WHEN h.nutzungsart_ist = 'Mischabwasser' THEN '102,0,102' WHEN h.nutzungsart_ist IN ('Niederschlagsabwasser', 'Reinabwasser', 'Bachwasser') THEN '0,0,255' WHEN h.nutzungsart_ist IN ('Schmutzabwasser', 'Industrieabwasser') THEN '255,0,0' WHEN h.nutzungsart_ist = 'entlastetes_Mischabwasser' THEN '0,255,0' WHEN h.nutzungsart_ist = 'andere' THEN '255,127,0' WHEN h.nutzungsart_ist = 'unbekannt' THEN '165,165,165' ELSE '165,165,165' END AS color_usage_current
 FROM leitung h
    JOIN leitung_text ht ON ht.leitungref = h.t_id;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_leitung_text', 'features', 'v_vsa_leitung_text', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_leitung_text', 'features', 'v_vsa_leitung_text', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_vsa_leitung_text', 'geom', 'POINT', 2056, 0, 0);
 
 -- v_wk_ueberlauf_foerderaggregat source
@@ -572,7 +572,7 @@ CREATE VIEW v_vsa_ueberlauf_foerderaggregat AS SELECT
     LEFT JOIN organisation o2 ON k.eigentuemerref = o2.t_id
     LEFT JOIN organisation o3 ON k.datenherrref = o3.t_id
     LEFT JOIN organisation o4 ON k.datenlieferantref = o4.t_id;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_ueberlauf_foerderaggregat', 'features', 'v_vsa_ueberlauf_foerderaggregat', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_ueberlauf_foerderaggregat', 'features', 'v_vsa_ueberlauf_foerderaggregat', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_vsa_ueberlauf_foerderaggregat', 'geom', 'POINT', 2056, 0, 0);
 
 CREATE VIEW v_errorlist_ueberlauf_foerderaggregat_data AS
@@ -618,7 +618,7 @@ e.tid AS tid,
            JOIN knoten_lage k ON n.t_id = k.t_id
            LEFT JOIN organisation o ON n.eigentuemerref = o.t_id
      WHERE e.class LIKE 'Ueberlauf_Foerderaggregat';
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_ueberlauf_foerderaggregat', 'features', 'v_error_ueberlauf_foerderaggregat', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_ueberlauf_foerderaggregat', 'features', 'v_error_ueberlauf_foerderaggregat', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_ueberlauf_foerderaggregat', 'geom', 'POINT', 2056, 0, 0);
 
 CREATE VIEW v_error_teileinzugsgebiet AS SELECT
@@ -652,7 +652,7 @@ e.tid AS tid,
           JOIN knoten_lage k ON n.t_id = k.t_id
           LEFT JOIN organisation o ON n.eigentuemerref = o.t_id
      WHERE e.class LIKE 'SK_Trennbauwerk';
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_sk_trennbauwerk', 'features', 'v_error_sk_trennbauwerk', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_sk_trennbauwerk', 'features', 'v_error_sk_trennbauwerk', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_sk_trennbauwerk', 'geom', 'POINT', 2056, 0, 0);
 
 -- v_error_sk_regenrueckhaltebecken_kanal source
@@ -672,7 +672,7 @@ e.tid AS tid,
           JOIN knoten_lage k ON n.t_id = k.t_id
           LEFT JOIN organisation o ON n.eigentuemerref = o.t_id
      WHERE e.class LIKE 'SK_regenrueckhaltebecken_kanal';
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_sk_regenrueckhaltebecken_kanal', 'features', 'v_error_sk_regenrueckhaltebecken_kanal', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_sk_regenrueckhaltebecken_kanal', 'features', 'v_error_sk_regenrueckhaltebecken_kanal', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_sk_regenrueckhaltebecken_kanal', 'geom', 'POINT', 2056, 0, 0);
 
 CREATE VIEW v_error_sk_regenueberlaufbecken AS SELECT
@@ -690,7 +690,7 @@ e.tid AS tid,
           JOIN knoten_lage k ON n.t_id = k.t_id
           LEFT JOIN organisation o ON n.eigentuemerref = o.t_id
      WHERE e.class LIKE 'SK_Regenueberlaufbecken';
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_sk_regenueberlaufbecken', 'features', 'v_error_sk_regenueberlaufbecken', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_sk_regenueberlaufbecken', 'features', 'v_error_sk_regenueberlaufbecken', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_sk_regenueberlaufbecken', 'geom', 'POINT', 2056, 0, 0);
 
 CREATE VIEW v_error_sk_regenueberlauf AS SELECT
@@ -708,7 +708,7 @@ e.tid AS tid,
           JOIN knoten_lage k ON n.t_id = k.t_id
           LEFT JOIN organisation o ON n.eigentuemerref = o.t_id
      WHERE e.class LIKE 'SK_Regenueberlauf';
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_sk_regenueberlauf', 'features', 'v_error_sk_regenueberlauf', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_sk_regenueberlauf', 'features', 'v_error_sk_regenueberlauf', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_sk_regenueberlauf', 'geom', 'POINT', 2056, 0, 0);
 
 CREATE VIEW v_error_sk_pumpwerk AS SELECT
@@ -726,7 +726,7 @@ sk.T_Id AS fid,
           JOIN knoten_lage k ON n.t_id = k.t_id
           LEFT JOIN organisation o ON n.eigentuemerref = o.t_id
      WHERE e.class LIKE 'SK_Pumpwerk';
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_sk_pumpwerk', 'features', 'v_error_sk_pumpwerk', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_sk_pumpwerk', 'features', 'v_error_sk_pumpwerk', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_sk_pumpwerk', 'geom', 'POINT', 2056, 0, 0);
 
 CREATE VIEW v_error_sk_einleitstelle AS SELECT
@@ -744,7 +744,7 @@ e.tid AS tid,
           JOIN knoten_lage k ON n.t_id = k.t_id
           LEFT JOIN organisation o ON n.eigentuemerref = o.t_id
      WHERE e.class LIKE 'SK_Einleitstelle';
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_sk_einleitstelle', 'features', 'v_error_sk_einleitstelle', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_sk_einleitstelle', 'features', 'v_error_sk_einleitstelle', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_sk_einleitstelle', 'geom', 'POINT', 2056, 0, 0);
 
 CREATE VIEW v_error_recommendation_teileinzugsgebiet AS SELECT
@@ -759,7 +759,7 @@ t.t_ili_tid AS tid,
      WHERE e.class LIKE 'Teileinzugsgebiet'
      GROUP BY t.t_ili_tid,
               e.recommendation;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_recommendation_teileinzugsgebiet', 'features', 'v_error_recommendation_teileinzugsgebiet', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_recommendation_teileinzugsgebiet', 'features', 'v_error_recommendation_teileinzugsgebiet', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_recommendation_teileinzugsgebiet', 'geom', 'CURVEPOLYGON', 2056, 0, 0);
 
 CREATE VIEW v_error_recommendation_knoten AS SELECT
@@ -774,7 +774,7 @@ n.t_ili_tid AS tid,
      WHERE e.class LIKE 'Knoten'
      GROUP BY n.t_ili_tid,
               e.recommendation;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_recommendation_knoten', 'features', 'v_error_recommendation_knoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_recommendation_knoten', 'features', 'v_error_recommendation_knoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_recommendation_knoten', 'geom', 'POINT', 2056, 0, 0);
 
 CREATE VIEW v_error_recommendation_haltung AS SELECT
@@ -789,7 +789,7 @@ h.t_ili_tid AS tid,
      WHERE e.class LIKE 'leitung'
      GROUP BY h.t_ili_tid,
               e.recommendation;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_recommendation_haltung', 'features', 'v_error_recommendation_haltung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_recommendation_haltung', 'features', 'v_error_recommendation_haltung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_recommendation_haltung', 'geom', 'LINESTRING', 2056, 0, 0);
 
 CREATE VIEW v_error_knoten AS SELECT
@@ -808,7 +808,7 @@ e.tid AS tid,
            JOIN knoten_lage k ON n.t_id = k.t_id
            LEFT JOIN organisation o ON n.eigentuemerref = o.t_id
      WHERE e.class LIKE 'Knoten';
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_knoten', 'features', 'v_error_knoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_knoten', 'features', 'v_error_knoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_knoten', 'geom', 'POINT', 2056, 0, 0);
 
 CREATE VIEW v_error_haltung AS SELECT
@@ -825,7 +825,7 @@ e.tid AS tid,
            JOIN leitung h ON e.tid = h.t_ili_tid
            LEFT JOIN organisation o ON h.eigentuemerref = o.t_id
      WHERE e.class LIKE 'Leitung';
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_haltung', 'features', 'v_error_haltung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_haltung', 'features', 'v_error_haltung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_haltung', 'geom', 'LINESTRING', 2056, 0, 0);
 
 CREATE VIEW v_error_error_knoten AS SELECT
@@ -841,7 +841,7 @@ n.t_ili_tid AS tid,
      WHERE e.class LIKE 'Knoten'
      GROUP BY n.t_ili_tid,
               e.error;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_error_knoten', 'features', 'v_error_error_knoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_error_knoten', 'features', 'v_error_error_knoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_error_knoten', 'geom', 'POINT', 2056, 0, 0);
 
 CREATE VIEW v_error_error_haltung AS SELECT
@@ -855,7 +855,7 @@ h.t_ili_tid AS tid,
      WHERE e.class LIKE 'leitung'
      GROUP BY h.t_ili_tid,
               e.error;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_error_haltung', 'features', 'v_error_error_haltung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_error_haltung', 'features', 'v_error_error_haltung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_error_haltung', 'geom', 'LINESTRING', 2056, 0, 0);
 
 CREATE VIEW v_error_category_knoten AS SELECT
@@ -871,7 +871,7 @@ n.t_ili_tid AS tid,
      WHERE e.class LIKE 'Knoten'
      GROUP BY n.t_ili_tid,
               e.category;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_category_knoten', 'features', 'v_error_category_knoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_category_knoten', 'features', 'v_error_category_knoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_category_knoten', 'geom', 'POINT', 2056, 0, 0);
 
 -- v_error_category_haltung source
@@ -887,5 +887,5 @@ h.t_ili_tid AS tid,
      WHERE e.class LIKE 'leitung'
      GROUP BY h.t_ili_tid,
               e.category;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_category_haltung', 'features', 'v_error_category_haltung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_category_haltung', 'features', 'v_error_category_haltung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_category_haltung', 'geom', 'LINESTRING', 2056, 0, 0);
