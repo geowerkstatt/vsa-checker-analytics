@@ -19,14 +19,14 @@ processes:
       errorDataAttributeMapping:
         recommendation_detail: Recommendation Detail
         recommendation: Recommendation
-        gep: GEP
-        wk: WK
+        gsp: GEP
+        uc: WK
         module: Modul
         model: Modell
         category: Kategorie
         status: Status
-        eigentuemer: Eigentümer
-        funktionhierarchisch: Funktionhierarchisch
+        owner: Eigentümer
+        function_hierarchic: Funktionhierarchisch
         detail: Detail
         error: Fehlertyp
         errorid: Fehler-ID
@@ -38,14 +38,14 @@ processes:
       errorDataColumnMapping:
         recommendation_detail: A
         recommendation: B
-        gep: C
-        wk: D
+        gsp: C
+        uc: D
         module: E
         model: F
         category: G
         status: H
-        eigentuemer: I
-        funktionhierarchisch: J
+        owner: I
+        function_hierarchic: J
         detail: K
         error: L
         errorid: M
@@ -56,15 +56,15 @@ processes:
         fid: R
       errorObjectSheet: "Error Object"
       errorObjectAttributeMapping:
-        gep_max: GEP Maximum
-        wk_max: WK Maximum
+        gsp_max: GEP Maximum
+        uc_max: WK Maximum
         count_error: Anzahl Fehler
         class: Klasse
         tid: TID
         fid: FID
       errorObjectColumnMapping:
-        gep_max: A
-        wk_max: B
+        gsp_max: A
+        uc_max: B
         count_error: C
         class: D
         tid: E
@@ -76,8 +76,8 @@ processes:
         - "error"
       overviewFilterFields:
         - "check_type"
-        - "funktionhierarchisch"
-        - "eigentuemer"
+        - "function_hierarchic"
+        - "owner"
         - "status"
       overviewValueField: "fid"
       overviewValueName: "Anzahl Fehler"

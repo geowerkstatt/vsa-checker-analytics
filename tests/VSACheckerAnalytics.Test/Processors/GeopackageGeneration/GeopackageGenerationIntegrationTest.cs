@@ -106,18 +106,18 @@ public class GeopackageGenerationIntegrationTest
             Assert.Contains("check_type", errorDataColumns);
             Assert.Contains("errorid", errorDataColumns);
             Assert.Contains("error", errorDataColumns);
-            Assert.Contains("funktionhierarchisch", errorDataColumns);
-            Assert.Contains("eigentuemer", errorDataColumns);
-            Assert.Contains("wk", errorDataColumns);
-            Assert.Contains("gep", errorDataColumns);
+            Assert.Contains("function_hierarchic", errorDataColumns);
+            Assert.Contains("owner", errorDataColumns);
+            Assert.Contains("uc", errorDataColumns);
+            Assert.Contains("gsp", errorDataColumns);
             Assert.Contains("recommendation", errorDataColumns);
 
             var errorObjectColumns = GetColumnNames(connection, "ca_error_object");
             Assert.Contains("tid", errorObjectColumns);
             Assert.Contains("class", errorObjectColumns);
             Assert.Contains("count_error", errorObjectColumns);
-            Assert.Contains("wk_max", errorObjectColumns);
-            Assert.Contains("gep_max", errorObjectColumns);
+            Assert.Contains("uc_max", errorObjectColumns);
+            Assert.Contains("gsp_max", errorObjectColumns);
 
             var indexes = GetIndexNames(connection);
             Assert.Contains("ix_checker_csv_t_errorid_model_class", indexes);

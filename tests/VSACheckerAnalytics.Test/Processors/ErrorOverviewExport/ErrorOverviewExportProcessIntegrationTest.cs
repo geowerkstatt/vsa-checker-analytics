@@ -67,21 +67,21 @@ public class ErrorOverviewExportProcessIntegrationTest
                 fid INTEGER NOT NULL PRIMARY KEY,
                 tid TEXT, check_type TEXT, topic TEXT, class TEXT,
                 errorid TEXT, error TEXT, detail TEXT,
-                funktionhierarchisch TEXT, eigentuemer TEXT, status TEXT,
+                function_hierarchic TEXT, owner TEXT, status TEXT,
                 category TEXT, model TEXT, module TEXT,
-                wk INTEGER, gep INTEGER,
+                uc INTEGER, gsp INTEGER,
                 recommendation TEXT, recommendation_detail TEXT);
 
             CREATE TABLE ca_error_object (
                 fid INTEGER NOT NULL PRIMARY KEY,
                 tid TEXT, class TEXT,
-                count_error INTEGER, wk_max INTEGER, gep_max INTEGER);
+                count_error INTEGER, uc_max INTEGER, gsp_max INTEGER);
 
-            INSERT INTO ca_error_data (tid, class, errorid, wk, gep, error, check_type, funktionhierarchisch, eigentuemer, status, fid)
+            INSERT INTO ca_error_data (tid, class, errorid, uc, gsp, error, check_type, function_hierarchic, owner, status, fid)
             VALUES ('LT001', 'Leitung', 't_001', 1, 2, 'Fehler 1', 'Traegerschaft', 'primaer', 'Gemeinde', 'in_Betrieb', 1),
                    ('LT001', 'Leitung', 'a_001', 2, 1, 'Fehler 2', 'ARA', 'sekundaer', 'Kanton', 'geplant', 2);
 
-            INSERT INTO ca_error_object (tid, class, count_error, wk_max, gep_max)
+            INSERT INTO ca_error_object (tid, class, count_error, uc_max, gsp_max)
             VALUES ('LT001', 'Leitung', 2, 2, 2);
             """;
         cmd.ExecuteNonQuery();

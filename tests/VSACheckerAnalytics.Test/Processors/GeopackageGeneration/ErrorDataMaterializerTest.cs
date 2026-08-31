@@ -52,7 +52,7 @@ public class ErrorDataMaterializerTest
         using var connection = await SetUpAndMaterializeAsync();
 
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT error, recommendation, recommendation_detail, wk, gep, funktionhierarchisch, eigentuemer, status FROM ca_error_data WHERE tid = 'LT001' AND errorid = '1001'";
+        cmd.CommandText = "SELECT error, recommendation, recommendation_detail, uc, gsp, function_hierarchic, owner, status FROM ca_error_data WHERE tid = 'LT001' AND errorid = '1001'";
         using var reader = cmd.ExecuteReader();
 
         Assert.IsTrue(reader.Read());
@@ -96,7 +96,7 @@ public class ErrorDataMaterializerTest
         using var connection = await SetUpAndMaterializeAsync();
 
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT error, wk, gep FROM ca_error_data WHERE errorid = '11' AND detail LIKE 'BetreiberRef%'";
+        cmd.CommandText = "SELECT error, uc, gsp FROM ca_error_data WHERE errorid = '11' AND detail LIKE 'BetreiberRef%'";
         using var reader = cmd.ExecuteReader();
 
         Assert.IsTrue(reader.Read());
@@ -111,7 +111,7 @@ public class ErrorDataMaterializerTest
         using var connection = await SetUpAndMaterializeAsync();
 
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT error, wk FROM ca_error_data WHERE errorid = '11' AND detail LIKE 'FunktionHierarchisch%'";
+        cmd.CommandText = "SELECT error, uc FROM ca_error_data WHERE errorid = '11' AND detail LIKE 'FunktionHierarchisch%'";
         using var reader = cmd.ExecuteReader();
 
         Assert.IsTrue(reader.Read());
@@ -140,7 +140,7 @@ public class ErrorDataMaterializerTest
 
         var nulls = QueryLong(
             connection,
-            "SELECT COUNT(*) FROM ca_error_data WHERE class = 'Teileinzugsgebiet' AND funktionhierarchisch IS NULL AND eigentuemer IS NULL AND status IS NULL");
+            "SELECT COUNT(*) FROM ca_error_data WHERE class = 'Teileinzugsgebiet' AND function_hierarchic IS NULL AND owner IS NULL AND status IS NULL");
 
         Assert.AreEqual(1L, nulls);
     }
@@ -155,7 +155,7 @@ public class ErrorDataMaterializerTest
         Assert.AreEqual(3L, QueryLong(connection, "SELECT COUNT(*) FROM ca_error_object"));
 
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT count_error, wk_max, gep_max FROM ca_error_object WHERE tid = 'LT001' AND class = 'Leitung'";
+        cmd.CommandText = "SELECT count_error, uc_max, gsp_max FROM ca_error_object WHERE tid = 'LT001' AND class = 'Leitung'";
         using var reader = cmd.ExecuteReader();
 
         Assert.IsTrue(reader.Read());
