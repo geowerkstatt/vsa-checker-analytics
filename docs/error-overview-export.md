@@ -53,7 +53,7 @@ Wenn entweder `overviewWkSheet` oder `overviewGepSheet` gesetzt ist, müssen all
 `overviewRowFields`, `overviewFilterFields` und `overviewValueField` muss in
 `errorDataAttributeMapping` vorhanden sein; ein fehlender Key führt zur
 Konstruktionszeit zu einer `ArgumentException`. Das WK-Blatt verwendet das
-Attribut `wk` als erstes Zeilenfeld, das GEP-Blatt das Attribut `gep`.
+Attribut `uc` als erstes Zeilenfeld, das GEP-Blatt das Attribut `gsp`.
 
 ### Kantonale Fehlermatrix
 

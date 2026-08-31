@@ -209,18 +209,18 @@ internal sealed class ErrorDataMaterializer
                 r.errorid                                                                     AS errorid,
                 {Render(errorTemplate, attrValue)}                                            AS error,
                 CASE WHEN r.module = 'reader' THEN r.description ELSE '' END                  AS detail,
-                obj.funktionhierarchisch                                                      AS funktionhierarchisch,
-                obj.eigentuemer                                                               AS eigentuemer,
+                obj.function_hierarchic                                                       AS function_hierarchic,
+                obj.owner                                                                     AS owner,
                 obj.status                                                                    AS status,
                 CASE WHEN r.module = 'reader' THEN reader_base.ccat ELSE igcheck_row.ccat END AS category,
                 r.model                                                                       AS model,
                 CASE WHEN r.module = 'reader' THEN 'igcheck' ELSE 'gep_check' END             AS module,
                 CASE WHEN r.module = 'reader'
                      THEN COALESCE(condition_rule.wk, attribute_rule.wk, CAST(reader_base.prio_uc AS INTEGER))
-                     ELSE CAST(igcheck_row.prio_uc AS INTEGER) END                            AS wk,
+                     ELSE CAST(igcheck_row.prio_uc AS INTEGER) END                            AS uc,
                 CASE WHEN r.module = 'reader'
                      THEN COALESCE(condition_rule.gep, attribute_rule.gep, CAST(reader_base.prio_gsp AS INTEGER))
-                     ELSE CAST(igcheck_row.prio_gsp AS INTEGER) END                           AS gep,
+                     ELSE CAST(igcheck_row.prio_gsp AS INTEGER) END                           AS gsp,
                 {Render(recommendationTemplate, attrValue)}                                   AS recommendation,
                 {Render(recommendationDetailTemplate, attrValue)}                             AS recommendation_detail
             FROM parsed_errors r
@@ -240,8 +240,8 @@ internal sealed class ErrorDataMaterializer
                   AND condition_rule.attr_name = r.extracted_attr
                   AND condition_rule.condition_col IS NOT NULL
                   AND (
-                        (condition_rule.condition_col = 'funktionhierarchisch' AND obj.funktionhierarchisch = condition_rule.condition_val)
-                     OR (condition_rule.condition_col = 'eigentuemer'          AND obj.eigentuemer          = condition_rule.condition_val)
+                        (condition_rule.condition_col = 'funktionhierarchisch' AND obj.function_hierarchic = condition_rule.condition_val)
+                     OR (condition_rule.condition_col = 'eigentuemer'          AND obj.owner               = condition_rule.condition_val)
                       )
             WHERE r.is_known = 1 AND COALESCE(condition_rule.suppress, attribute_rule.suppress, 0) = 0
             """;
@@ -271,18 +271,18 @@ internal sealed class ErrorDataMaterializer
         ExecuteNonQuery($"""
             INSERT INTO ca_error_data (
                 tid, check_type, topic, class, errorid, error, detail,
-                funktionhierarchisch, eigentuemer, status, category, model, module,
-                wk, gep, recommendation, recommendation_detail)
+                function_hierarchic, owner, status, category, model, module,
+                uc, gsp, recommendation, recommendation_detail)
             SELECT
                 tid, check_type, topic, class, errorid, error, detail,
-                funktionhierarchisch, eigentuemer, status, category, model, module,
-                wk, gep, recommendation, recommendation_detail
+                function_hierarchic, owner, status, category, model, module,
+                uc, gsp, recommendation, recommendation_detail
             FROM "{buildViewName}"
             """);
 
         ExecuteNonQuery("""
-            INSERT INTO ca_error_object (tid, class, count_error, wk_max, gep_max)
-            SELECT tid, class, COUNT(*), MAX(wk), MAX(gep)
+            INSERT INTO ca_error_object (tid, class, count_error, uc_max, gsp_max)
+            SELECT tid, class, COUNT(*), MAX(uc), MAX(gsp)
             FROM ca_error_data
             GROUP BY tid, class
             """);
@@ -358,7 +358,7 @@ internal sealed class ErrorDataMaterializer
         return $"CASE WHEN r.module = 'reader' THEN 'ig' ELSE SUBSTR({parts}, 1, LENGTH({parts}) - 2) END";
     }
 
-    // Object attributes (funktionhierarchisch / eigentuemer / status) joined from the feature tables
+    // Object attributes (function_hierarchic / owner / status) joined from the feature tables
     // present in this GeoPackage. Only Leitung and Knoten carry these; other classes stay NULL.
     private string BuildObjectAttributeCte()
     {
@@ -368,7 +368,7 @@ internal sealed class ErrorDataMaterializer
 
         if (!leitung && !knoten)
         {
-            return "SELECT r.fid, NULL AS funktionhierarchisch, NULL AS eigentuemer, NULL AS status FROM parsed_errors r";
+            return "SELECT r.fid, NULL AS function_hierarchic, NULL AS owner, NULL AS status FROM parsed_errors r";
         }
 
         var funktionParts = new List<string>();
@@ -404,8 +404,8 @@ internal sealed class ErrorDataMaterializer
 
         return $"""
             SELECT r.fid,
-                   {funktion} AS funktionhierarchisch,
-                   {eigentuemer} AS eigentuemer,
+                   {funktion} AS function_hierarchic,
+                   {eigentuemer} AS owner,
                    {status} AS status
             FROM parsed_errors r
             {string.Join("\n            ", joins)}
@@ -427,14 +427,14 @@ internal sealed class ErrorDataMaterializer
                 errorid TEXT,
                 error TEXT,
                 detail TEXT,
-                funktionhierarchisch TEXT,
-                eigentuemer TEXT,
+                function_hierarchic TEXT,
+                owner TEXT,
                 status TEXT,
                 category TEXT,
                 model TEXT,
                 module TEXT,
-                wk INTEGER,
-                gep INTEGER,
+                uc INTEGER,
+                gsp INTEGER,
                 recommendation TEXT,
                 recommendation_detail TEXT)
             """);
@@ -445,8 +445,8 @@ internal sealed class ErrorDataMaterializer
                 tid TEXT,
                 class TEXT,
                 count_error INTEGER,
-                wk_max INTEGER,
-                gep_max INTEGER)
+                uc_max INTEGER,
+                gsp_max INTEGER)
             """);
     }
 

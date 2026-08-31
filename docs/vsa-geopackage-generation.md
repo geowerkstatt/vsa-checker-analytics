@@ -151,14 +151,14 @@ Der `ErrorDataMaterializer` erzeugt zwei Tabellen aus dem klassifizierten View
     (bereits durch einen igcheck-Check abgedeckt) fallen weg. Zeilen mit
     `is_known = 0` (unbekannte Fehler) werden hier nicht aufgenommen; sie
     erscheinen ausschliesslich in `ca_error_orphans`.
-- Die Anreicherungsspalten `funktionhierarchisch`, `eigentuemer` (aus
+- Die Anreicherungsspalten `function_hierarchic`, `owner` (aus
   `organisation`) und `status` werden weiterhin aus den Feature-Tabellen
   `leitung` und `knoten` gejoint; welche vorhanden sind, bestimmt `TableExists`.
 - `MaterializeAsync` legt die Zieltabellen an und befüllt sie in einer einzigen
   Transaktion:
   - **`ca_error_data`** enthält eine Zeile pro dedupliziertem, bekanntem Fehler.
   - **`ca_error_object`** aggregiert `ca_error_data` nach (`tid`, `class`) mit
-    `COUNT(*)`, `MAX(wk)` und `MAX(gep)`.
+    `COUNT(*)`, `MAX(uc)` und `MAX(gsp)`.
 
 Die Meldungs- und Empfehlungsspalten (`error`, `recommendation`,
 `recommendation_detail`) werden einsprachig in der Sprache der hochgeladenen

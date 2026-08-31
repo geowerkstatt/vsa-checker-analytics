@@ -115,7 +115,7 @@ public sealed class ErrorOverviewExportProcess
             {
                 overviewWkConfig = BuildPivotConfig(
                     overviewWkSheet,
-                    "wk",
+                    "uc",
                     overviewRowFields,
                     overviewFilterFields,
                     overviewValueField,
@@ -127,7 +127,7 @@ public sealed class ErrorOverviewExportProcess
             {
                 overviewGepConfig = BuildPivotConfig(
                     overviewGepSheet,
-                    "gep",
+                    "gsp",
                     overviewRowFields,
                     overviewFilterFields,
                     overviewValueField,

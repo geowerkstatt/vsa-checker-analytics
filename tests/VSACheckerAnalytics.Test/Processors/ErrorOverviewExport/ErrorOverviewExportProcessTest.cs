@@ -15,12 +15,12 @@ public sealed class ErrorOverviewExportProcessTest
         { "tid", "TID" },
         { "class", "Klasse" },
         { "errorid", "Fehler-ID" },
-        { "wk", "WK" },
-        { "gep", "GEP" },
+        { "uc", "WK" },
+        { "gsp", "GEP" },
         { "error", "Fehler" },
         { "check_type", "Prueftyp" },
-        { "funktionhierarchisch", "Funktionhierarchisch" },
-        { "eigentuemer", "Eigentuemer" },
+        { "function_hierarchic", "Funktionhierarchisch" },
+        { "owner", "Eigentuemer" },
         { "status", "Status" },
         { "fid", "FID" },
     };
@@ -30,12 +30,12 @@ public sealed class ErrorOverviewExportProcessTest
         { "tid", "A" },
         { "class", "B" },
         { "errorid", "C" },
-        { "wk", "D" },
-        { "gep", "E" },
+        { "uc", "D" },
+        { "gsp", "E" },
         { "error", "F" },
         { "check_type", "G" },
-        { "funktionhierarchisch", "H" },
-        { "eigentuemer", "I" },
+        { "function_hierarchic", "H" },
+        { "owner", "I" },
         { "status", "J" },
         { "fid", "K" },
     };
@@ -45,8 +45,8 @@ public sealed class ErrorOverviewExportProcessTest
         { "tid", "TID" },
         { "class", "Klasse" },
         { "count_error", "Anzahl Fehler" },
-        { "wk_max", "WK Maximum" },
-        { "gep_max", "GEP Maximum" },
+        { "uc_max", "WK Maximum" },
+        { "gsp_max", "GEP Maximum" },
     };
 
     private static readonly Dictionary<string, string> ObjectColumnMapping = new()
@@ -54,8 +54,8 @@ public sealed class ErrorOverviewExportProcessTest
         { "tid", "A" },
         { "class", "B" },
         { "count_error", "C" },
-        { "wk_max", "D" },
-        { "gep_max", "E" },
+        { "uc_max", "D" },
+        { "gsp_max", "E" },
     };
 
     private static readonly Dictionary<string, string> CantonErrorColumnMapping = new()
@@ -307,7 +307,7 @@ public sealed class ErrorOverviewExportProcessTest
 
     private static readonly List<string> OverviewRowFields = ["class", "error"];
 
-    private static readonly List<string> OverviewFilterFields = ["check_type", "funktionhierarchisch", "eigentuemer", "status"];
+    private static readonly List<string> OverviewFilterFields = ["check_type", "function_hierarchic", "owner", "status"];
 
     private ErrorOverviewExportProcess CreateProcess(
         Dictionary<string, string>? dataAttributeMapping = null,
@@ -347,15 +347,15 @@ public sealed class ErrorOverviewExportProcessTest
                 fid INTEGER NOT NULL PRIMARY KEY,
                 tid TEXT, check_type TEXT, topic TEXT, class TEXT,
                 errorid TEXT, error TEXT, detail TEXT,
-                funktionhierarchisch TEXT, eigentuemer TEXT, status TEXT,
+                function_hierarchic TEXT, owner TEXT, status TEXT,
                 category TEXT, model TEXT, module TEXT,
-                wk INTEGER, gep INTEGER,
+                uc INTEGER, gsp INTEGER,
                 recommendation TEXT, recommendation_detail TEXT);
 
             CREATE TABLE ca_error_object (
                 fid INTEGER NOT NULL PRIMARY KEY,
                 tid TEXT, class TEXT,
-                count_error INTEGER, wk_max INTEGER, gep_max INTEGER)
+                count_error INTEGER, uc_max INTEGER, gsp_max INTEGER)
             """;
         ExecuteNonQuery(connection, createSchema);
 
@@ -379,11 +379,11 @@ public sealed class ErrorOverviewExportProcessTest
     private static void SeedStandardData(SqliteConnection connection)
     {
         var sql = """
-            INSERT INTO ca_error_data (tid, class, errorid, wk, gep, error)
+            INSERT INTO ca_error_data (tid, class, errorid, uc, gsp, error)
             VALUES ('LT001', 'Leitung', 't_001', 1, 2, 'Fehler DE 1'),
                    ('LT001', 'Leitung', 'a_001', 2, 1, 'Fehler DE 2');
 
-            INSERT INTO ca_error_object (tid, class, count_error, wk_max, gep_max)
+            INSERT INTO ca_error_object (tid, class, count_error, uc_max, gsp_max)
             VALUES ('LT001', 'Leitung', 2, 2, 2)
             """;
         ExecuteNonQuery(connection, sql);
@@ -411,7 +411,7 @@ public sealed class ErrorOverviewExportProcessTest
     private static void SeedNullRow(SqliteConnection connection)
     {
         var sql = """
-            INSERT INTO ca_error_data (tid, class, errorid, wk, gep, error)
+            INSERT INTO ca_error_data (tid, class, errorid, uc, gsp, error)
             VALUES ('UNK001', 'Massnahme', 't_999', NULL, NULL, NULL)
             """;
         ExecuteNonQuery(connection, sql);
