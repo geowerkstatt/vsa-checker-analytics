@@ -45,4 +45,6 @@ VALUES ('v_statistics_sk_trennbauwerk', 'attributes', 'v_statistics_sk_trennbauw
 INSERT OR REPLACE INTO gpkg_contents (table_name, data_type, identifier, description)
 VALUES ('v_statistics_sk_uebrige', 'attributes', 'v_statistics_sk_uebrige', 'Statistik je Attribut - Quelltabelle sk_uebrige');
 INSERT OR REPLACE INTO gpkg_contents (table_name, data_type, identifier, description)
+VALUES ('v_statistics_kennlinie_stuetzpunkt', 'attributes', 'v_statistics_kennlinie_stuetzpunkt', 'Statistik je Attribut - Quelltabelle kennlinie_stuetzpunkt');
+INSERT OR REPLACE INTO gpkg_contents (table_name, data_type, identifier, description)
 VALUES ('v_statistics_attribute', 'attributes', 'v_statistics_attribute', 'Statistik je Attribut - Gesamtuebersicht aller Tabellen, sortiert in Tabellen- und Attributreihenfolge');
