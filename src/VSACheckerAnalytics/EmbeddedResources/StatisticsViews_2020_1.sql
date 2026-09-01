@@ -533,7 +533,7 @@ SELECT
     COUNT(*) FILTER (WHERE "lage" IS NULL) AS anzahl_null,
     COUNT(*) FILTER (WHERE "lage" IS NULL AND funktionhierarchisch LIKE 'PAA%') AS anzahl_null_paa,
     COUNT(*) FILTER (WHERE "lage" IS NULL AND funktionhierarchisch LIKE 'SAA%') AS anzahl_null_saa
-FROM "knoten"
+FROM (SELECT k.*, kl.lage FROM "knoten" k LEFT JOIN "knoten_lage" kl ON kl."T_Id" = k."T_Id")
 UNION ALL
 SELECT
     44 AS sortierung,
