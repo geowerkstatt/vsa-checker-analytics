@@ -48,7 +48,7 @@ public class ErrorOverviewExportProcessIntegrationTest
         using var overviewStream = await errorOverview.OpenReadAsync();
         Assert.IsGreaterThan(0, overviewStream.Length);
 
-        // The canton matrix is filled from the template wired in the definition via ${file(ErrorMatrixKanton.xlsx)}.
+        // The canton matrix is filled from the template wired in the definition via ${file()}.
         var cantonMatrix = Assert.IsInstanceOfType<IPipelineFile>(result.ExtractProperty(nameof(ErrorOverviewExportResult.CantonErrorMatrix)));
         using var cantonStream = await cantonMatrix.OpenReadAsync();
         Assert.IsGreaterThan(0, cantonStream.Length);
