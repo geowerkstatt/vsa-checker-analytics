@@ -8,14 +8,20 @@ namespace VsaCheckerAnalytics.Processors.ErrorOverviewExport;
 [TestClass]
 public class ErrorOverviewExportProcessIntegrationTest
 {
-    private const string StepId = "error_overview_export";
-    private const string UpstreamStepId = "geopackage_generation";
+    private const string StepId = "error_overview_export_de";
+    private const string GeopackageGenerationStepId = "geopackage_generation";
+    private const string VsaMatcherStepId = "vsa_matcher";
 
     /// <summary>
-    /// Stands in for the result of <see cref="UpstreamStepId"/>. Only the property the definition references
+    /// Stands in for the result of <see cref="GeopackageGenerationStepId"/>. Only the property the definition references
     /// via <c>${step_output(geopackage_generation.GeneratedGeopackage)}</c> is needed.
     /// </summary>
-    private sealed record UpstreamStepResult(IPipelineFile GeneratedGeopackage);
+    private sealed record GeopackageGenerationStepResult(IPipelineFile GeneratedGeopackage);
+
+    /// <summary>
+    /// Stands in for the result of <see cref="VsaMatcherStepId"/>.
+    /// </summary>
+    private sealed record VsaMatcherStepResult(string? Language);
 
     private TestPipelineHost host = null!;
 
@@ -36,7 +42,8 @@ public class ErrorOverviewExportProcessIntegrationTest
             Upload = [],
             StepResults = new Dictionary<string, StepResult>
             {
-                [UpstreamStepId] = new() { Result = new UpstreamStepResult(CreateTestGeoPackage()) },
+                [VsaMatcherStepId] = new() { Result = new VsaMatcherStepResult("DE") },
+                [GeopackageGenerationStepId] = new() { Result = new GeopackageGenerationStepResult(CreateTestGeoPackage()) },
             },
         };
 
@@ -48,7 +55,7 @@ public class ErrorOverviewExportProcessIntegrationTest
         using var overviewStream = await errorOverview.OpenReadAsync();
         Assert.IsGreaterThan(0, overviewStream.Length);
 
-        // The canton matrix is filled from the template wired in the definition via ${file(ErrorMatrixKanton.xlsx)}.
+        // The canton matrix is filled from the template wired in the definition via ${file()}.
         var cantonMatrix = Assert.IsInstanceOfType<IPipelineFile>(result.ExtractProperty(nameof(ErrorOverviewExportResult.CantonErrorMatrix)));
         using var cantonStream = await cantonMatrix.OpenReadAsync();
         Assert.IsGreaterThan(0, cantonStream.Length);
