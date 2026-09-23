@@ -141,6 +141,7 @@ internal sealed class ErrorDataMaterializer
     {
         var l = LanguageSuffix(language);
         var classColumn = ClassColumn(language);
+        var subProjectColumn = SubProjectColumn(language);
         var attrValue = AttrValueExpression(l);
         var objectAttributes = BuildObjectAttributeCte();
 
@@ -221,6 +222,9 @@ internal sealed class ErrorDataMaterializer
                 CASE WHEN r.module = 'reader'
                      THEN COALESCE(condition_rule.gep, attribute_rule.gep, CAST(reader_base.prio_gsp AS INTEGER))
                      ELSE CAST(igcheck_row.prio_gsp AS INTEGER) END                           AS gsp,
+                CASE WHEN r.module = 'reader'
+                     THEN reader_base.{subProjectColumn}
+                     ELSE igcheck_row.{subProjectColumn} END                                  AS sub_project_gsp,
                 {Render(recommendationTemplate, attrValue)}                                   AS recommendation,
                 {Render(recommendationDetailTemplate, attrValue)}                             AS recommendation_detail
             FROM parsed_errors r
@@ -272,11 +276,11 @@ internal sealed class ErrorDataMaterializer
             INSERT INTO ca_error_data (
                 tid, check_type, topic, class, errorid, error, detail,
                 function_hierarchic, owner, status, category, model, module,
-                uc, gsp, recommendation, recommendation_detail)
+                uc, gsp, sub_project_gsp, recommendation, recommendation_detail)
             SELECT
                 tid, check_type, topic, class, errorid, error, detail,
                 function_hierarchic, owner, status, category, model, module,
-                uc, gsp, recommendation, recommendation_detail
+                uc, gsp, sub_project_gsp, recommendation, recommendation_detail
             FROM "{buildViewName}"
             """);
 
@@ -435,6 +439,7 @@ internal sealed class ErrorDataMaterializer
                 module TEXT,
                 uc INTEGER,
                 gsp INTEGER,
+                sub_project_gsp TEXT,
                 recommendation TEXT,
                 recommendation_detail TEXT)
             """);
@@ -475,6 +480,9 @@ internal sealed class ErrorDataMaterializer
 
     private static string ClassColumn(string language) =>
         string.Equals(language, "FR", StringComparison.OrdinalIgnoreCase) ? "class_fr" : "class_de";
+
+    private static string SubProjectColumn(string language) =>
+        string.Equals(language, "FR", StringComparison.OrdinalIgnoreCase) ? "sub_project_gsp_fr" : "sub_project_gsp_de";
 
     private bool TableExists(string tableName)
     {
