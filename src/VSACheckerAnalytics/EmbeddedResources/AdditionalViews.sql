@@ -750,45 +750,45 @@ INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, 
 CREATE VIEW v_error_recommendation_teileinzugsgebiet AS SELECT
 t.T_Id AS fid,
 t.t_ili_tid AS tid,
-           e.recommendation AS recommendation,
-           e.recommendation_detail AS recommendation_detail,
+           e.required_action AS required_action,
+           e.action_context AS action_context,
            t.perimeter AS geom
       FROM ca_error_data e
            JOIN
            teileinzugsgebiet t ON e.tid = t.t_ili_tid
      WHERE e.class LIKE 'Teileinzugsgebiet'
      GROUP BY t.t_ili_tid,
-              e.recommendation;
+              e.required_action;
 INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_recommendation_teileinzugsgebiet', 'features', 'v_error_recommendation_teileinzugsgebiet', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_recommendation_teileinzugsgebiet', 'geom', 'CURVEPOLYGON', 2056, 0, 0);
 
 CREATE VIEW v_error_recommendation_knoten AS SELECT
 n.T_Id AS fid,
 n.t_ili_tid AS tid,
-           e.recommendation AS recommendation,
-           e.recommendation_detail AS recommendation_detail,
+           e.required_action AS required_action,
+           e.action_context AS action_context,
            k.lage AS geom
       FROM ca_error_data e
            JOIN knoten n ON e.tid = n.t_ili_tid
            JOIN knoten_lage k ON n.t_id = k.t_id
      WHERE e.class LIKE 'Knoten'
      GROUP BY n.t_ili_tid,
-              e.recommendation;
+              e.required_action;
 INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_recommendation_knoten', 'features', 'v_error_recommendation_knoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_recommendation_knoten', 'geom', 'POINT', 2056, 0, 0);
 
 CREATE VIEW v_error_recommendation_leitung AS SELECT
 h.T_Id AS fid,
 h.t_ili_tid AS tid,
-           e.recommendation AS recommendation,
-           e.recommendation_detail AS recommendation_detail,
+           e.required_action AS required_action,
+           e.action_context AS action_context,
            h.verlauf AS geom
       FROM ca_error_data e
            JOIN
            leitung h ON e.tid = h.t_ili_tid
      WHERE e.class LIKE 'leitung'
      GROUP BY h.t_ili_tid,
-              e.recommendation;
+              e.required_action;
 INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_recommendation_leitung', 'features', 'v_error_recommendation_leitung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_recommendation_leitung', 'geom', 'LINESTRING', 2056, 0, 0);
 

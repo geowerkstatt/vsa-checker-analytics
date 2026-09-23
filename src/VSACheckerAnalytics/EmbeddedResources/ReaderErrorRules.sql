@@ -27,12 +27,12 @@ CREATE TABLE reader_error_rules (
     error_type_it             TEXT,
     wk                        INTEGER,
     gep                       INTEGER,
-    recommendation_de         TEXT,
-    recommendation_fr         TEXT,
-    recommendation_it         TEXT,
-    recommendation_detail_de  TEXT,
-    recommendation_detail_fr  TEXT,
-    recommendation_detail_it  TEXT,
+    required_action_de        TEXT,
+    required_action_fr        TEXT,
+    required_action_it        TEXT,
+    action_context_de         TEXT,
+    action_context_fr         TEXT,
+    action_context_it         TEXT,
     rule_note                 TEXT,
     suppress                  INTEGER NOT NULL DEFAULT 0,
     UNIQUE (error_id, attr_name, condition_col, condition_val)
@@ -42,8 +42,8 @@ INSERT INTO reader_error_rules
     (error_id, attr_name, condition_col, condition_val,
      msg_template_de, msg_template_fr, msg_template_it, msg_template_en,
      wk, gep,
-     recommendation_de,       recommendation_fr,          recommendation_it,
-     recommendation_detail_de, recommendation_detail_fr,   recommendation_detail_it,
+     required_action_de, required_action_fr, required_action_it,
+     action_context_de,  action_context_fr,  action_context_it,
      rule_note, suppress)
 VALUES
     -- Attr-specific override: BetreiberRef

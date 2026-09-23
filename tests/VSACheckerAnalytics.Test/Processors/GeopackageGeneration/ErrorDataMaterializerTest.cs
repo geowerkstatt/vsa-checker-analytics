@@ -52,7 +52,7 @@ public class ErrorDataMaterializerTest
         using var connection = await SetUpAndMaterializeAsync();
 
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT error, recommendation, recommendation_detail, uc, gsp, function_hierarchic, owner, status, sub_project_gsp FROM ca_error_data WHERE tid = 'LT001' AND errorid = '1001'";
+        cmd.CommandText = "SELECT error, required_action, action_context,uc, gsp, function_hierarchic, owner, status, sub_project_gsp FROM ca_error_data WHERE tid = 'LT001' AND errorid = '1001'";
         using var reader = cmd.ExecuteReader();
 
         Assert.IsTrue(reader.Read());
@@ -138,7 +138,7 @@ public class ErrorDataMaterializerTest
         using var connection = await SetUpAndMaterializeAsync();
 
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT error, recommendation_detail FROM ca_error_data WHERE errorid = '12'";
+        cmd.CommandText = "SELECT error, action_context FROM ca_error_data WHERE errorid = '12'";
         using var reader = cmd.ExecuteReader();
 
         Assert.IsTrue(reader.Read());
@@ -191,7 +191,7 @@ public class ErrorDataMaterializerTest
         // igcheck errors take their French matrix columns. Use the class-agnostic row (1002): the
         // class-specific rows key on class_fr, which the German class names in this fixture don't match.
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT error, recommendation, recommendation_detail, sub_project_gsp FROM ca_error_data WHERE errorid = '1002' AND tid = 'TEG001'";
+        cmd.CommandText = "SELECT error, required_action, action_context,sub_project_gsp FROM ca_error_data WHERE errorid = '1002' AND tid = 'TEG001'";
         using var reader = cmd.ExecuteReader();
         Assert.IsTrue(reader.Read());
         Assert.AreEqual("Erreur 1002", reader.GetString(0));
@@ -385,8 +385,8 @@ public class ErrorDataMaterializerTest
                 rule_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 error_id INTEGER, attr_name TEXT, condition_col TEXT, condition_val TEXT,
                 msg_template_de TEXT, msg_template_fr TEXT, msg_template_it TEXT,
-                recommendation_de TEXT, recommendation_fr TEXT, recommendation_it TEXT,
-                recommendation_detail_de TEXT, recommendation_detail_fr TEXT, recommendation_detail_it TEXT,
+                required_action_de TEXT, required_action_fr TEXT, required_action_it TEXT,
+                action_context_de TEXT, action_context_fr TEXT, action_context_it TEXT,
                 wk INTEGER, gep INTEGER, suppress INTEGER NOT NULL DEFAULT 0);
 
             CREATE TABLE leitung (
@@ -423,7 +423,7 @@ public class ErrorDataMaterializerTest
                 ('11',   'base', 'error', NULL,   NULL,      NULL,       'Pflichtattribut {ATTR} fehlt', 'Attribut obligatoire {ATTR} manquant', NULL, NULL, 'TP 11', 'TP FR 11', 'Daten erheben', 'Saisir', 'Wert erfassen', 'Saisir la valeur'),
                 ('12',   'base', 'error', NULL,   NULL,      NULL,       'Attribut {ATTR} zu lang', 'Attribut {ATTR} trop long', NULL, NULL, NULL, NULL, 'Daten prüfen', 'Vérifier', 'Kürzen', 'Réduire');
 
-            INSERT INTO reader_error_rules (error_id, attr_name, condition_col, condition_val, msg_template_de, msg_template_fr, recommendation_de, recommendation_detail_de, wk, gep, suppress)
+            INSERT INTO reader_error_rules (error_id, attr_name, condition_col, condition_val, msg_template_de, msg_template_fr, required_action_de, action_context_de, wk, gep, suppress)
             VALUES
                 (11, 'BetreiberRef', NULL, NULL, 'Pflichtattribut BetreiberRef fehlt', 'Attribut obligatoire BetreiberRef manquant', 'Daten erheben', 'Betreiber erfassen', 2, 2, 0),
                 (11, 'FunktionHierarchisch', 'funktionhierarchisch', 'SAA', 'Pflichtattribut FunktionHierarchisch fehlt (SAA-Pflichtfeld)', 'FunktionHierarchisch SAA', 'Daten erheben', 'SAA setzen', 1, 1, 0),

@@ -112,7 +112,8 @@ public class GeopackageGenerationIntegrationTest
             Assert.Contains("uc", errorDataColumns);
             Assert.Contains("gsp", errorDataColumns);
             Assert.Contains("sub_project_gsp", errorDataColumns);
-            Assert.Contains("recommendation", errorDataColumns);
+            Assert.Contains("required_action", errorDataColumns);
+            Assert.Contains("action_context", errorDataColumns);
 
             var errorObjectColumns = GetColumnNames(connection, "ca_error_object");
             Assert.Contains("tid", errorObjectColumns);

@@ -160,8 +160,8 @@ Der `ErrorDataMaterializer` erzeugt zwei Tabellen aus dem klassifizierten View
   - **`ca_error_object`** aggregiert `ca_error_data` nach (`tid`, `class`) mit
     `COUNT(*)`, `MAX(uc)` und `MAX(gsp)`.
 
-Die Meldungs-, Teilprojekt- und Empfehlungsspalten (`error`, `sub_project_gsp`,
-`recommendation`, `recommendation_detail`) werden einsprachig in der Sprache
+Die Meldungs-, Teilprojekt- und Handlungsspalten (`error`, `sub_project_gsp`,
+`required_action`, `action_context`) werden einsprachig in der Sprache
 der hochgeladenen Daten (`DE` oder `FR`) befüllt; die `module`-Spalte bildet
 `reader` auf `igcheck` und alles andere auf `gep_check` ab. `detail` enthält bei
 Reader-Zeilen die rohe Validator-Beschreibung, bei igcheck-Zeilen einen leeren
