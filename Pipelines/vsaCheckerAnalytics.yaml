@@ -94,17 +94,17 @@ processes:
 pipelines:
   - id: vsa_checker_analytics
     display_name:
-      de: VSA Checker Analyse
+      de: VSA Checker Analytics
       en: VSA Checker Analytics
-      fr: VSA Analyse du vérificateur
-      it: VSA Analisi del controllo
+      fr: VSA Checker Analytics
+      it: VSA Checker Analytics
     steps:
       - id: gep_checker_file_matcher
         display_name:
-          de: GEP-Checker-Datei Zuordnung (ZIP)
-          en: GEP Checker File Matching (ZIP)
-          fr: Correspondance des fichiers GEP Checker (ZIP)
-          it: Corrispondenza file GEP Checker (ZIP)
+          de: GEP-Datachecker Resultate identifizieren (ZIP)
+          en: Identify GEP-Datachecker results (ZIP)
+          fr: Identifier les GEP-Datachecker résultats (ZIP)
+          it: Identificare i GEP-Datachecker resultati (ZIP)
         process_id: zip_file_matcher
         input:
           files: "${upload()}"
@@ -117,16 +117,16 @@ pipelines:
             fail_conditions:
               - expression: "Length([gep_checker_file_matcher.MatchedFiles]) != 1"
                 message:
-                  de: "Genau eine GEP-Checker-Datei ist erforderlich"
-                  en: "Exactly one GEP Checker file is required"
-                  fr: "Un fichier GEP Checker est requis"
-                  it: "È necessario un file GEP Checker"
+                  de: "Genau ein GEP-Datachecker Resultatordner ist erforderlich"
+                  en: "Exactly one GEP Data Checker results folder is required"
+                  fr: "Un seul dossier de résultats GEP-Datachecker est nécessaire"
+                  it: "È necessaria esattamente una cartella dei risultati di GEP-Datachecker"
       - id: gep_checker_unzipper
         display_name:
-          de: GEP-Checker-Datei entpacken
-          en: GEP Checker File Unzipping
-          fr: Décompression du fichier GEP Checker
-          it: Estrazione del file GEP Checker
+          de: GEP-Datachecker Resultate entpacken
+          en: Unzip GEP-Datachecker results
+          fr: Décompresser les fichiers GEP-Datachecker
+          it: Decomprimere dei file GEP-Datachecker
         process_id: unzipper
         input:
           zipFile: "${step_output(gep_checker_file_matcher.MatchedFiles)}"
@@ -136,10 +136,10 @@ pipelines:
               - StatusMessage
       - id: vsa_matcher
         display_name:
-          de: VSA Zuordnung
-          en: VSA Matching
-          fr: VSA Correspondance
-          it: VSA Corrispondenza
+          de: Identifizieren der Transferdatei und Logfiles
+          en: Identifying the transfer file and log files
+          fr: Identification du fichier de transfert et des fichiers logs
+          it: Identificazione del file di trasferimento e dei file di log
         process_id: vsa_matcher
         input:
           files: "${upload()}"
@@ -153,52 +153,52 @@ pipelines:
             fail_conditions:
               - expression: "Length([vsa_matcher.Gep]) != 1"
                 message:
-                  de: "Ein GEP File notwendig"
-                  en: "Exactly one GEP file is required"
-                  fr: "Un fichier GEP est requis"
-                  it: "È necessario un file GEP"
+                  de: "Genau eine Transferdatei (XTF) erlaubt"
+                  en: "Exactly one transfer file (XTF) is needed"
+                  fr: "Un seul fichier de transfert (XTF) est requis"
+                  it: "È richiesto esattamente un file di trasferimento (XTF)"
               - expression: "Length([vsa_matcher.UserOrgTable]) > 1"
                 message:
                   de: "Mehrere benutzerdefinierte Organisationstabellen gefunden"
                   en: "Multiple user-defined organisation tables found"
-                  fr: "Plusieurs tables d'organisation définies par l'utilisateur trouvées"
-                  it: "Trovate più tabelle di organizzazione definite dall'utente"
+                  fr: "Plusieurs tables d'organisation personnalisées ont été détectées"
+                  it: "Sono state trovate diverse tabelle organizzative personalizzate"
               - expression: "Length([vsa_matcher.CheckerCsvA]) != 1"
                 message:
-                  de: "Ein Checker CSV ARA-Einzugsgebiet File notwendig"
-                  en: "Exactly one checker CSV file for ARA catchment area is required"
-                  fr: "Un fichier CSV du vérificateur pour le bassin versant ARA est requis"
-                  it: "È necessario un file CSV del controllo per il bacino ARA"
+                  de: "Es ist eine CSV-Logdatei für die Pflichtattribute ARA-Einzugsgebiet (A) notwendig"
+                  en: "A log file is required for error types A (CSV)"
+                  fr: "Un fichier log CSV pour les attributs obligatoires Bassin versant STEP (A) nécessaire"
+                  it: "Per i tipi di errore A è necessario un file di log (CSV)"
               - expression: "Length([vsa_matcher.CheckerCsvFp]) != 1"
                 message:
-                  de: "Ein Checker CSV Fachprüfungen File notwendig"
-                  en: "Exactly one checker CSV file for technical inspections is required"
-                  fr: "Un fichier CSV du vérificateur pour les examens techniques est requis"
-                  it: "È necessario un file CSV del controllo per le verifiche tecniche"
+                  de: "Es ist eine CSV-Logdatei der Fachprüfungen (FP) notwendig"
+                  en: "A log file is required for error types FP (CSV)"
+                  fr: "Un fichier log CSV pour les Examens professionnels (FP) nécessaire"
+                  it: "Per i tipi di errore FP è necessario un file di log (CSV)"
               - expression: "Length([vsa_matcher.CheckerCsvT]) != 1"
                 message:
-                  de: "Ein Checker CSV Trägerschaft File notwendig"
-                  en: "Exactly one checker CSV file for sponsorship is required"
-                  fr: "Un fichier CSV du vérificateur pour l'organisme responsable est requis"
-                  it: "È necessario un file CSV del controllo per l'ente responsabile"
-              - expression: "[vsa_matcher.GpkgTemplate] == null"
+                  de: "Es ist eine CSV-Logdatei für die Pflichtattribute Trägerschaft (T) notwendig"
+                  en: "A log file is required for error types T (CSV)"
+                  fr: "Un fichier log CSV pour les attributs obligatoires autorité responsable (T) nécessaire"
+                  it: "Per i tipi di errore T è necessario un file di log (CSV)"
+              - expression: "[vsa_matcher.GpkgTemplate] == null && Length([vsa_matcher.Gep]) == 1 && Length([vsa_matcher.UserOrgTable]) == 1 && Length([vsa_matcher.CheckerCsvA]) == 1 && Length([vsa_matcher.CheckerCsvFp]) == 1 && Length([vsa_matcher.CheckerCsvT]) == 1"
                 message:
-                  de: "Ein GPKG Template File notwendig"
-                  en: "Exactly one GPKG template file is required"
-                  fr: "Un fichier de modèle GPKG est requis"
-                  it: "È necessario un file modello GPKG"
-              - expression: "[vsa_matcher.StandardOrgTable] == null"
+                  de: "Bitte wenden Sie sich an den Administrator (GPKG Vorlage fehlt)"
+                  en: "Please contact the administrator (GPKG template missing)"
+                  fr: "Veuillez contacter l'administrateur (modèle GPKG manquant)"
+                  it: "Si prega di rivolgersi all'amministratore (manca il modello GPKG)"
+              - expression: "[vsa_matcher.StandardOrgTable] == null  && Length([vsa_matcher.Gep]) == 1 && Length([vsa_matcher.UserOrgTable]) == 1 && Length([vsa_matcher.CheckerCsvA]) == 1 && Length([vsa_matcher.CheckerCsvFp]) == 1 && Length([vsa_matcher.CheckerCsvT]) == 1"
                 message:
-                  de: "Ein Standard-Organisations-Tabellen File notwendig"
-                  en: "Exactly one standard organisation table file is required"
-                  fr: "Un fichier de table d'organisation standard est requis"
-                  it: "È necessario un file di tabella organizzativa standard"
+                  de: "Bitte wenden Sie sich an den Administrator (Organisations-Tabelle kann nicht heruntergeladen werden)"
+                  en: "Please contact the administrator (organization table cannot be downloaded)"
+                  fr: "Veuillez contacter l'administrateur (Impossible de télécharger la table d'organisation)"
+                  it: "Si prega di rivolgersi all'amministratore (Non è possibile scaricare la tabella organizzativa)"
       - id: geopackage_generation
         display_name:
-          de: GeoPackage Erstellung
-          en: GeoPackage Generation
-          fr: GeoPackage Generation
-          it: GeoPackage Generation
+          de: Daten importieren und aufbereiten
+          en: Import and prepare data
+          fr: Importer et traiter les données
+          it: Importazione ed elaborazione dei dati
         process_id: geopackage_generation
         input:
           geoPackage: "${step_output(vsa_matcher.GpkgTemplate)}"
@@ -208,7 +208,7 @@ pipelines:
           checkerCsvT: "${step_output(vsa_matcher.CheckerCsvT)}"
           checkerCsvA: "${step_output(vsa_matcher.CheckerCsvA)}"
           checkerCsvFp: "${step_output(vsa_matcher.CheckerCsvFp)}"
-          errorMatrix: "${file(ErrorMatrix_v3.xlsx)}"
+          errorMatrix: "${file(errorMatrix.xlsx)}"
           language: "${step_output(vsa_matcher.Language)}"
           modelVersion: "${step_output(vsa_matcher.ModelVersion)}"
         output_actions:
@@ -220,20 +220,58 @@ pipelines:
             fail_conditions:
               - expression: "[geopackage_generation.GeneratedGeopackage] == null"
                 message:
-                  de: "Der Import der Daten in das GeoPackage ist fehlgeschlagen"
+                  de: "Der Import der Daten in die Vorlagedatei ist fehlgeschlagen"
                   en: "The import of the data into the GeoPackage has failed"
                   fr: "L'importation des données dans le GeoPackage a échoué"
-                  it: "L'importazione dei dati nel GeoPackage non è andata a buon fine"
-      - id: error_overview_export
+                  it: "L'importazione dei dati nel GeoPackage non è riuscita"
+      - id: error_overview_export_de
         display_name:
-          de: Fehlerübersicht Export
-          en: Error Overview Export
-          fr: Export de l'aperçu des erreurs
-          it: Esportazione panoramica degli errori
+          de: Fehler aggregieren und exportieren (DE)
+          en: Aggregate and export errors (DE)
+          fr: Regrouper et exporter les erreurs (DE)
+          it: Aggregare ed esportare gli errori (DE)
         process_id: error_overview_export
+        conditions:
+          pre:
+            skip_conditions:
+              - expression: "[vsa_matcher.Language] != 'DE'"
+                message:
+                  de: "Dieser Schritt wird nur für deutsche Modelle ausgeführt"
+                  en: "This step applies only to German models"
+                  it: "Cette étape ne concerne que les modèles allemands"
+                  fr: "Questa operazione viene eseguita solo sui modelli tedeschi"
         input:
           geopackage: "${step_output(geopackage_generation.GeneratedGeopackage)}"
-          cantonErrorMatrixTemplate: "${file(ErrorMatrixKanton.xlsx)}"
+          cantonErrorMatrixTemplate: "${file(errorMatrixKanton_de.xlsx)}"
+        output_actions:
+          - property: ErrorOverview
+            actions:
+              - Download
+          - property: CantonErrorMatrix
+            actions:
+              - Download
+          - property: StatusMessage
+            actions:
+              - StatusMessage
+      - id: error_overview_export_fr
+        display_name:
+          de: Fehler aggregieren und exportieren (FR)
+          en: Aggregate and export errors (FR)
+          fr: Regrouper et exporter les erreurs (FR)
+          it: Aggregare ed esportare gli errori (FR)
+        process_id: error_overview_export
+        conditions:
+          pre:
+            skip_conditions:
+              - expression: "[vsa_matcher.Language] != 'FR'"
+                message:
+                  de: "Dieser Schritt wird nur für französische Modelle ausgeführt"
+                  en: "This step applies only to French models"
+                  it: "Cette étape ne concerne que les modèles français"
+                  fr: "Questa operazione viene eseguita solo sui modelli francesi"
+        input:
+          geopackage: "${step_output(geopackage_generation.GeneratedGeopackage)}"
+          cantonErrorMatrixTemplate: "${file(errorMatrixKanton_fr.xlsx)}"
         output_actions:
           - property: ErrorOverview
             actions:
@@ -246,10 +284,10 @@ pipelines:
               - StatusMessage
       - id: network_topology_patcher
         display_name:
-          de: Netzwerktopologie Patcher
-          en: Network Topology Patcher
-          fr: Correctif de topologie du réseau
-          it: Patcher topologia di rete
+          de: Netzwerktopologie ergänzen
+          en: Network Topology completion
+          fr: Finalisation de la topologie du réseau
+          it: Completamento della topologia di rete
         process_id: network_topology_patcher
         input:
           geoPackage: "${step_output(geopackage_generation.GeneratedGeopackage)}"
