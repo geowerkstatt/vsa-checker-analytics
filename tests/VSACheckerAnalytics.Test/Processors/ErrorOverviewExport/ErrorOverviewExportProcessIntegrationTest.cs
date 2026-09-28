@@ -70,7 +70,7 @@ public class ErrorOverviewExportProcessIntegrationTest
                 function_hierarchic TEXT, owner TEXT, status TEXT,
                 category TEXT, model TEXT, module TEXT,
                 uc INTEGER, gsp INTEGER,
-                recommendation TEXT, recommendation_detail TEXT);
+                required_action TEXT, action_context TEXT);
 
             CREATE TABLE ca_error_object (
                 fid INTEGER NOT NULL PRIMARY KEY,

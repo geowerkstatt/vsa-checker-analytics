@@ -17,8 +17,8 @@ processes:
     default_config:
       errorDataSheet: "Error Data"
       errorDataAttributeMapping:
-        recommendation_detail: Recommendation Detail
-        recommendation: Recommendation
+        action_context: Recommendation Detail
+        required_action: Recommendation
         gsp: GEP
         uc: WK
         module: Modul
@@ -36,8 +36,8 @@ processes:
         tid: TID
         fid: FID
       errorDataColumnMapping:
-        recommendation_detail: A
-        recommendation: B
+        action_context: A
+        required_action: B
         gsp: C
         uc: D
         module: E

@@ -594,11 +594,11 @@ CREATE VIEW v_errorlist_error_knoten_data AS
      WHERE e.class LIKE 'Knoten';
 INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_errorlist_error_knoten_data', 'attributes', 'v_errorlist_error_knoten_data', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
 
-CREATE VIEW v_errorlist_error_haltung_data AS
+CREATE VIEW v_errorlist_error_leitung_data AS
     SELECT *
       FROM ca_error_data e
      WHERE e.class LIKE 'Leitung';
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_errorlist_error_haltung_data', 'attributes', 'v_errorlist_error_haltung_data', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_errorlist_error_leitung_data', 'attributes', 'v_errorlist_error_leitung_data', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL, NULL, NULL, NULL, NULL);
 
 
 CREATE VIEW v_error_ueberlauf_foerderaggregat AS SELECT
@@ -750,47 +750,47 @@ INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, 
 CREATE VIEW v_error_recommendation_teileinzugsgebiet AS SELECT
 t.T_Id AS fid,
 t.t_ili_tid AS tid,
-           e.recommendation AS recommendation,
-           e.recommendation_detail AS recommendation_detail,
+           e.required_action AS required_action,
+           e.action_context AS action_context,
            t.perimeter AS geom
       FROM ca_error_data e
            JOIN
            teileinzugsgebiet t ON e.tid = t.t_ili_tid
      WHERE e.class LIKE 'Teileinzugsgebiet'
      GROUP BY t.t_ili_tid,
-              e.recommendation;
+              e.required_action;
 INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_recommendation_teileinzugsgebiet', 'features', 'v_error_recommendation_teileinzugsgebiet', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_recommendation_teileinzugsgebiet', 'geom', 'CURVEPOLYGON', 2056, 0, 0);
 
 CREATE VIEW v_error_recommendation_knoten AS SELECT
 n.T_Id AS fid,
 n.t_ili_tid AS tid,
-           e.recommendation AS recommendation,
-           e.recommendation_detail AS recommendation_detail,
+           e.required_action AS required_action,
+           e.action_context AS action_context,
            k.lage AS geom
       FROM ca_error_data e
            JOIN knoten n ON e.tid = n.t_ili_tid
            JOIN knoten_lage k ON n.t_id = k.t_id
      WHERE e.class LIKE 'Knoten'
      GROUP BY n.t_ili_tid,
-              e.recommendation;
+              e.required_action;
 INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_recommendation_knoten', 'features', 'v_error_recommendation_knoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_recommendation_knoten', 'geom', 'POINT', 2056, 0, 0);
 
-CREATE VIEW v_error_recommendation_haltung AS SELECT
+CREATE VIEW v_error_recommendation_leitung AS SELECT
 h.T_Id AS fid,
 h.t_ili_tid AS tid,
-           e.recommendation AS recommendation,
-           e.recommendation_detail AS recommendation_detail,
+           e.required_action AS required_action,
+           e.action_context AS action_context,
            h.verlauf AS geom
       FROM ca_error_data e
            JOIN
            leitung h ON e.tid = h.t_ili_tid
      WHERE e.class LIKE 'leitung'
      GROUP BY h.t_ili_tid,
-              e.recommendation;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_recommendation_haltung', 'features', 'v_error_recommendation_haltung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
-INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_recommendation_haltung', 'geom', 'LINESTRING', 2056, 0, 0);
+              e.required_action;
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_recommendation_leitung', 'features', 'v_error_recommendation_leitung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
+INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_recommendation_leitung', 'geom', 'LINESTRING', 2056, 0, 0);
 
 CREATE VIEW v_error_knoten AS SELECT
 n.T_Id AS fid,
@@ -811,7 +811,7 @@ e.tid AS tid,
 INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_knoten', 'features', 'v_error_knoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_knoten', 'geom', 'POINT', 2056, 0, 0);
 
-CREATE VIEW v_error_haltung AS SELECT
+CREATE VIEW v_error_leitung AS SELECT
 h.T_Id AS fid,
 e.tid AS tid,
            e.class AS class,
@@ -825,8 +825,8 @@ e.tid AS tid,
            JOIN leitung h ON e.tid = h.t_ili_tid
            LEFT JOIN organisation o ON h.eigentuemerref = o.t_id
      WHERE e.class LIKE 'Leitung';
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_haltung', 'features', 'v_error_haltung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
-INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_haltung', 'geom', 'LINESTRING', 2056, 0, 0);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_leitung', 'features', 'v_error_leitung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
+INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_leitung', 'geom', 'LINESTRING', 2056, 0, 0);
 
 CREATE VIEW v_error_error_knoten AS SELECT
 n.T_Id AS fid,
@@ -844,7 +844,7 @@ n.t_ili_tid AS tid,
 INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_error_knoten', 'features', 'v_error_error_knoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_error_knoten', 'geom', 'POINT', 2056, 0, 0);
 
-CREATE VIEW v_error_error_haltung AS SELECT
+CREATE VIEW v_error_error_leitung AS SELECT
 h.T_Id AS fid,
 h.t_ili_tid AS tid,
            e.error AS error,
@@ -855,8 +855,8 @@ h.t_ili_tid AS tid,
      WHERE e.class LIKE 'leitung'
      GROUP BY h.t_ili_tid,
               e.error;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_error_haltung', 'features', 'v_error_error_haltung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
-INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_error_haltung', 'geom', 'LINESTRING', 2056, 0, 0);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_error_leitung', 'features', 'v_error_error_leitung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
+INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_error_leitung', 'geom', 'LINESTRING', 2056, 0, 0);
 
 CREATE VIEW v_error_category_knoten AS SELECT
 n.T_Id AS fid,
@@ -874,9 +874,9 @@ n.t_ili_tid AS tid,
 INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_category_knoten', 'features', 'v_error_category_knoten', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_category_knoten', 'geom', 'POINT', 2056, 0, 0);
 
--- v_error_category_haltung source
+-- v_error_category_leitung source
 
-CREATE VIEW v_error_category_haltung AS SELECT
+CREATE VIEW v_error_category_leitung AS SELECT
 h.T_Id AS fid,
 h.t_ili_tid AS tid,
            e.category AS category,
@@ -887,5 +887,5 @@ h.t_ili_tid AS tid,
      WHERE e.class LIKE 'leitung'
      GROUP BY h.t_ili_tid,
               e.category;
-INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_category_haltung', 'features', 'v_error_category_haltung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
-INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_category_haltung', 'geom', 'LINESTRING', 2056, 0, 0);
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_category_leitung', 'features', 'v_error_category_leitung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
+INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_category_leitung', 'geom', 'LINESTRING', 2056, 0, 0);

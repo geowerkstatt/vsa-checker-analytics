@@ -52,7 +52,7 @@ public class ErrorDataMaterializerTest
         using var connection = await SetUpAndMaterializeAsync();
 
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT error, recommendation, recommendation_detail, uc, gsp, function_hierarchic, owner, status FROM ca_error_data WHERE tid = 'LT001' AND errorid = '1001'";
+        cmd.CommandText = "SELECT error, required_action, action_context,uc, gsp, function_hierarchic, owner, status, sub_project_gsp FROM ca_error_data WHERE tid = 'LT001' AND errorid = '1001'";
         using var reader = cmd.ExecuteReader();
 
         Assert.IsTrue(reader.Read());
@@ -64,6 +64,7 @@ public class ErrorDataMaterializerTest
         Assert.AreEqual("PAA.Transportleitung", reader.GetString(5));
         Assert.AreEqual("Gemeinde Aarau", reader.GetString(6));
         Assert.AreEqual("in_Betrieb", reader.GetString(7));
+        Assert.AreEqual("TP 1001", reader.GetString(8));
     }
 
     [TestMethod]
@@ -88,6 +89,18 @@ public class ErrorDataMaterializerTest
             "SELECT error FROM ca_error_data WHERE errorid = '11' AND detail LIKE 'DatenherrRef%'");
 
         Assert.AreEqual("Pflichtattribut DatenherrRef fehlt", error);
+    }
+
+    [TestMethod]
+    public async Task Materialize_TakesSubProject_FromBaseRow_ForReaderError()
+    {
+        using var connection = await SetUpAndMaterializeAsync();
+
+        var subProject = QueryString(
+            connection,
+            "SELECT sub_project_gsp FROM ca_error_data WHERE errorid = '11' AND detail LIKE 'DatenherrRef%'");
+
+        Assert.AreEqual("TP 11", subProject);
     }
 
     [TestMethod]
@@ -125,7 +138,7 @@ public class ErrorDataMaterializerTest
         using var connection = await SetUpAndMaterializeAsync();
 
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT error, recommendation_detail FROM ca_error_data WHERE errorid = '12'";
+        cmd.CommandText = "SELECT error, action_context FROM ca_error_data WHERE errorid = '12'";
         using var reader = cmd.ExecuteReader();
 
         Assert.IsTrue(reader.Read());
@@ -178,12 +191,13 @@ public class ErrorDataMaterializerTest
         // igcheck errors take their French matrix columns. Use the class-agnostic row (1002): the
         // class-specific rows key on class_fr, which the German class names in this fixture don't match.
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT error, recommendation, recommendation_detail FROM ca_error_data WHERE errorid = '1002' AND tid = 'TEG001'";
+        cmd.CommandText = "SELECT error, required_action, action_context,sub_project_gsp FROM ca_error_data WHERE errorid = '1002' AND tid = 'TEG001'";
         using var reader = cmd.ExecuteReader();
         Assert.IsTrue(reader.Read());
         Assert.AreEqual("Erreur 1002", reader.GetString(0));
         Assert.AreEqual("Fix FR 1002", reader.GetString(1));
         Assert.AreEqual("Ctx FR 1002", reader.GetString(2));
+        Assert.AreEqual("TP FR 1002", reader.GetString(3));
     }
 
     [TestMethod]
@@ -363,6 +377,7 @@ public class ErrorDataMaterializerTest
                 class_de TEXT, class_fr TEXT,
                 cmsg_de TEXT, cmsg_fr TEXT, cmsg_it TEXT,
                 prio_uc TEXT, prio_gsp TEXT,
+                sub_project_gsp_de TEXT, sub_project_gsp_fr TEXT,
                 required_action_de TEXT, required_action_fr TEXT, required_action_it TEXT,
                 action_context_de TEXT, action_context_fr TEXT, action_context_it TEXT);
 
@@ -370,8 +385,8 @@ public class ErrorDataMaterializerTest
                 rule_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 error_id INTEGER, attr_name TEXT, condition_col TEXT, condition_val TEXT,
                 msg_template_de TEXT, msg_template_fr TEXT, msg_template_it TEXT,
-                recommendation_de TEXT, recommendation_fr TEXT, recommendation_it TEXT,
-                recommendation_detail_de TEXT, recommendation_detail_fr TEXT, recommendation_detail_it TEXT,
+                required_action_de TEXT, required_action_fr TEXT, required_action_it TEXT,
+                action_context_de TEXT, action_context_fr TEXT, action_context_it TEXT,
                 wk INTEGER, gep INTEGER, suppress INTEGER NOT NULL DEFAULT 0);
 
             CREATE TABLE leitung (
@@ -401,14 +416,14 @@ public class ErrorDataMaterializerTest
                 ('a_07', 'KN003', 'A',  'T2', 'Knoten',            '9999', 'Some unknown igcheck error', '2020', 'igcheck'),
                 ('a_08', 'KN001', 'A',  'T2', 'Knoten',            '11',   'FunktionHierarchisch has to be defined', '2020', 'reader');
 
-            INSERT INTO error_matrix (cid, checkmodel, ccat, model, class_de, class_fr, cmsg_de, cmsg_fr, prio_uc, prio_gsp, required_action_de, required_action_fr, action_context_de, action_context_fr)
+            INSERT INTO error_matrix (cid, checkmodel, ccat, model, class_de, class_fr, cmsg_de, cmsg_fr, prio_uc, prio_gsp, sub_project_gsp_de, sub_project_gsp_fr, required_action_de, required_action_fr, action_context_de, action_context_fr)
             VALUES
-                ('1001', 'vsa',  'error', '2020', 'Leitung', 'Conduite', 'Fehler 1001', 'Erreur 1001', '3', '2', 'Fix 1001', 'Fix FR 1001', 'Ctx 1001', 'Ctx FR 1001'),
-                ('1002', 'vsa',  'error', '2020', NULL,      NULL,       'Fehler 1002', 'Erreur 1002', '1', '1', 'Fix 1002', 'Fix FR 1002', 'Ctx 1002', 'Ctx FR 1002'),
-                ('11',   'base', 'error', NULL,   NULL,      NULL,       'Pflichtattribut {ATTR} fehlt', 'Attribut obligatoire {ATTR} manquant', NULL, NULL, 'Daten erheben', 'Saisir', 'Wert erfassen', 'Saisir la valeur'),
-                ('12',   'base', 'error', NULL,   NULL,      NULL,       'Attribut {ATTR} zu lang', 'Attribut {ATTR} trop long', NULL, NULL, 'Daten prüfen', 'Vérifier', 'Kürzen', 'Réduire');
+                ('1001', 'vsa',  'error', '2020', 'Leitung', 'Conduite', 'Fehler 1001', 'Erreur 1001', '3', '2', 'TP 1001', 'TP FR 1001', 'Fix 1001', 'Fix FR 1001', 'Ctx 1001', 'Ctx FR 1001'),
+                ('1002', 'vsa',  'error', '2020', NULL,      NULL,       'Fehler 1002', 'Erreur 1002', '1', '1', 'TP 1002', 'TP FR 1002', 'Fix 1002', 'Fix FR 1002', 'Ctx 1002', 'Ctx FR 1002'),
+                ('11',   'base', 'error', NULL,   NULL,      NULL,       'Pflichtattribut {ATTR} fehlt', 'Attribut obligatoire {ATTR} manquant', NULL, NULL, 'TP 11', 'TP FR 11', 'Daten erheben', 'Saisir', 'Wert erfassen', 'Saisir la valeur'),
+                ('12',   'base', 'error', NULL,   NULL,      NULL,       'Attribut {ATTR} zu lang', 'Attribut {ATTR} trop long', NULL, NULL, NULL, NULL, 'Daten prüfen', 'Vérifier', 'Kürzen', 'Réduire');
 
-            INSERT INTO reader_error_rules (error_id, attr_name, condition_col, condition_val, msg_template_de, msg_template_fr, recommendation_de, recommendation_detail_de, wk, gep, suppress)
+            INSERT INTO reader_error_rules (error_id, attr_name, condition_col, condition_val, msg_template_de, msg_template_fr, required_action_de, action_context_de, wk, gep, suppress)
             VALUES
                 (11, 'BetreiberRef', NULL, NULL, 'Pflichtattribut BetreiberRef fehlt', 'Attribut obligatoire BetreiberRef manquant', 'Daten erheben', 'Betreiber erfassen', 2, 2, 0),
                 (11, 'FunktionHierarchisch', 'funktionhierarchisch', 'SAA', 'Pflichtattribut FunktionHierarchisch fehlt (SAA-Pflichtfeld)', 'FunktionHierarchisch SAA', 'Daten erheben', 'SAA setzen', 1, 1, 0),

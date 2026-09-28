@@ -121,7 +121,7 @@ internal sealed class ErrorDataMaterializer
     /// (<c>Tid</c>, <c>Module</c>, <c>Description</c>) so the same logical error reported by several
     /// profiles collapses into one row with an aggregated <c>check_type</c>. Only rows the classified
     /// view flags <c>is_known = 1</c> are included: igcheck errors are enriched from <c>error_matrix</c>
-    /// (class/model-specific row wins), reader errors resolve their message, priority and recommendation
+    /// (class/model-specific row wins), reader errors resolve their message, priority and required action
     /// through a three-tier lookup (condition override, attribute override, base row) after extracting
     /// parameters from the validator message. Suppressed reader errors are excluded. Unknown errors are
     /// left out entirely and surface via the orphan detection, not here. The raw validator description
@@ -141,15 +141,16 @@ internal sealed class ErrorDataMaterializer
     {
         var l = LanguageSuffix(language);
         var classColumn = ClassColumn(language);
+        var subProjectColumn = SubProjectColumn(language);
         var attrValue = AttrValueExpression(l);
         var objectAttributes = BuildObjectAttributeCte();
 
         var errorTemplate =
             $"CASE WHEN r.module = 'reader' THEN COALESCE(condition_rule.msg_template_{l}, attribute_rule.msg_template_{l}, reader_base.cmsg_{l}, r.description) ELSE COALESCE(igcheck_row.cmsg_{l}, r.description) END";
-        var recommendationTemplate =
-            $"CASE WHEN r.module = 'reader' THEN COALESCE(condition_rule.recommendation_{l}, attribute_rule.recommendation_{l}, reader_base.required_action_{l}) ELSE igcheck_row.required_action_{l} END";
-        var recommendationDetailTemplate =
-            $"CASE WHEN r.module = 'reader' THEN COALESCE(condition_rule.recommendation_detail_{l}, attribute_rule.recommendation_detail_{l}, reader_base.action_context_{l}) ELSE igcheck_row.action_context_{l} END";
+        var requiredActionTemplate =
+            $"CASE WHEN r.module = 'reader' THEN COALESCE(condition_rule.required_action_{l}, attribute_rule.required_action_{l}, reader_base.required_action_{l}) ELSE igcheck_row.required_action_{l} END";
+        var actionContextTemplate =
+            $"CASE WHEN r.module = 'reader' THEN COALESCE(condition_rule.action_context_{l}, attribute_rule.action_context_{l}, reader_base.action_context_{l}) ELSE igcheck_row.action_context_{l} END";
 
         var checkType = AggregatedCheckTypeExpression();
 
@@ -221,8 +222,11 @@ internal sealed class ErrorDataMaterializer
                 CASE WHEN r.module = 'reader'
                      THEN COALESCE(condition_rule.gep, attribute_rule.gep, CAST(reader_base.prio_gsp AS INTEGER))
                      ELSE CAST(igcheck_row.prio_gsp AS INTEGER) END                           AS gsp,
-                {Render(recommendationTemplate, attrValue)}                                   AS recommendation,
-                {Render(recommendationDetailTemplate, attrValue)}                             AS recommendation_detail
+                CASE WHEN r.module = 'reader'
+                     THEN reader_base.{subProjectColumn}
+                     ELSE igcheck_row.{subProjectColumn} END                                  AS sub_project_gsp,
+                {Render(requiredActionTemplate, attrValue)}                                   AS required_action,
+                {Render(actionContextTemplate, attrValue)}                                    AS action_context
             FROM parsed_errors r
             LEFT JOIN object_attributes obj ON obj.fid = r.fid
             LEFT JOIN matrix_matches mm ON mm.fid = r.fid
@@ -272,11 +276,11 @@ internal sealed class ErrorDataMaterializer
             INSERT INTO ca_error_data (
                 tid, check_type, topic, class, errorid, error, detail,
                 function_hierarchic, owner, status, category, model, module,
-                uc, gsp, recommendation, recommendation_detail)
+                uc, gsp, sub_project_gsp, required_action, action_context)
             SELECT
                 tid, check_type, topic, class, errorid, error, detail,
                 function_hierarchic, owner, status, category, model, module,
-                uc, gsp, recommendation, recommendation_detail
+                uc, gsp, sub_project_gsp, required_action, action_context
             FROM "{buildViewName}"
             """);
 
@@ -435,8 +439,9 @@ internal sealed class ErrorDataMaterializer
                 module TEXT,
                 uc INTEGER,
                 gsp INTEGER,
-                recommendation TEXT,
-                recommendation_detail TEXT)
+                sub_project_gsp TEXT,
+                required_action TEXT,
+                action_context TEXT)
             """);
 
         ExecuteNonQuery("""
@@ -475,6 +480,9 @@ internal sealed class ErrorDataMaterializer
 
     private static string ClassColumn(string language) =>
         string.Equals(language, "FR", StringComparison.OrdinalIgnoreCase) ? "class_fr" : "class_de";
+
+    private static string SubProjectColumn(string language) =>
+        string.Equals(language, "FR", StringComparison.OrdinalIgnoreCase) ? "sub_project_gsp_fr" : "sub_project_gsp_de";
 
     private bool TableExists(string tableName)
     {

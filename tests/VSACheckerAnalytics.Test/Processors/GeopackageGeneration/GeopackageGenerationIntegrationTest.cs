@@ -100,6 +100,7 @@ public class GeopackageGenerationIntegrationTest
             Assert.IsGreaterThan(0, GetCountWhere(connection, "ca_error_data", "module = 'gep_check'"), "igcheck errors should be present.");
             Assert.AreEqual(0, GetCountWhere(connection, "ca_error_data", "check_type = 'ig'"), "This fixture has no reader errors.");
             Assert.AreEqual(0, GetCountWhere(connection, "ca_error_data", "error IS NULL"), "Every materialized error should have a rendered message.");
+            Assert.AreEqual(0, GetCountWhere(connection, "ca_error_data", "module = 'gep_check' AND sub_project_gsp IS NULL"), "Every igcheck error should carry the sub-project of its matrix row.");
 
             var errorDataColumns = GetColumnNames(connection, "ca_error_data");
             Assert.Contains("tid", errorDataColumns);
@@ -110,7 +111,9 @@ public class GeopackageGenerationIntegrationTest
             Assert.Contains("owner", errorDataColumns);
             Assert.Contains("uc", errorDataColumns);
             Assert.Contains("gsp", errorDataColumns);
-            Assert.Contains("recommendation", errorDataColumns);
+            Assert.Contains("sub_project_gsp", errorDataColumns);
+            Assert.Contains("required_action", errorDataColumns);
+            Assert.Contains("action_context", errorDataColumns);
 
             var errorObjectColumns = GetColumnNames(connection, "ca_error_object");
             Assert.Contains("tid", errorObjectColumns);
