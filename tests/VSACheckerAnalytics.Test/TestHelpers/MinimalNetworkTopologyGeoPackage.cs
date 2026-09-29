@@ -45,7 +45,6 @@ internal static class MinimalNetworkTopologyGeoPackage
         Exec(connection, createGeometryColumnsTableSql);
 
         Exec(connection, "CREATE TABLE knoten_lage (t_id INTEGER PRIMARY KEY, lage BLOB)");
-        Exec(connection, "CREATE TABLE knoten (t_id INTEGER PRIMARY KEY, funktion TEXT, detailgeometrie BLOB)");
         Exec(connection, "CREATE TABLE leitung (t_id INTEGER PRIMARY KEY, knoten_vonref INTEGER, knoten_nachref INTEGER, verlauf BLOB)");
         Exec(connection, "CREATE TABLE ueberlauf_foerderaggregat (t_id INTEGER PRIMARY KEY, knotenref INTEGER, knoten_nachref INTEGER)");
     }

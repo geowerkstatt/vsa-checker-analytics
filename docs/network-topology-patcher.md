@@ -16,35 +16,10 @@ Die Verbindungslinien werden in folgende Layers eingetragen:
   allenfalls mit einer Verbindungslinie am Anfang und/oder am Ende erweitert wurde. Eine
   Verbindungslinie wird immer dann eingefügt, wenn der referenzierte Knoten auflösbar ist und
   der Abstand zwischen Knotenkoordinate und `verlauf`-Endpunkt mindestens `MinConnectorLength`
-  beträgt — unabhängig von der `funktion` des Knotens. So entsteht ein topologisch
-  geschlossenes Netzwerk für nachgelagerte Netzverfolgungstools.
+  beträgt. So entsteht ein topologisch geschlossenes Netzwerk für nachgelagerte Netzverfolgungstools.
   Zudem gibt es für jedes `ueberlauf_foerderaggregat` ein Feature mit der Linie zwischen den beiden Knoten.
 - **`ca_topo_extra_edges`**:
   Enthält nur die zusätzlich erzeugten Verbindungslinien der `leitungen` und `ueberlauf_foerderaggregat` ohne die ursprünglichen `leitungen`.
-  Die Verbindungslinien für `leitungen` werden hier zusätzlich nach `funktion` des Knotens gefiltert, zu welchem die Verbindungslinie führt.
-  Nur Verbindungslinien zu diesen Knoten-Funktionen werden auf diesem Layer eingetragen:
-    - `abflussloseGrube`
-    - `Absturzbauwerk`
-    - `Abwasserfaulraum`
-    - `Duekerkammer`
-    - `Duekeroberhaupt`
-    - `Faulgrube`
-    - `Gelaendemulde`
-    - `Geschiebefang`
-    - `Guellegrube`
-    - `Klaergrube`
-    - `Regenbecken_Durchlaufbecken`
-    - `Regenbecken_Fangbecken`
-    - `Regenbecken_Fangkanal`
-    - `Regenbecken_Regenklaerbecken`
-    - `Regenbecken_Regenrueckhaltebecken`
-    - `Regenbecken_Regenrueckhaltekanal`
-    - `Regenbecken_Stauraumkanal`
-    - `Regenbecken_Verbundbecken`
-    - `Wirbelfallschacht`
-    - `Pumpwerk`
-    - `Trennbauwerk`
-    - `Regenueberlauf`
 
 ## Konfiguration
 
@@ -55,13 +30,12 @@ sind in `NetworkTopologyPatcher` fest hinterlegt:
 |------------------------------|---------------|----------------------------------------------------------------------------------------------------|
 | `MinConnectorLength`         | `0.10` m      | Verbindungssegmente kürzer als dieser Wert werden verworfen. |
 | `Srid`                       | `2056`        | SRID aller verarbeiteten VSA-Daten und der ausgegebenen Geometriespalten.        |
-| `ValidConnectorFunktionen`   | Allow-Liste   | Knoten-`funktion`-Werte (Schächte, Becken, Pumpwerke etc.), für die ein Verbindungssegment zusätzlich als eigenes Feature in `ca_topo_extra_edges` abgelegt wird. Die Allow-Liste beeinflusst NICHT die Erzeugung der Verbindungssegmente in `ca_topo_network_edges` — dort werden die Lücken zu allen auflösbaren Knoten geschlossen. |
 
 ## Inputs
 
 | Parameter     | Quelle                    | Typ             | Beschreibung                                                                                       |
 |---------------|---------------------------|-----------------|----------------------------------------------------------------------------------------------------|
-| `geoPackage`  | Geopackage-Generierung    | `IPipelineFile` | Vorbereitetes GeoPackage mit den Tabellen `leitung`, `knoten_lage`, `knoten` und `ueberlauf_foerderaggregat`. |
+| `geoPackage`  | Geopackage-Generierung    | `IPipelineFile` | Vorbereitetes GeoPackage mit den Tabellen `leitung`, `knoten_lage` und `ueberlauf_foerderaggregat`. |
 
 ## Output
 
@@ -118,12 +92,9 @@ voneinander betrachtet:
    verworfen — die Lage gilt dann als hinreichend deckungsgleich.
 3. Die so ermittelten Verbindungssegmente werden mit dem ursprünglichen
    `verlauf` zu einer einzigen, durchgehenden Linie zusammengeführt und als
-   Feature in `ca_topo_network_edges` eingetragen — unabhängig davon, welche
-   `funktion` der referenzierte Knoten besitzt. Damit ist das Netzwerk
+   Feature in `ca_topo_network_edges` eingetragen. Damit ist das Netzwerk
    topologisch geschlossen. Die Längen der beiden allfälligen
    Verbindungssegmente werden in `diff_start` bzw. `diff_end` festgehalten.
-4. Pro Seite wird zusätzlich geprüft, ob die `funktion` des referenzierten
-   Knotens in der Allow-Liste `ValidConnectorFunktionen` enthalten ist. Nur
-   in diesem Fall wird das Verbindungssegment auch als eigenständiges
-   Feature in `ca_topo_extra_edges` abgelegt, sodass die gepatchten Stellen
-   isoliert dargestellt und kontrolliert werden können.
+4. Jedes Verbindungssegment wird zusätzlich als eigenständiges Feature in
+   `ca_topo_extra_edges` abgelegt, sodass die gepatchten Stellen isoliert
+   dargestellt und kontrolliert werden können.
