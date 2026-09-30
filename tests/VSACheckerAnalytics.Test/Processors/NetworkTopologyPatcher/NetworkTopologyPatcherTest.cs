@@ -19,10 +19,10 @@ public sealed class NetworkTopologyPatcherTest
     {
         var verlauf = Factory.CreateLineString(new[] { new Coordinate(0, 0), new Coordinate(10, 0) });
         var row = new LeitungRow(Tid: 1, VonRef: 1, NachRef: 2, Verlauf: verlauf);
-        var knotenIndex = new Dictionary<long, KnotenInfo>
+        var knotenIndex = new Dictionary<long, Coordinate>
         {
-            [1] = new KnotenInfo(new Coordinate(0, 0), "Pumpwerk"),
-            [2] = new KnotenInfo(new Coordinate(10, 0), "Pumpwerk"),
+            [1] = new Coordinate(0, 0),
+            [2] = new Coordinate(10, 0),
         };
 
         var result = NetworkTopologyPatcher.ComputeLeitungEdges(row, knotenIndex, Factory);
@@ -43,10 +43,10 @@ public sealed class NetworkTopologyPatcherTest
     {
         var verlauf = Factory.CreateLineString(new[] { new Coordinate(5, 0), new Coordinate(10, 5), new Coordinate(15, 0) });
         var row = new LeitungRow(Tid: 1, VonRef: 1, NachRef: 2, Verlauf: verlauf);
-        var knotenIndex = new Dictionary<long, KnotenInfo>
+        var knotenIndex = new Dictionary<long, Coordinate>
         {
-            [1] = new KnotenInfo(new Coordinate(0, 0), "Pumpwerk"),
-            [2] = new KnotenInfo(new Coordinate(20, 0), "Pumpwerk"),
+            [1] = new Coordinate(0, 0),
+            [2] = new Coordinate(20, 0),
         };
 
         var result = NetworkTopologyPatcher.ComputeLeitungEdges(row, knotenIndex, Factory);
@@ -82,10 +82,10 @@ public sealed class NetworkTopologyPatcherTest
     {
         var verlauf = Factory.CreateLineString(new[] { new Coordinate(5, 0), new Coordinate(10, 0) });
         var row = new LeitungRow(Tid: 1, VonRef: 1, NachRef: 2, Verlauf: verlauf);
-        var knotenIndex = new Dictionary<long, KnotenInfo>
+        var knotenIndex = new Dictionary<long, Coordinate>
         {
-            [1] = new KnotenInfo(new Coordinate(0, 0), "Pumpwerk"),
-            [2] = new KnotenInfo(new Coordinate(10, 0), "Pumpwerk"),
+            [1] = new Coordinate(0, 0),
+            [2] = new Coordinate(10, 0),
         };
 
         var result = NetworkTopologyPatcher.ComputeLeitungEdges(row, knotenIndex, Factory);
@@ -98,10 +98,10 @@ public sealed class NetworkTopologyPatcherTest
     {
         var verlauf = Factory.CreateLineString(new[] { new Coordinate(0, 0), new Coordinate(15, 0) });
         var row = new LeitungRow(Tid: 1, VonRef: 1, NachRef: 2, Verlauf: verlauf);
-        var knotenIndex = new Dictionary<long, KnotenInfo>
+        var knotenIndex = new Dictionary<long, Coordinate>
         {
-            [1] = new KnotenInfo(new Coordinate(0, 0), "Pumpwerk"),
-            [2] = new KnotenInfo(new Coordinate(20, 0), "Pumpwerk"),
+            [1] = new Coordinate(0, 0),
+            [2] = new Coordinate(20, 0),
         };
 
         var result = NetworkTopologyPatcher.ComputeLeitungEdges(row, knotenIndex, Factory);
@@ -114,10 +114,10 @@ public sealed class NetworkTopologyPatcherTest
     {
         var verlauf = Factory.CreateLineString(new[] { new Coordinate(0.05, 0), new Coordinate(9.95, 0) });
         var row = new LeitungRow(Tid: 1, VonRef: 1, NachRef: 2, Verlauf: verlauf);
-        var knotenIndex = new Dictionary<long, KnotenInfo>
+        var knotenIndex = new Dictionary<long, Coordinate>
         {
-            [1] = new KnotenInfo(new Coordinate(0, 0), "Pumpwerk"),
-            [2] = new KnotenInfo(new Coordinate(10, 0), "Pumpwerk"),
+            [1] = new Coordinate(0, 0),
+            [2] = new Coordinate(10, 0),
         };
 
         var result = NetworkTopologyPatcher.ComputeLeitungEdges(row, knotenIndex, Factory);
@@ -138,10 +138,10 @@ public sealed class NetworkTopologyPatcherTest
     {
         var verlauf = Factory.CreateLineString(new[] { new Coordinate(0, 0), new Coordinate(10, 0) });
         var row = new LeitungRow(Tid: 1, VonRef: null, NachRef: null, Verlauf: verlauf);
-        var knotenIndex = new Dictionary<long, KnotenInfo>
+        var knotenIndex = new Dictionary<long, Coordinate>
         {
-            [1] = new KnotenInfo(new Coordinate(-5, 0), "Pumpwerk"),
-            [2] = new KnotenInfo(new Coordinate(20, 0), "Pumpwerk"),
+            [1] = new Coordinate(-5, 0),
+            [2] = new Coordinate(20, 0),
         };
 
         var result = NetworkTopologyPatcher.ComputeLeitungEdges(row, knotenIndex, Factory);
@@ -165,10 +165,10 @@ public sealed class NetworkTopologyPatcherTest
         var nachRef = nachRefBoxed;
         var verlauf = Factory.CreateLineString(new[] { new Coordinate(0, 0), new Coordinate(10, 0) });
         var row = new LeitungRow(Tid: 1, VonRef: vonRef, NachRef: nachRef, Verlauf: verlauf);
-        var knotenIndex = new Dictionary<long, KnotenInfo>
+        var knotenIndex = new Dictionary<long, Coordinate>
         {
-            [1] = new KnotenInfo(new Coordinate(-5, 0), "Pumpwerk"),
-            [2] = new KnotenInfo(new Coordinate(20, 0), "Pumpwerk"),
+            [1] = new Coordinate(-5, 0),
+            [2] = new Coordinate(20, 0),
         };
 
         var result = NetworkTopologyPatcher.ComputeLeitungEdges(row, knotenIndex, Factory);
@@ -198,68 +198,6 @@ public sealed class NetworkTopologyPatcherTest
     }
 
     [TestMethod]
-    public void ComputeLeitungEdgesMergesConnectorsButSkipsExtraEdgesWhenKnotenHaveInvalidFunktion()
-    {
-        var verlauf = Factory.CreateLineString(new[] { new Coordinate(5, 0), new Coordinate(15, 0) });
-        var row = new LeitungRow(Tid: 1, VonRef: 1, NachRef: 2, Verlauf: verlauf);
-        var knotenIndex = new Dictionary<long, KnotenInfo>
-        {
-            [1] = new KnotenInfo(new Coordinate(0, 0), "Kontroll_Einsteigschacht"),
-            [2] = new KnotenInfo(new Coordinate(20, 0), "Leitungsknoten"),
-        };
-
-        var result = NetworkTopologyPatcher.ComputeLeitungEdges(row, knotenIndex, Factory);
-
-        Assert.AreEqual(5d, result.NetworkEdge.DiffStart);
-        Assert.AreEqual(5d, result.NetworkEdge.DiffEnd);
-        Assert.AreEqual(new Coordinate(0, 0), result.NetworkEdge.Geom.StartPoint.Coordinate);
-        Assert.AreEqual(new Coordinate(20, 0), result.NetworkEdge.Geom.EndPoint.Coordinate);
-        Assert.IsEmpty(result.ExtraEdges);
-    }
-
-    [TestMethod]
-    public void ComputeLeitungEdgesMergesConnectorsButSkipsExtraEdgesWhenKnotenHasNullFunktion()
-    {
-        var verlauf = Factory.CreateLineString(new[] { new Coordinate(5, 0), new Coordinate(15, 0) });
-        var row = new LeitungRow(Tid: 1, VonRef: 1, NachRef: 2, Verlauf: verlauf);
-        var knotenIndex = new Dictionary<long, KnotenInfo>
-        {
-            [1] = new KnotenInfo(new Coordinate(0, 0), Funktion: null),
-            [2] = new KnotenInfo(new Coordinate(20, 0), Funktion: null),
-        };
-
-        var result = NetworkTopologyPatcher.ComputeLeitungEdges(row, knotenIndex, Factory);
-
-        Assert.AreEqual(5d, result.NetworkEdge.DiffStart);
-        Assert.AreEqual(5d, result.NetworkEdge.DiffEnd);
-        Assert.AreEqual(new Coordinate(0, 0), result.NetworkEdge.Geom.StartPoint.Coordinate);
-        Assert.AreEqual(new Coordinate(20, 0), result.NetworkEdge.Geom.EndPoint.Coordinate);
-        Assert.IsEmpty(result.ExtraEdges);
-    }
-
-    [TestMethod]
-    public void ComputeLeitungEdgesMergesBothConnectorsButOnlyEmitsExtraEdgeForValidFunktion()
-    {
-        var verlauf = Factory.CreateLineString(new[] { new Coordinate(5, 0), new Coordinate(15, 0) });
-        var row = new LeitungRow(Tid: 1, VonRef: 1, NachRef: 2, Verlauf: verlauf);
-        var knotenIndex = new Dictionary<long, KnotenInfo>
-        {
-            [1] = new KnotenInfo(new Coordinate(0, 0), "Pumpwerk"),
-            [2] = new KnotenInfo(new Coordinate(20, 0), "Leitungsknoten"),
-        };
-
-        var result = NetworkTopologyPatcher.ComputeLeitungEdges(row, knotenIndex, Factory);
-
-        Assert.AreEqual(5d, result.NetworkEdge.DiffStart);
-        Assert.AreEqual(5d, result.NetworkEdge.DiffEnd);
-        Assert.AreEqual(new Coordinate(0, 0), result.NetworkEdge.Geom.StartPoint.Coordinate);
-        Assert.AreEqual(new Coordinate(20, 0), result.NetworkEdge.Geom.EndPoint.Coordinate);
-        Assert.HasCount(1, result.ExtraEdges);
-        Assert.AreEqual(new Coordinate(0, 0), result.ExtraEdges[0].Geom.StartPoint.Coordinate);
-        Assert.AreEqual(new Coordinate(5, 0), result.ExtraEdges[0].Geom.EndPoint.Coordinate);
-    }
-
-    [TestMethod]
     [DataRow(null, 2L, DisplayName = "KnotenRef is null")]
     [DataRow(1L, null, DisplayName = "NachRef is null")]
     [DataRow(999L, 2L, DisplayName = "KnotenRef references unknown Knoten")]
@@ -267,10 +205,10 @@ public sealed class NetworkTopologyPatcherTest
     public void ComputeUeberlaufFoerderaggregatEdgesReturnsNullWhenRefDoesNotResolve(long? knotenRef, long? nachRef)
     {
         var row = new UeberlaufFoerderaggregatRow(Tid: 100, KnotenRef: knotenRef, NachRef: nachRef);
-        var knotenIndex = new Dictionary<long, KnotenInfo>
+        var knotenIndex = new Dictionary<long, Coordinate>
         {
-            [1] = new KnotenInfo(new Coordinate(0, 0), "Pumpwerk"),
-            [2] = new KnotenInfo(new Coordinate(10, 0), "Pumpwerk"),
+            [1] = new Coordinate(0, 0),
+            [2] = new Coordinate(10, 0),
         };
 
         var result = NetworkTopologyPatcher.ComputeUeberlaufFoerderaggregatEdges(row, knotenIndex, Factory);
@@ -282,10 +220,10 @@ public sealed class NetworkTopologyPatcherTest
     public void ComputeUeberlaufFoerderaggregatEdgesBuildsDirectSegmentBetweenKnoten()
     {
         var row = new UeberlaufFoerderaggregatRow(Tid: 100, KnotenRef: 1, NachRef: 2);
-        var knotenIndex = new Dictionary<long, KnotenInfo>
+        var knotenIndex = new Dictionary<long, Coordinate>
         {
-            [1] = new KnotenInfo(new Coordinate(0, 0), "Pumpwerk"),
-            [2] = new KnotenInfo(new Coordinate(10, 0), "Pumpwerk"),
+            [1] = new Coordinate(0, 0),
+            [2] = new Coordinate(10, 0),
         };
 
         var result = NetworkTopologyPatcher.ComputeUeberlaufFoerderaggregatEdges(row, knotenIndex, Factory);
@@ -355,8 +293,6 @@ public sealed class NetworkTopologyPatcherTest
         MinimalNetworkTopologyGeoPackage.CreateSchema(connection);
         InsertKnoten(connection, tid: 1, x: 0, y: 0);
         InsertKnoten(connection, tid: 2, x: 10, y: 0);
-        InsertKnotenAttributes(connection, tid: 1, funktion: "Pumpwerk");
-        InsertKnotenAttributes(connection, tid: 2, funktion: "Pumpwerk");
         InsertLeitung(connection, tid: 10, vonRef: 1, nachRef: 2, new Coordinate(5, 0), new Coordinate(10, 0));
 
         var patcher = new NetworkTopologyPatcher(connection, NullLogger.Instance);
@@ -381,15 +317,6 @@ public sealed class NetworkTopologyPatcherTest
         Assert.AreEqual(0, GetCount(connection, TopologyOutputTables.ExtraEdgesTable));
         Assert.AreEqual(1, GetScalar(connection, $"SELECT COUNT(*) FROM gpkg_contents WHERE table_name = '{TopologyOutputTables.NetworkEdgesTable}' AND data_type = 'features'"));
         Assert.AreEqual(1, GetScalar(connection, $"SELECT COUNT(*) FROM gpkg_contents WHERE table_name = '{TopologyOutputTables.ExtraEdgesTable}' AND data_type = 'features'"));
-    }
-
-    private static void InsertKnotenAttributes(SqliteConnection connection, long tid, string? funktion)
-    {
-        using var cmd = connection.CreateCommand();
-        cmd.CommandText = "INSERT INTO knoten (t_id, funktion) VALUES (@tid, @funktion)";
-        cmd.Parameters.AddWithValue("@tid", tid);
-        cmd.Parameters.AddWithValue("@funktion", (object?)funktion ?? DBNull.Value);
-        cmd.ExecuteNonQuery();
     }
 
 #pragma warning disable CA2100

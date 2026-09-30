@@ -63,11 +63,9 @@ public sealed class NetworkTopologyPatcherProcessTest
         // + 1 valid aggregat = 8 network edges; U2 skipped (unknown ref).
         Assert.AreEqual(8, GetCount(connection, "ca_topo_network_edges"));
 
-        // Extra edges are filtered by the allow-list on the target Knoten's funktion:
-        // L3 contributes 2 (both ends Pumpwerk); L4 contributes 1 (end, Pumpwerk); L5 contributes 1
-        // (end, Pumpwerk); L6 contributes 1 (start Pumpwerk; end node has no funktion → suppressed);
-        // L7 contributes 0 (both nodes have no funktion); U1 contributes 1. Total 6.
-        Assert.AreEqual(6, GetCount(connection, "ca_topo_extra_edges"));
+        // Every connector becomes an extra edge: L3, L6 and L7 contribute 2 each, L4 and L5 contribute
+        // 1 each (end only), U1 contributes 1. Total 9.
+        Assert.AreEqual(9, GetCount(connection, "ca_topo_extra_edges"));
 
         // L1: exact fit → no extras, diff 0 on both sides
         AssertNetworkRow(connection, srcTid: 10, expectedDiffStart: 0, expectedDiffEnd: 0, expectedLinetype: "topologielinie");
@@ -90,7 +88,7 @@ public sealed class NetworkTopologyPatcherProcessTest
         Assert.IsNull(u1.DiffStart);
         Assert.IsNull(u1.DiffEnd);
 
-        // L4: NULL knoten_vonref → no start connector, but nachref=node5 has valid funktion → end
+        // L4: NULL knoten_vonref → no start connector, but nachref=node5 resolves → end
         // connector built from verlauf end (2_600_100) to node5 (2_600_400) = 300 m.
         var l4 = GetNetworkRow(connection, srcTid: 40);
         Assert.AreEqual("topologielinie", l4.Linetype);
@@ -102,8 +100,8 @@ public sealed class NetworkTopologyPatcherProcessTest
         Assert.AreEqual(2_600_000.0, l4Line.StartPoint.X, 1e-6);
         Assert.AreEqual(2_600_400.0, l4Line.EndPoint.X, 1e-6);
 
-        // L5: knoten_vonref references unknown node → no start connector. NachRef=node2 has valid
-        // funktion and end gap of 50 m → end connector built. Merged line spans verlauf start →
+        // L5: knoten_vonref references unknown node → no start connector. NachRef=node2 resolves
+        // and end gap of 50 m → end connector built. Merged line spans verlauf start →
         // node2 (2_600_100).
         var l5 = GetNetworkRow(connection, srcTid: 50);
         Assert.AreEqual("topologielinie", l5.Linetype);
@@ -115,9 +113,7 @@ public sealed class NetworkTopologyPatcherProcessTest
         Assert.AreEqual(2_600_000.0, l5Line.StartPoint.X, 1e-6);
         Assert.AreEqual(2_600_100.0, l5Line.EndPoint.X, 1e-6);
 
-        // L6: start node 5 has Pumpwerk funktion (start patched, 10 m); end node 6 has no knoten
-        // attribute row → funktion is NULL. The end connector is still built and merged into the
-        // network edge (5 m); only its emission as an extra edge is suppressed.
+        // L6: start gap 10 m, end gap 5 m → both ends patched.
         var l6 = GetNetworkRow(connection, srcTid: 60);
         Assert.AreEqual("topologielinie", l6.Linetype);
         Assert.AreEqual(10.0, l6.DiffStart!.Value, 1e-6);
@@ -126,9 +122,7 @@ public sealed class NetworkTopologyPatcherProcessTest
         Assert.AreEqual(2_600_400.0, l6Line.StartPoint.X, 1e-6);
         Assert.AreEqual(2_600_500.0, l6Line.EndPoint.X, 1e-6);
 
-        // L7: neither endpoint has a valid funktion (nodes 6 and 7 have no knoten row) → both
-        // connectors are merged into the network edge (so the verlauf is connected to the knoten
-        // coordinates), but neither is emitted as an extra edge.
+        // L7: start gap 10 m, end gap 5 m → both ends patched.
         var l7 = GetNetworkRow(connection, srcTid: 70);
         Assert.AreEqual("topologielinie", l7.Linetype);
         Assert.AreEqual(10.0, l7.DiffStart!.Value, 1e-6);
@@ -252,8 +246,8 @@ public sealed class NetworkTopologyPatcherProcessTest
         connection.Open();
         MinimalNetworkTopologyGeoPackage.CreateSchema(connection);
 
-        InsertNode(connection, 1, 2_600_000.0, 1_200_000.0, hasDetailgeometrie: true);
-        InsertNode(connection, 2, 2_600_100.0, 1_200_000.0, hasDetailgeometrie: true);
+        InsertNode(connection, 1, 2_600_000.0, 1_200_000.0);
+        InsertNode(connection, 2, 2_600_100.0, 1_200_000.0);
 
         // Straight verlauf: processed normally.
         InsertLeitung(connection, 10, 1, 2, new Coordinate(2_600_000.0, 1_200_000.0), new Coordinate(2_600_100.0, 1_200_000.0));
@@ -315,16 +309,14 @@ public sealed class NetworkTopologyPatcherProcessTest
 
         MinimalNetworkTopologyGeoPackage.CreateSchema(connection);
 
-        // Nodes along y=1_200_000, spaced 100 m. Nodes 1 to 5 have a detailgeometrie (eligible for patching).
-        InsertNode(connection, 1, 2_600_000.0, 1_200_000.0, hasDetailgeometrie: true);
-        InsertNode(connection, 2, 2_600_100.0, 1_200_000.0, hasDetailgeometrie: true);
-        InsertNode(connection, 3, 2_600_200.0, 1_200_000.0, hasDetailgeometrie: true);
-        InsertNode(connection, 4, 2_600_300.0, 1_200_000.0, hasDetailgeometrie: true);
-        InsertNode(connection, 5, 2_600_400.0, 1_200_000.0, hasDetailgeometrie: true);
-
-        // Nodes 6 and 7 have only a lage, no knoten row (funktion NULL), so their connectors are kept in the network edge but not emitted as extra edges.
-        InsertNode(connection, 6, 2_600_500.0, 1_200_000.0, hasDetailgeometrie: false);
-        InsertNode(connection, 7, 2_600_600.0, 1_200_000.0, hasDetailgeometrie: false);
+        // Nodes along y=1_200_000, spaced 100 m.
+        InsertNode(connection, 1, 2_600_000.0, 1_200_000.0);
+        InsertNode(connection, 2, 2_600_100.0, 1_200_000.0);
+        InsertNode(connection, 3, 2_600_200.0, 1_200_000.0);
+        InsertNode(connection, 4, 2_600_300.0, 1_200_000.0);
+        InsertNode(connection, 5, 2_600_400.0, 1_200_000.0);
+        InsertNode(connection, 6, 2_600_500.0, 1_200_000.0);
+        InsertNode(connection, 7, 2_600_600.0, 1_200_000.0);
 
         // L1: perfectly fits node 1 → node 2
         InsertLeitung(connection, 10, 1, 2, new Coordinate(2_600_000.0, 1_200_000.0), new Coordinate(2_600_100.0, 1_200_000.0));
@@ -335,19 +327,18 @@ public sealed class NetworkTopologyPatcherProcessTest
         // L3: large gap on both sides → start connector 10 m, end connector 5 m
         InsertLeitung(connection, 30, 4, 5, new Coordinate(2_600_310.0, 1_200_000.0), new Coordinate(2_600_395.0, 1_200_000.0));
 
-        // L4: NULL knoten_vonref → no start connector; nachref=node5 has valid funktion and 300 m
+        // L4: NULL knoten_vonref → no start connector; nachref=node5 resolves with 300 m
         // end gap → end connector built.
         InsertLeitung(connection, 40, null, 5, new Coordinate(2_600_000.0, 1_200_000.0), new Coordinate(2_600_100.0, 1_200_000.0));
 
-        // L5: knoten_vonref points to unknown node → no start connector; nachref=node2 has valid
-        // funktion and 50 m end gap → end connector built.
+        // L5: knoten_vonref points to unknown node → no start connector; nachref=node2 resolves
+        // with 50 m end gap → end connector built.
         InsertLeitung(connection, 50, 999, 2, new Coordinate(2_600_000.0, 1_200_000.0), new Coordinate(2_600_050.0, 1_200_000.0));
 
-        // L6: start node 5 has detailgeometrie (start patched), end node 6 does not (end connector suppressed).
-        // Start gap 10 m, end gap 5 m → only the start connector is emitted.
+        // L6: start gap 10 m, end gap 5 m → both connectors emitted.
         InsertLeitung(connection, 60, 5, 6, new Coordinate(2_600_410.0, 1_200_000.0), new Coordinate(2_600_495.0, 1_200_000.0));
 
-        // L7: neither endpoint has detailgeometrie → no connectors, original verlauf inserted unaltered.
+        // L7: start gap 10 m, end gap 5 m → both connectors emitted.
         InsertLeitung(connection, 70, 6, 7, new Coordinate(2_600_510.0, 1_200_000.0), new Coordinate(2_600_595.0, 1_200_000.0));
 
         // U1: valid aggregate, node 1 → node 3
@@ -364,14 +355,14 @@ public sealed class NetworkTopologyPatcherProcessTest
         MinimalNetworkTopologyGeoPackage.CreateSchema(connection);
 
         // Valid pair: leitung 10 fits node 1 to node 2 exactly, so it merges and is written.
-        InsertNode(connection, 1, 2_600_000.0, 1_200_000.0, hasDetailgeometrie: true);
-        InsertNode(connection, 2, 2_600_100.0, 1_200_000.0, hasDetailgeometrie: true);
+        InsertNode(connection, 1, 2_600_000.0, 1_200_000.0);
+        InsertNode(connection, 2, 2_600_100.0, 1_200_000.0);
         InsertLeitung(connection, 10, 1, 2, new Coordinate(2_600_000.0, 1_200_000.0), new Coordinate(2_600_100.0, 1_200_000.0));
 
         // Closed-ring verlauf with connectors on both ends: LineMerger yields more than one line,
         // so MergeSegments throws and the row must be skipped.
-        InsertNode(connection, 8, 2_600_700.0, 1_200_000.0, hasDetailgeometrie: true);
-        InsertNode(connection, 9, 2_600_710.0, 1_200_000.0, hasDetailgeometrie: true);
+        InsertNode(connection, 8, 2_600_700.0, 1_200_000.0);
+        InsertNode(connection, 9, 2_600_710.0, 1_200_000.0);
         InsertLeitung(
             connection,
             80,
@@ -383,7 +374,7 @@ public sealed class NetworkTopologyPatcherProcessTest
             new Coordinate(2_600_705.0, 1_200_000.0));
     }
 
-    private static void InsertNode(SqliteConnection connection, long tid, double x, double y, bool hasDetailgeometrie)
+    private static void InsertNode(SqliteConnection connection, long tid, double x, double y)
     {
         var point = Factory.CreatePoint(new Coordinate(x, y));
         var blob = GeoPackageGeometryCodec.WriteGeometry(point, Srid);
@@ -393,16 +384,6 @@ public sealed class NetworkTopologyPatcherProcessTest
         cmd.Parameters.AddWithValue("@tid", tid);
         cmd.Parameters.AddWithValue("@geom", blob);
         cmd.ExecuteNonQuery();
-
-        if (hasDetailgeometrie)
-        {
-            using var knotenCmd = connection.CreateCommand();
-            knotenCmd.CommandText = "INSERT INTO knoten (t_id, funktion, detailgeometrie) VALUES (@tid, @funktion, @geom)";
-            knotenCmd.Parameters.AddWithValue("@tid", tid);
-            knotenCmd.Parameters.AddWithValue("@funktion", "Pumpwerk");
-            knotenCmd.Parameters.AddWithValue("@geom", blob);
-            knotenCmd.ExecuteNonQuery();
-        }
     }
 
     private static void InsertLeitung(SqliteConnection connection, long tid, long? vonRef, long? nachRef, params Coordinate[] vertices)
