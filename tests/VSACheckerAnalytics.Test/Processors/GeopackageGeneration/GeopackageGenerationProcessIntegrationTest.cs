@@ -11,7 +11,7 @@ public class GeopackageGenerationProcessIntegrationTest
     /// <summary>
     /// Stands in for the result of <see cref="UpstreamStepId"/>. Only the properties the definition
     /// references via <c>${step_output(vsa_matcher....)}</c> are needed; the error matrix is not among them,
-    /// it enters the step from the deployment resources via <c>${file(ErrorMatrix_v3.xlsx)}</c>.
+    /// it enters the step from the deployment resources via <c>${file()}</c>.
     /// </summary>
     private sealed record UpstreamStepResult(
         IPipelineFile GpkgTemplate,
