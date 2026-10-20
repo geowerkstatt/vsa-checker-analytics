@@ -12,6 +12,10 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
     [SuppressMessage("Performance", "CA1819:Properties should not return arrays", Justification = "Only used for tests")]
     public sealed record Invocation(byte[] GeoPackageContent, IReadOnlyList<string> TransferFileTexts, Ili2GpkgArgs Args);
 
+    private const string SuccessLog = "Info: ili2gpkg-1.2.3\nInfo: ...import done";
+    private const string ErrorLog = "Info: ili2gpkg-1.2.3\nError: import failed";
+    private const string EmptyXtfLog = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><TRANSFER xmlns=\"http://www.interlis.ch/INTERLIS2.3\"></TRANSFER>";
+
     private static readonly Lazy<byte[]> MinimalGeoPackage = new(() =>
     {
         var path = Path.Combine(Path.GetTempPath(), $"fake-gpkg-{Guid.NewGuid():N}.gpkg");
@@ -88,20 +92,29 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
     public Task<Ili2GpkgResult> SchemaImportAsync(
         Ili2GpkgArgs args,
         IPipelineFile modelFile,
-        IPipelineFile gpkgFile,
+        IPipelineFile outputFile,
+        IPipelineFile logFile,
+        IPipelineFile xtfLogFile,
+        IPipelineFile? inputFile = null,
+        IPipelineFile? modelRepositoryArchive = null,
         CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
     public async Task<Ili2GpkgResult> ImportAsync(
         Ili2GpkgArgs args,
-        IPipelineFile inputFile,
+        IPipelineFile? inputFile,
         IPipelineFile outputFile,
         IReadOnlyList<IPipelineFile> transferFiles,
+        IPipelineFile logFile,
+        IPipelineFile xtfLogFile,
+        IPipelineFile? modelRepositoryArchive = null,
         IReadOnlyList<IPipelineFile>? modelFiles = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(inputFile);
         ArgumentNullException.ThrowIfNull(outputFile);
         ArgumentNullException.ThrowIfNull(transferFiles);
+        ArgumentNullException.ThrowIfNull(logFile);
+        ArgumentNullException.ThrowIfNull(xtfLogFile);
         if (transferFiles.Count == 0)
         {
             throw new ArgumentOutOfRangeException(nameof(transferFiles), "At least one transfer file is required");
@@ -131,13 +144,22 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
             await outputStream.WriteAsync(OutputSelector(invocation), cancellationToken).ConfigureAwait(false);
         }
 
-        return new Ili2GpkgResult(success, success ? "ok" : "fail");
+        using var logStream = logFile.OpenWriteFileStream();
+        await logStream.WriteAsync(Encoding.UTF8.GetBytes(success ? SuccessLog : ErrorLog), cancellationToken).ConfigureAwait(false);
+
+        using var xtfLogStream = xtfLogFile.OpenWriteFileStream();
+        await xtfLogStream.WriteAsync(Encoding.UTF8.GetBytes(EmptyXtfLog), cancellationToken).ConfigureAwait(false);
+
+        return new Ili2GpkgResult(success);
     }
 
     public Task<Ili2GpkgResult> ExportAsync(
         Ili2GpkgArgs args,
         IPipelineFile gpkgFile,
         IPipelineFile transferFile,
+        IPipelineFile logFile,
+        IPipelineFile xtfLogFile,
+        IPipelineFile? modelRepositoryArchive = null,
         IReadOnlyList<IPipelineFile>? modelFiles = null,
         CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
@@ -146,13 +168,18 @@ public sealed class FakeIli2GpkgClient : IIli2GpkgClient
         IPipelineFile inputFile,
         IPipelineFile outputFile,
         IReadOnlyList<IPipelineFile> transferFiles,
+        IPipelineFile logFile,
+        IPipelineFile xtfLogFile,
+        IPipelineFile? modelRepositoryArchive = null,
         IReadOnlyList<IPipelineFile>? modelFiles = null,
         CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
     public Task<Ili2GpkgResult> ValidateAsync(
         Ili2GpkgArgs args,
         IPipelineFile gpkgFile,
+        IPipelineFile logFile,
         IPipelineFile xtfLogFile,
+        IPipelineFile? modelRepositoryArchive = null,
         IReadOnlyList<IPipelineFile>? modelFiles = null,
         CancellationToken cancellationToken = default) => throw new NotSupportedException();
 }
