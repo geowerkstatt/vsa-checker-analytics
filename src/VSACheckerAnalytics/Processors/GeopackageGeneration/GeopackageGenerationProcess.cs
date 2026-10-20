@@ -146,18 +146,23 @@ public sealed class GeopackageGenerationProcess
         transferFiles.Add(dssMiniXtf);
 
         var outputGpkg = pipelineFileManager.GeneratePipelineFile("gpkg-with-xtfs", "gpkg");
+        var logFile = pipelineFileManager.GeneratePipelineFile("gpkg-import", "log");
+        var xtfLogFile = pipelineFileManager.GeneratePipelineFile("gpkg-import-log", "xtf");
 
         logger.LogDebug("Starting ili2gpkg batch import of {Count} transfer files.", transferFiles.Count);
 
         var result = await ili2GpkgClient
-            .ImportAsync(args, geoPackage, outputGpkg, transferFiles, cancellationToken: cancellationToken)
+            .ImportAsync(args, geoPackage, outputGpkg, transferFiles, logFile, xtfLogFile, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
         if (!result.Success)
         {
+            using var logStream = await logFile.OpenReadAsync(cancellationToken).ConfigureAwait(false);
+            using var logReader = new StreamReader(logStream);
+            var log = await logReader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
             logger.LogDebug(
                 "ili2gpkg batch import failed.{Log}",
-                string.IsNullOrEmpty(result.Log) ? string.Empty : Environment.NewLine + result.Log);
+                string.IsNullOrEmpty(log) ? string.Empty : Environment.NewLine + log);
             return null;
         }
 
