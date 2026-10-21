@@ -50,10 +50,10 @@ internal static class ObjectStatisticsGeoPackage
     /// <summary>
     /// Adds a Leitung to the GeoPackage at <paramref name="path"/>.
     /// </summary>
-    internal static void InsertLeitung(string path, long tId, string tid, string? funktionHierarchisch, string? nutzungsartIst, Geometry? verlauf)
+    internal static void InsertLeitung(string path, long id, string tid, string? funktionHierarchisch, string? nutzungsartIst, Geometry? verlauf)
     {
         using var connection = Open(path);
-        InsertLeitung(connection, tId, tid, funktionHierarchisch, nutzungsartIst, verlauf);
+        InsertLeitung(connection, id, tid, funktionHierarchisch, nutzungsartIst, verlauf);
     }
 
     private static SqliteConnection Open(string path)
@@ -68,30 +68,30 @@ internal static class ObjectStatisticsGeoPackage
         return connection;
     }
 
-    private static void InsertTeileinzugsgebiet(SqliteConnection connection, long tId, string tid, string entwaesserungssystemIst, string? perimeterWkt)
+    private static void InsertTeileinzugsgebiet(SqliteConnection connection, long id, string tid, string entwaesserungssystemIst, string? perimeterWkt)
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
             INSERT INTO teileinzugsgebiet (T_Id, T_basket, T_Ili_Tid, bezeichnung, letzte_aenderung, entwaesserungssystem_ist, perimeter)
-            VALUES (@tId, 1, @tid, @tid, '2024-01-01', @entwaesserungssystemIst, @perimeter)
+            VALUES (@id, 1, @tid, @tid, '2024-01-01', @entwaesserungssystemIst, @perimeter)
             """;
-        command.Parameters.AddWithValue("@tId", tId);
+        command.Parameters.AddWithValue("@id", id);
         command.Parameters.AddWithValue("@tid", tid);
         command.Parameters.AddWithValue("@entwaesserungssystemIst", entwaesserungssystemIst);
         command.Parameters.AddWithValue("@perimeter", Blob(perimeterWkt));
         command.ExecuteNonQuery();
     }
 
-    private static void InsertKnoten(SqliteConnection connection, long tId, string tid, string funktionHierarchisch, string funktion, string lageWkt, string? detailgeometrieWkt)
+    private static void InsertKnoten(SqliteConnection connection, long id, string tid, string funktionHierarchisch, string funktion, string lageWkt, string? detailgeometrieWkt)
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
             INSERT INTO knoten (T_Id, T_basket, T_Ili_Tid, bezeichnung, eigentuemerref, letzte_aenderung, funktionhierarchisch, funktion, detailgeometrie)
-            VALUES (@tId, 1, @tid, @tid, 1, '2024-01-01', @funktionHierarchisch, @funktion, @detailgeometrie);
+            VALUES (@id, 1, @tid, @tid, 1, '2024-01-01', @funktionHierarchisch, @funktion, @detailgeometrie);
 
-            INSERT INTO knoten_lage (T_Id, T_basket, lage) VALUES (@tId, 1, @lage);
+            INSERT INTO knoten_lage (T_Id, T_basket, lage) VALUES (@id, 1, @lage);
             """;
-        command.Parameters.AddWithValue("@tId", tId);
+        command.Parameters.AddWithValue("@id", id);
         command.Parameters.AddWithValue("@tid", tid);
         command.Parameters.AddWithValue("@funktionHierarchisch", funktionHierarchisch);
         command.Parameters.AddWithValue("@funktion", funktion);
@@ -100,14 +100,14 @@ internal static class ObjectStatisticsGeoPackage
         command.ExecuteNonQuery();
     }
 
-    private static void InsertLeitung(SqliteConnection connection, long tId, string tid, string? funktionHierarchisch, string? nutzungsartIst, Geometry? verlauf)
+    private static void InsertLeitung(SqliteConnection connection, long id, string tid, string? funktionHierarchisch, string? nutzungsartIst, Geometry? verlauf)
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
             INSERT INTO leitung (T_Id, T_basket, T_Ili_Tid, bezeichnung, eigentuemerref, letzte_aenderung, baujahr, funktionhierarchisch, nutzungsart_ist, verlauf)
-            VALUES (@tId, 1, @tid, @tid, 1, '2024-01-01', 1989, @funktionHierarchisch, @nutzungsartIst, @verlauf)
+            VALUES (@id, 1, @tid, @tid, 1, '2024-01-01', 1989, @funktionHierarchisch, @nutzungsartIst, @verlauf)
             """;
-        command.Parameters.AddWithValue("@tId", tId);
+        command.Parameters.AddWithValue("@id", id);
         command.Parameters.AddWithValue("@tid", tid);
         command.Parameters.AddWithValue("@funktionHierarchisch", (object?)funktionHierarchisch ?? DBNull.Value);
         command.Parameters.AddWithValue("@nutzungsartIst", (object?)nutzungsartIst ?? DBNull.Value);
