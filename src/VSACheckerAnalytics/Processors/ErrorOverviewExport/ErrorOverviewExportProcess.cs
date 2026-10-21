@@ -6,24 +6,61 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace VsaCheckerAnalytics.Processors.ErrorOverviewExport;
 
 /// <summary>
-/// Exports error overview data from a GeoPackage's <c>ca_error_data</c> and
-/// <c>ca_error_object</c> tables into an Excel workbook with configurable
-/// sheet names and column mappings.
+/// Exports the error overview workbook from the generated GeoPackage: the error sheets (<c>ca_error_data</c>,
+/// <c>ca_error_object</c>) and the statistics sheets of the Teileinzugsgebiete, Knoten and Leitungen, each configured
+/// the same way (sheet name and columns) and preceded by its pivot sheets, which are fixed in code. Also fills the
+/// canton's error matrix template.
 /// </summary>
-public sealed class ErrorOverviewExportProcess
+public sealed partial class ErrorOverviewExportProcess
 {
-    private const string ErrorDataTable = "ca_error_data";
-    private const string ErrorObjectTable = "ca_error_object";
     private const string StatisticsTable = "ca_statistics_attribute";
     private const string StatisticsOrderColumn = "sortierung";
     private const string CantonMatrixFileName = "kantonale_fehlermatrix";
 
     // Excel's built-in number format "0.00%".
     private const int PercentNumberFormatId = 10;
+
+    // The sources of the data sheets: a table, a view, or a subquery adding attributes the view lacks.
+    private const string ErrorDataSource = "\"ca_error_data\"";
+    private const string ErrorObjectSource = "\"ca_error_object\"";
+    private const string CatchmentAreaSource = "\"v_vsa_teileinzugsgebiet\"";
+    private const string NodeSource = """
+        (SELECT v.*, k.detailgeometrie AS geom_detail
+           FROM v_vsa_knoten v
+           LEFT JOIN knoten k ON k.T_Id = v.fid)
+        """;
+
+    private const string ReachSource = """
+        (SELECT *,
+                -- the parent group (PAA or SAA) of values like PAA.Sammelkanal
+                substr(function_hierarchic, 1, instr(function_hierarchic || '.', '.') - 1) AS function_hierarchic_group
+           FROM v_vsa_leitung)
+        """;
+
+    private static readonly IReadOnlyList<string> OverviewFilters = ["check_type", "function_hierarchic", "owner", "status"];
+    private static readonly IReadOnlyList<PivotValueConfig> ErrorCount = [new("fid", "Anzahl Fehler", Share: false)];
+    private static readonly IReadOnlyList<double> OverviewColumnWidths = [105, 13];
+    private static readonly IReadOnlyList<PivotValueConfig> TidCountAndShare = [new("tid", "Anzahl von tid", Share: false), new("tid", "Anteil", Share: true)];
+
+    // The pivot sheets of the data sheets, by attribute key: the configured columns must contain their fields.
+    private static readonly IReadOnlyList<PivotConfig> ErrorDataPivots =
+    [
+        new("Uebersicht WK", "A1", ["uc", "class", "error"], OverviewFilters, ErrorCount, Subtotals: false, OverviewColumnWidths),
+        new("Uebersicht GEP", "A1", ["gsp", "class", "error"], OverviewFilters, ErrorCount, Subtotals: false, OverviewColumnWidths),
+    ];
+
+    private static readonly IReadOnlyList<PivotConfig> CatchmentAreaPivots = [TemplatePivot("drainage_system_current", "drainage_system_current")];
+    private static readonly IReadOnlyList<PivotConfig> NodePivots = [TemplatePivot("function", "function_hierarchic", "function")];
+    private static readonly IReadOnlyList<PivotConfig> ReachPivots =
+    [
+        TemplatePivot("function_hierarchic", "function_hierarchic"),
+        TemplatePivot("usage_current", "function_hierarchic_group", "usage_current"),
+    ];
 
     private static readonly LocalizedText ErrorOverviewStatusMessageFormat = new Dictionary<string, string>
     {
@@ -33,13 +70,7 @@ public sealed class ErrorOverviewExportProcess
         { "en", "Error overview created: {0} errors exported." },
     };
 
-    private sealed record ExcelColumn(string Name, string Attribute);
-
-    private sealed record ExcelSheet(string TableName, string Name, Dictionary<string, ExcelColumn> ColumnsMapping);
-
-    private readonly ExcelSheet errorDataSheet;
-    private readonly ExcelSheet errorObjectSheet;
-    private readonly IReadOnlyList<PivotSheet> overviews;
+    private readonly IReadOnlyList<SheetDefinition> sheets;
     private readonly string cantonSheetName;
     private readonly IReadOnlyDictionary<string, string> cantonColumns;
     private readonly IPipelineFileManager pipelineFileManager;
@@ -48,99 +79,51 @@ public sealed class ErrorOverviewExportProcess
     /// <summary>
     /// Initializes a new <see cref="ErrorOverviewExportProcess"/>.
     /// </summary>
-    /// <param name="errorDataSheet">Sheet name for <c>ca_error_data</c>.</param>
-    /// <param name="errorDataAttributeMapping">Maps attribute keys to Excel header display names for error data.</param>
-    /// <param name="errorDataColumnMapping">Maps attribute keys to Excel column letters for error data.</param>
-    /// <param name="errorObjectSheet">Sheet name for <c>ca_error_object</c>.</param>
-    /// <param name="errorObjectAttributeMapping">Maps attribute keys to Excel header display names for error objects.</param>
-    /// <param name="errorObjectColumnMapping">Maps attribute keys to Excel column letters for error objects.</param>
-    /// <param name="overviewWkSheet">Sheet name for the WK pivot overview, or <c>null</c> to skip.</param>
-    /// <param name="overviewGepSheet">Sheet name for the GEP pivot overview, or <c>null</c> to skip.</param>
-    /// <param name="overviewRowFields">Attribute keys for additional pivot row fields (after the priority field).</param>
-    /// <param name="overviewFilterFields">Attribute keys for pivot report filter fields.</param>
-    /// <param name="overviewValueField">Attribute key for the pivot count value field.</param>
-    /// <param name="overviewValueName">Display name for the pivot value column.</param>
+    /// <param name="errorData">The sheet of <c>ca_error_data</c>, the first data sheet; the status message counts its rows.</param>
+    /// <param name="errorObject">The sheet of <c>ca_error_object</c>.</param>
+    /// <param name="catchmentArea">The statistics sheet of the Teileinzugsgebiete (<c>v_vsa_teileinzugsgebiet</c>).</param>
+    /// <param name="node">The statistics sheet of the Knoten (<c>v_vsa_knoten</c> plus <c>geom_detail</c>, the detail geometry).</param>
+    /// <param name="reach">The statistics sheet of the Leitungen (<c>v_vsa_leitung</c> plus <c>function_hierarchic_group</c>, PAA or SAA).</param>
     /// <param name="cantonErrorObjectSheet">Sheet name for the raw data export in the canton error Excel workbook.</param>
     /// <param name="cantonErrorColumnMapping">Maps attribute keys to canton Excel column letters for error objects.</param>
     /// <param name="pipelineFileManager">Pipeline file manager for output file allocation.</param>
     /// <param name="logger">Logger.</param>
     public ErrorOverviewExportProcess(
-        string errorDataSheet,
-        IDictionary<string, string> errorDataAttributeMapping,
-        IDictionary<string, string> errorDataColumnMapping,
-        string errorObjectSheet,
-        IDictionary<string, string> errorObjectAttributeMapping,
-        IDictionary<string, string> errorObjectColumnMapping,
-        string? overviewWkSheet,
-        string? overviewGepSheet,
-        IList<string>? overviewRowFields,
-        IList<string>? overviewFilterFields,
-        string? overviewValueField,
-        string? overviewValueName,
+        DataSheetConfig errorData,
+        DataSheetConfig errorObject,
+        DataSheetConfig catchmentArea,
+        DataSheetConfig node,
+        DataSheetConfig reach,
         string cantonErrorObjectSheet,
         IDictionary<string, string> cantonErrorColumnMapping,
         IPipelineFileManager pipelineFileManager,
         ILogger logger)
     {
-        ArgumentNullException.ThrowIfNull(errorDataAttributeMapping);
-        ArgumentNullException.ThrowIfNull(errorDataColumnMapping);
-        ArgumentNullException.ThrowIfNull(errorObjectAttributeMapping);
-        ArgumentNullException.ThrowIfNull(errorObjectColumnMapping);
         ArgumentNullException.ThrowIfNull(cantonErrorObjectSheet);
         ArgumentNullException.ThrowIfNull(cantonErrorColumnMapping);
 
         this.pipelineFileManager = pipelineFileManager ?? throw new ArgumentNullException(nameof(pipelineFileManager));
         this.logger = logger ?? NullLogger.Instance;
 
-        this.errorDataSheet = BuildSheetConfig(ErrorDataTable, errorDataSheet, errorDataAttributeMapping, errorDataColumnMapping);
-        this.errorObjectSheet = BuildSheetConfig(ErrorObjectTable, errorObjectSheet, errorObjectAttributeMapping, errorObjectColumnMapping);
+        this.sheets =
+        [
+            BuildSheet(errorData, ErrorDataSource, ErrorDataPivots),
+            BuildSheet(errorObject, ErrorObjectSource, []),
+            BuildSheet(catchmentArea, CatchmentAreaSource, CatchmentAreaPivots),
+            BuildSheet(node, NodeSource, NodePivots),
+            BuildSheet(reach, ReachSource, ReachPivots),
+        ];
+        EnsureUniqueSheetNames(this.sheets);
 
         this.cantonSheetName = cantonErrorObjectSheet;
         this.cantonColumns = new Dictionary<string, string>(cantonErrorColumnMapping, StringComparer.Ordinal);
-
-        var overviews = new List<PivotSheet>();
-        if (overviewWkSheet is not null || overviewGepSheet is not null)
-        {
-            ArgumentNullException.ThrowIfNull(overviewRowFields);
-            ArgumentNullException.ThrowIfNull(overviewFilterFields);
-            ArgumentNullException.ThrowIfNull(overviewValueField);
-            ArgumentNullException.ThrowIfNull(overviewValueName);
-
-            if (overviewWkSheet is not null)
-            {
-                overviews.Add(BuildPivotConfig(
-                    overviewWkSheet,
-                    "uc",
-                    overviewRowFields,
-                    overviewFilterFields,
-                    overviewValueField,
-                    overviewValueName,
-                    errorDataAttributeMapping));
-            }
-
-            if (overviewGepSheet is not null)
-            {
-                overviews.Add(BuildPivotConfig(
-                    overviewGepSheet,
-                    "gsp",
-                    overviewRowFields,
-                    overviewFilterFields,
-                    overviewValueField,
-                    overviewValueName,
-                    errorDataAttributeMapping));
-            }
-        }
-
-        this.overviews = overviews;
     }
 
     /// <summary>
-    /// Reads <c>ca_error_data</c> and <c>ca_error_object</c> from the
-    /// <paramref name="geopackage"/> and exports them to an Excel workbook.
-    /// When configured, adds pivot table overview sheets for WK and GEP priorities.
-    /// Appends the statistics sheets for Teileinzugsgebiete, Knoten and Leitungen.
+    /// Reads every configured data sheet from the <paramref name="geopackage"/> and writes the error overview workbook,
+    /// each data sheet preceded by its pivot sheets. Then fills the canton error matrix.
     /// </summary>
-    /// <param name="geopackage">GeoPackage containing the materialized error tables.</param>
+    /// <param name="geopackage">The generated GeoPackage with the error tables and the analytical views.</param>
     /// <param name="cantonErrorMatrixTemplate">Excel template for the canton specific error matrix.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>An <see cref="ErrorOverviewExportResult"/> with the error overview, the filled canton error matrix, and a localized status message.</returns>
@@ -153,26 +136,16 @@ public sealed class ErrorOverviewExportProcess
         var gpkgPath = await geopackage.GetLocalPathAsync(cancellationToken);
 
         using var connection = OpenGeoPackage(gpkgPath);
-        var errorData = ReadSheet(connection, errorDataSheet, overviews);
+        var dataSheets = sheets.Select(sheet => DataSheetReader.Read(connection, sheet, logger)).ToList();
         cancellationToken.ThrowIfCancellationRequested();
-        var errorObjects = ReadSheet(connection, errorObjectSheet, []);
-        var statistics = ObjectStatistics.Read(connection, logger);
 
         using var workbook = new XLWorkbook();
-        var errorDataRange = AddDataSheet(workbook, errorData);
-        AddDataSheet(workbook, errorObjects);
-        foreach (var overview in errorData.Pivots)
-        {
-            // Unlike the pivot sheets of the statistics, the overviews follow both error sheets.
-            AddPivotSheet(workbook, overview, errorDataRange, workbook.Worksheets.Count + 1);
-        }
-
-        foreach (var sheet in statistics)
+        foreach (var sheet in dataSheets)
         {
             var data = AddDataSheet(workbook, sheet);
             foreach (var pivot in sheet.Pivots)
             {
-                // At the data sheet's position, so the pivot sheets precede their data as in the canton's templates.
+                // At the data sheet's position, so every pivot sheet precedes its data, as in the canton's templates.
                 AddPivotSheet(workbook, pivot, data, data.Worksheet.Position);
             }
         }
@@ -187,7 +160,7 @@ public sealed class ErrorOverviewExportProcess
         var cantonMatrix = await ExportCantonMatrixAsync(cantonErrorMatrixTemplate, connection, cancellationToken);
 
         var statusMessage = ErrorOverviewStatusMessageFormat
-            .Map(msg => string.Format(CultureInfo.InvariantCulture, msg, errorData.Rows.Count));
+            .Map(msg => string.Format(CultureInfo.InvariantCulture, msg, dataSheets[0].Rows.Count));
 
         return new ErrorOverviewExportResult
         {
@@ -286,103 +259,70 @@ public sealed class ErrorOverviewExportProcess
         return (long)(command.ExecuteScalar() ?? 0L) > 0;
     }
 
-    private static ExcelSheet BuildSheetConfig(
-        string tableName,
-        string sheetName,
-        IDictionary<string, string> attributeMapping,
-        IDictionary<string, string> columnMapping)
+    // A pivot as in the canton's statistics templates: at A3, the count of tid and its share of the total, with subtotals.
+    private static PivotConfig TemplatePivot(string sheet, params string[] rows)
+        => new(sheet, "A3", rows, [], TidCountAndShare, Subtotals: true, []);
+
+    // Validates a data sheet's configuration and resolves its pivots' fields to the sheet's headers.
+    private static SheetDefinition BuildSheet(DataSheetConfig config, string source, IReadOnlyList<PivotConfig> pivots)
     {
-        var attributeKeys = attributeMapping.Keys.ToHashSet(StringComparer.Ordinal);
-        var columnKeys = columnMapping.Keys.ToHashSet(StringComparer.Ordinal);
+        if (config is null || string.IsNullOrWhiteSpace(config.Sheet))
+            throw new ArgumentException("Every data sheet of the error overview needs a sheet name.");
 
-        if (!attributeKeys.SetEquals(columnKeys))
+        if (config.Columns is null || config.Columns.Count == 0)
+            throw new ArgumentException($"Sheet '{config.Sheet}' needs at least one column.");
+
+        var columns = new List<ConfiguredColumn>();
+        foreach (var (attribute, column) in config.Columns)
         {
-            var onlyInAttribute = attributeKeys.Except(columnKeys).ToList();
-            var onlyInColumn = columnKeys.Except(attributeKeys).ToList();
+            // The attribute keys are quoted into the sheet's SELECT, so they stay plain column names.
+            if (!PlainColumnName().IsMatch(attribute))
+                throw new ArgumentException($"'{attribute}' on sheet '{config.Sheet}' is not a plain column name.");
 
-            var details = new List<string>();
-            if (onlyInAttribute.Count > 0)
-            {
-                details.Add($"only in attributeMapping: [{string.Join(", ", onlyInAttribute)}]");
-            }
+            if (column is null || string.IsNullOrWhiteSpace(column.Header))
+                throw new ArgumentException($"Column '{attribute}' of sheet '{config.Sheet}' needs a header.");
 
-            if (onlyInColumn.Count > 0)
-            {
-                details.Add($"only in columnMapping: [{string.Join(", ", onlyInColumn)}]");
-            }
+            if (string.IsNullOrWhiteSpace(column.Column) || !XLHelper.IsValidColumn(column.Column))
+                throw new ArgumentException($"'{column.Column}' of column '{attribute}' on sheet '{config.Sheet}' is not an Excel column letter.");
 
-            throw new ArgumentException(
-                $"Attribute and column mappings for sheet '{sheetName}' must have the same keys. Mismatched keys: {string.Join("; ", details)}");
+            var number = XLHelper.GetColumnNumberFromLetter(column.Column);
+            var taken = columns.FirstOrDefault(existing => existing.Column.Number == number);
+            if (taken is not null)
+                throw new ArgumentException($"Columns '{taken.Attribute}' and '{attribute}' of sheet '{config.Sheet}' both use column {column.Column}.");
+
+            columns.Add(new ConfiguredColumn(attribute, new SheetColumn(number, column.Header)));
         }
 
-        var columns = new Dictionary<string, ExcelColumn>(StringComparer.Ordinal);
-        foreach (var (attributeKey, columnLetter) in columnMapping)
-        {
-            columns[columnLetter] = new ExcelColumn(attributeMapping[attributeKey], attributeKey);
-        }
-
-        return new ExcelSheet(tableName, sheetName, columns);
+        var resolvedPivots = pivots.Select(pivot => BuildPivot(pivot, config)).ToList();
+        return new SheetDefinition(config.Sheet, source, columns.OrderBy(column => column.Column.Number).ToList(), resolvedPivots);
     }
 
-    private static PivotSheet BuildPivotConfig(
-        string sheetName,
-        string priorityAttributeKey,
-        IList<string> rowFields,
-        IList<string> filterFields,
-        string valueField,
-        string valueName,
-        IDictionary<string, string> attributeMapping)
+    private static PivotSheet BuildPivot(PivotConfig pivot, DataSheetConfig sheet)
     {
-        string ResolveDisplayName(string key)
-        {
-            if (!attributeMapping.TryGetValue(key, out var name))
-            {
-                throw new ArgumentException(
-                    $"Overview attribute key '{key}' not found in error data attribute mapping for sheet '{sheetName}'.");
-            }
-
-            return name;
-        }
+        string Header(string field) => sheet.Columns.TryGetValue(field, out var column)
+            ? column.Header
+            : throw new ArgumentException($"Pivot '{pivot.Sheet}' needs the column '{field}' on sheet '{sheet.Sheet}'.");
 
         return new PivotSheet(
-            sheetName,
-            Location: "A1",
-            RowFields: [ResolveDisplayName(priorityAttributeKey), .. rowFields.Select(ResolveDisplayName)],
-            Subtotals: false,
-            Filters: filterFields.Select(ResolveDisplayName).ToList(),
-            Values: [new PivotValue(ResolveDisplayName(valueField), valueName, ShareOfTotal: false)],
-            ColumnWidths: [105, 13]);
+            pivot.Sheet,
+            pivot.Location,
+            RowFields: pivot.Rows.Select(Header).ToList(),
+            Subtotals: pivot.Subtotals,
+            Filters: pivot.Filters.Select(Header).ToList(),
+            Values: pivot.Values.Select(value => new PivotValue(Header(value.Field), value.Name, value.Share)).ToList(),
+            ColumnWidths: pivot.ColumnWidths);
     }
 
-    [SuppressMessage("Security", "CA2100", Justification = "Column and table names are internal pipeline constants, not user input.")]
-    private DataSheet ReadSheet(SqliteConnection connection, ExcelSheet sheetConfig, IReadOnlyList<PivotSheet> pivots)
+    private static void EnsureUniqueSheetNames(IEnumerable<SheetDefinition> sheets)
     {
-        var orderedColumns = sheetConfig.ColumnsMapping
-            .OrderBy(kvp => kvp.Key, StringComparer.Ordinal)
-            .ToList();
+        // Excel compares sheet names case-insensitively.
+        var duplicate = sheets
+            .SelectMany(sheet => sheet.Pivots.Select(pivot => pivot.SheetName).Prepend(sheet.Name))
+            .GroupBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(group => group.Count() > 1);
 
-        var columnList = string.Join(", ", orderedColumns.Select(c => $"\"{c.Value.Attribute}\""));
-
-        using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT {columnList} FROM \"{sheetConfig.TableName}\"";
-        using var reader = command.ExecuteReader();
-
-        var rows = new List<IReadOnlyList<object?>>();
-        while (reader.Read())
-        {
-            var values = new object?[reader.FieldCount];
-            for (var i = 0; i < values.Length; i++)
-            {
-                values[i] = reader.IsDBNull(i) ? null : reader.GetValue(i);
-            }
-
-            rows.Add(values);
-        }
-
-        logger.LogDebug("Read {RowCount} rows for sheet '{SheetName}'.", rows.Count, sheetConfig.Name);
-
-        var columns = orderedColumns.Select(c => new SheetColumn(XLHelper.GetColumnNumberFromLetter(c.Key), c.Value.Name)).ToArray();
-        return new DataSheet(sheetConfig.Name, columns, rows, pivots);
+        if (duplicate is not null)
+            throw new ArgumentException($"The sheet names '{string.Join("', '", duplicate)}' of the error overview clash.");
     }
 
     // Writes the header row and the rows below it, with an autofilter over them and the header row frozen. Returns the
@@ -457,4 +397,7 @@ public sealed class ErrorOverviewExportProcess
         connection.Open();
         return connection;
     }
+
+    [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]*$")]
+    private static partial Regex PlainColumnName();
 }

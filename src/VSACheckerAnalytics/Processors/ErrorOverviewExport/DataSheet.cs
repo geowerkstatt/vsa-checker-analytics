@@ -30,3 +30,14 @@ internal sealed record PivotSheet(
 /// A value column of a <see cref="PivotSheet"/>: the count of <see cref="Field"/>, as a number or as a share of the total.
 /// </summary>
 internal sealed record PivotValue(string Field, string Name, bool ShareOfTotal);
+
+/// <summary>
+/// What is read into a <see cref="DataSheet"/>: the configured <see cref="Columns"/> of the SQL <see cref="Source"/>, a
+/// table, a view or a subquery.
+/// </summary>
+internal sealed record SheetDefinition(string Name, string Source, IReadOnlyList<ConfiguredColumn> Columns, IReadOnlyList<PivotSheet> Pivots);
+
+/// <summary>
+/// An attribute of a <see cref="SheetDefinition"/>'s source and the sheet column it fills.
+/// </summary>
+internal sealed record ConfiguredColumn(string Attribute, SheetColumn Column);
