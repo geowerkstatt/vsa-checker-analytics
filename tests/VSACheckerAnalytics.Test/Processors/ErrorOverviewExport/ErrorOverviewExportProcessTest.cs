@@ -62,16 +62,16 @@ public sealed class ErrorOverviewExportProcessTest
         ["geom"] = new("G", "geometry (WKT)"),
     };
 
-    private static readonly Dictionary<string, string> CantonErrorColumnMapping = new()
+    private static readonly Dictionary<string, string> CantonColumns = new()
     {
-        { "tabelle", "A" },
-        { "attribut", "B" },
-        { "anzahl_total", "C" },
-        { "anzahl_paa", "D" },
-        { "anzahl_saa", "E" },
-        { "anzahl_null", "F" },
-        { "anzahl_null_paa", "G" },
-        { "anzahl_null_saa", "H" },
+        ["tabelle"] = "A",
+        ["attribut"] = "B",
+        ["anzahl_total"] = "C",
+        ["anzahl_paa"] = "D",
+        ["anzahl_saa"] = "E",
+        ["anzahl_null"] = "F",
+        ["anzahl_null_paa"] = "G",
+        ["anzahl_null_saa"] = "H",
     };
 
     private static readonly string[] Sheets =
@@ -157,6 +157,36 @@ public sealed class ErrorOverviewExportProcessTest
         var ex = Assert.ThrowsExactly<ArgumentException>(() => CreateProcess(objectSheet: "uebersicht wk"));
 
         StringAssert.Contains(ex.Message, "uebersicht wk");
+    }
+
+    [TestMethod]
+    public void Constructor_InvalidCantonColumnLetter_ThrowsArgumentException()
+    {
+        var ex = Assert.ThrowsExactly<ArgumentException>(() => CreateProcess(
+            cantonColumns: new Dictionary<string, string> { ["tabelle"] = "A", ["attribut"] = "B2" }));
+
+        StringAssert.Contains(ex.Message, "B2");
+    }
+
+    [TestMethod]
+    public void Constructor_TwoCantonAttributesInOneColumn_ThrowsArgumentException()
+    {
+        // Compared by column, so the case of the letter does not matter.
+        var ex = Assert.ThrowsExactly<ArgumentException>(() => CreateProcess(
+            cantonColumns: new Dictionary<string, string> { ["tabelle"] = "A", ["attribut"] = "a" }));
+
+        StringAssert.Contains(ex.Message, "tabelle");
+        StringAssert.Contains(ex.Message, "attribut");
+    }
+
+    [TestMethod]
+    public void Constructor_CantonAttributeKeyThatIsNotAPlainColumnName_ThrowsArgumentException()
+    {
+        // The attribute keys end up in the SELECT on ca_statistics_attribute.
+        var ex = Assert.ThrowsExactly<ArgumentException>(() => CreateProcess(
+            cantonColumns: new Dictionary<string, string> { ["tabelle\" FROM sqlite_master --"] = "A" }));
+
+        StringAssert.Contains(ex.Message, "sqlite_master");
     }
 
     [TestMethod]
@@ -445,7 +475,7 @@ public sealed class ErrorOverviewExportProcessTest
         using var workbook = new XLWorkbook(memoryStream);
         var raw = workbook.Worksheet("raw_data");
 
-        // No header row: statistics start at row 1, columns per cantonErrorColumnMapping, ordered by
+        // No header row: statistics start at row 1, columns per CantonColumns, ordered by
         // sortierung (knoten sortierung=1 before leitung sortierung=2), not by insertion/rowid order.
         Assert.AreEqual("knoten", raw.Cell("A1").GetString());
         Assert.AreEqual("funktion", raw.Cell("B1").GetString());
@@ -467,7 +497,8 @@ public sealed class ErrorOverviewExportProcessTest
     private ErrorOverviewExportProcess CreateProcess(
         Dictionary<string, ColumnConfig>? dataColumns = null,
         Dictionary<string, ColumnConfig>? objectColumns = null,
-        string objectSheet = "Error Object")
+        string objectSheet = "Error Object",
+        Dictionary<string, string>? cantonColumns = null)
     {
         return new ErrorOverviewExportProcess(
             errorData: new DataSheetConfig("Error Data", dataColumns ?? DataColumns),
@@ -475,8 +506,7 @@ public sealed class ErrorOverviewExportProcessTest
             catchmentArea: new DataSheetConfig("catchment_area_data", CatchmentAreaColumns),
             node: new DataSheetConfig("node_data", NodeColumns),
             reach: new DataSheetConfig("reach_data", ReachColumns),
-            cantonErrorObjectSheet: "raw_data",
-            cantonErrorColumnMapping: CantonErrorColumnMapping,
+            cantonMatrix: new CantonMatrixConfig("raw_data", cantonColumns ?? CantonColumns),
             pipelineFileManager: fileManager,
             logger: NullLogger.Instance);
     }

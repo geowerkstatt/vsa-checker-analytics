@@ -212,16 +212,9 @@ processes:
           data_provider_org_type: { column: AU, header: data_provider_org_type }
           last_modification: { column: AV, header: last_modification }
           geom: { column: AW, header: geometry (WKT) }
-      cantonErrorObjectSheet: "raw_data"
-      cantonErrorColumnMapping:
-        tabelle: A
-        attribut: B
-        anzahl_total: C
-        anzahl_paa: D
-        anzahl_saa: E
-        anzahl_null: F
-        anzahl_null_paa: G
-        anzahl_null_saa: H
+      cantonMatrix:
+        sheet: raw_data
+        columns: { tabelle: A, attribut: B, anzahl_total: C, anzahl_paa: D, anzahl_saa: E, anzahl_null: F, anzahl_null_paa: G, anzahl_null_saa: H }
 pipelines:
   - id: vsa_checker_analytics
     display_name:

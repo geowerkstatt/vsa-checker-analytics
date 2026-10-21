@@ -22,6 +22,16 @@ public sealed record ColumnConfig(
     [property: JsonPropertyName("header")] string Header);
 
 /// <summary>
+/// The raw data sheet of the canton's error matrix template, written in the pipeline YAML as
+/// <c>{ sheet: raw_data, columns: { tabelle: A, ... } }</c>. Unlike a data sheet it has no header row.
+/// </summary>
+/// <param name="Sheet">The name of the raw data sheet in the template.</param>
+/// <param name="Columns">Maps the attribute keys of <c>ca_statistics_attribute</c> to their Excel column letters.</param>
+public sealed record CantonMatrixConfig(
+    [property: JsonPropertyName("sheet")] string Sheet,
+    [property: JsonPropertyName("columns")] IReadOnlyDictionary<string, string> Columns);
+
+/// <summary>
 /// A pivot sheet over a data sheet, fixed in code. Its fields are attribute keys of the data sheet's configured columns.
 /// </summary>
 /// <param name="Sheet">The name of the pivot sheet.</param>

@@ -72,7 +72,7 @@ public sealed partial class ErrorOverviewExportProcess
 
     private readonly IReadOnlyList<SheetDefinition> sheets;
     private readonly string cantonSheetName;
-    private readonly IReadOnlyDictionary<string, string> cantonColumns;
+    private readonly IReadOnlyList<(string Attribute, int Number)> cantonColumns;
     private readonly IPipelineFileManager pipelineFileManager;
     private readonly ILogger logger;
 
@@ -84,8 +84,7 @@ public sealed partial class ErrorOverviewExportProcess
     /// <param name="catchmentArea">The statistics sheet of the Teileinzugsgebiete (<c>v_vsa_teileinzugsgebiet</c>).</param>
     /// <param name="node">The statistics sheet of the Knoten (<c>v_vsa_knoten</c> plus <c>geom_detail</c>, the detail geometry).</param>
     /// <param name="reach">The statistics sheet of the Leitungen (<c>v_vsa_leitung</c> plus <c>function_hierarchic_group</c>, PAA or SAA).</param>
-    /// <param name="cantonErrorObjectSheet">Sheet name for the raw data export in the canton error Excel workbook.</param>
-    /// <param name="cantonErrorColumnMapping">Maps attribute keys to canton Excel column letters for error objects.</param>
+    /// <param name="cantonMatrix">The raw data sheet of the canton error matrix template, filled from <c>ca_statistics_attribute</c>.</param>
     /// <param name="pipelineFileManager">Pipeline file manager for output file allocation.</param>
     /// <param name="logger">Logger.</param>
     public ErrorOverviewExportProcess(
@@ -94,13 +93,11 @@ public sealed partial class ErrorOverviewExportProcess
         DataSheetConfig catchmentArea,
         DataSheetConfig node,
         DataSheetConfig reach,
-        string cantonErrorObjectSheet,
-        IDictionary<string, string> cantonErrorColumnMapping,
+        CantonMatrixConfig cantonMatrix,
         IPipelineFileManager pipelineFileManager,
         ILogger logger)
     {
-        ArgumentNullException.ThrowIfNull(cantonErrorObjectSheet);
-        ArgumentNullException.ThrowIfNull(cantonErrorColumnMapping);
+        ArgumentNullException.ThrowIfNull(cantonMatrix);
 
         this.pipelineFileManager = pipelineFileManager ?? throw new ArgumentNullException(nameof(pipelineFileManager));
         this.logger = logger ?? NullLogger.Instance;
@@ -115,8 +112,8 @@ public sealed partial class ErrorOverviewExportProcess
         ];
         EnsureUniqueSheetNames(this.sheets);
 
-        this.cantonSheetName = cantonErrorObjectSheet;
-        this.cantonColumns = new Dictionary<string, string>(cantonErrorColumnMapping, StringComparer.Ordinal);
+        this.cantonSheetName = cantonMatrix.Sheet;
+        this.cantonColumns = BuildCantonColumns(cantonMatrix);
     }
 
     /// <summary>
@@ -208,8 +205,7 @@ public sealed partial class ErrorOverviewExportProcess
         // formulas that reference them stay valid; deleting rows would turn those into #REF!.
         worksheet.RangeUsed()?.Clear(XLClearOptions.Contents);
 
-        var attributes = cantonColumns.Keys.ToArray();
-        var columnList = string.Join(", ", attributes.Select(a => $"\"{a}\""));
+        var columnList = string.Join(", ", cantonColumns.Select(column => $"\"{column.Attribute}\""));
 
         // Order explicitly by the statistics view's sortierung column, not by rowid: the canton
         // template's validation sheets reference raw_data rows by fixed cell, so the rows must match
@@ -222,14 +218,14 @@ public sealed partial class ErrorOverviewExportProcess
         var rowNumber = 1;
         while (reader.Read())
         {
-            for (var i = 0; i < attributes.Length; i++)
+            for (var i = 0; i < cantonColumns.Count; i++)
             {
                 if (reader.IsDBNull(i))
                 {
                     continue;
                 }
 
-                var cell = worksheet.Cell($"{cantonColumns[attributes[i]]}{rowNumber}");
+                var cell = worksheet.Cell(rowNumber, cantonColumns[i].Number);
                 var value = reader.GetValue(i);
                 if (value is long longValue)
                 {
@@ -275,23 +271,13 @@ public sealed partial class ErrorOverviewExportProcess
         var columns = new List<ConfiguredColumn>();
         foreach (var (attribute, column) in config.Columns)
         {
-            // The attribute keys are quoted into the sheet's SELECT, so they stay plain column names.
-            if (!PlainColumnName().IsMatch(attribute))
-                throw new ArgumentException($"'{attribute}' on sheet '{config.Sheet}' is not a plain column name.");
-
             if (column is null || string.IsNullOrWhiteSpace(column.Header))
                 throw new ArgumentException($"Column '{attribute}' of sheet '{config.Sheet}' needs a header.");
 
-            if (string.IsNullOrWhiteSpace(column.Column) || !XLHelper.IsValidColumn(column.Column))
-                throw new ArgumentException($"'{column.Column}' of column '{attribute}' on sheet '{config.Sheet}' is not an Excel column letter.");
-
-            var number = XLHelper.GetColumnNumberFromLetter(column.Column);
-            var taken = columns.FirstOrDefault(existing => existing.Column.Number == number);
-            if (taken is not null)
-                throw new ArgumentException($"Columns '{taken.Attribute}' and '{attribute}' of sheet '{config.Sheet}' both use column {column.Column}.");
-
-            columns.Add(new ConfiguredColumn(attribute, new SheetColumn(number, column.Header)));
+            columns.Add(new ConfiguredColumn(attribute, new SheetColumn(ColumnNumber(config.Sheet, attribute, column.Column), column.Header)));
         }
+
+        EnsureUniqueColumns(config.Sheet, columns.Select(column => (column.Attribute, column.Column.Number)));
 
         var resolvedPivots = pivots.Select(pivot => BuildPivot(pivot, config)).ToList();
         return new SheetDefinition(config.Sheet, source, columns.OrderBy(column => column.Column.Number).ToList(), resolvedPivots);
@@ -311,6 +297,40 @@ public sealed partial class ErrorOverviewExportProcess
             Filters: pivot.Filters.Select(Header).ToList(),
             Values: pivot.Values.Select(value => new PivotValue(Header(value.Field), value.Name, value.Share)).ToList(),
             ColumnWidths: pivot.ColumnWidths);
+    }
+
+    // Validates the canton matrix's configuration like a data sheet's, but without headers.
+    private static IReadOnlyList<(string Attribute, int Number)> BuildCantonColumns(CantonMatrixConfig config)
+    {
+        if (string.IsNullOrWhiteSpace(config.Sheet))
+            throw new ArgumentException("The canton error matrix needs the name of its raw data sheet.");
+
+        if (config.Columns is null || config.Columns.Count == 0)
+            throw new ArgumentException($"Sheet '{config.Sheet}' needs at least one column.");
+
+        IReadOnlyList<(string Attribute, int Number)> columns = [.. config.Columns.Select(column => (column.Key, ColumnNumber(config.Sheet, column.Key, column.Value)))];
+        EnsureUniqueColumns(config.Sheet, columns);
+        return columns;
+    }
+
+    // The attribute keys are quoted into SELECTs, so they stay plain column names.
+    private static int ColumnNumber(string sheet, string attribute, string? letter)
+    {
+        if (!PlainColumnName().IsMatch(attribute))
+            throw new ArgumentException($"'{attribute}' on sheet '{sheet}' is not a plain column name.");
+
+        if (string.IsNullOrWhiteSpace(letter) || !XLHelper.IsValidColumn(letter))
+            throw new ArgumentException($"'{letter}' of column '{attribute}' on sheet '{sheet}' is not an Excel column letter.");
+
+        return XLHelper.GetColumnNumberFromLetter(letter);
+    }
+
+    private static void EnsureUniqueColumns(string sheet, IEnumerable<(string Attribute, int Number)> columns)
+    {
+        // Two attributes in one column would overwrite each other.
+        var clash = columns.GroupBy(column => column.Number).FirstOrDefault(group => group.Count() > 1);
+        if (clash is not null)
+            throw new ArgumentException($"The columns '{string.Join("', '", clash.Select(column => column.Attribute))}' of sheet '{sheet}' share column {XLHelper.GetColumnLetterFromNumber(clash.Key)}.");
     }
 
     private static void EnsureUniqueSheetNames(IEnumerable<SheetDefinition> sheets)

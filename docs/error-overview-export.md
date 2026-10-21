@@ -19,18 +19,18 @@ ist.
 
 Alle Konfigurationsparameter werden aus der Pipeline-YAML aufgelöst
 (`default_config` / `process_config_overwrites`). Jedes Datenblatt wird auf dieselbe
-Weise beschrieben, Fehlerblätter wie Statistikblätter: Blattname und Spalten. Die
-Pivot-Blätter darüber sind fest im Code definiert (siehe [Pivot-Blätter](#pivot-blätter)).
+Weise beschrieben, Fehlerblätter wie Statistikblätter: Blattname und Spalten. Das
+Rohdatenblatt der kantonalen Fehlermatrix ebenso, nur ohne Header. Die Pivot-Blätter
+über den Datenblättern sind fest im Code definiert (siehe [Pivot-Blätter](#pivot-blätter)).
 
-| Parameter                  | Typ                          | Beschreibung |
-|----------------------------|------------------------------|--------------|
-| `errorData`                | `DataSheetConfig`            | Blatt der Fehler (`ca_error_data`); die Statusmeldung zählt seine Zeilen. |
-| `errorObject`              | `DataSheetConfig`            | Blatt der Fehlerobjekte (`ca_error_object`). |
-| `catchmentArea`            | `DataSheetConfig`            | Statistikblatt der Teileinzugsgebiete (`v_vsa_teileinzugsgebiet`). |
-| `node`                     | `DataSheetConfig`            | Statistikblatt der Knoten (`v_vsa_knoten` plus `geom_detail`, die Detailgeometrie). |
-| `reach`                    | `DataSheetConfig`            | Statistikblatt der Leitungen (`v_vsa_leitung` plus `function_hierarchic_group`, PAA oder SAA). |
-| `cantonErrorObjectSheet`   | `string`                     | Blattname des Rohdatenblatts in der kantonalen Fehlermatrix-Vorlage (`raw_data`). |
-| `cantonErrorColumnMapping` | `IDictionary<string,string>` | Bildet Attribut-Keys von `ca_statistics_attribute` auf Excel-Spaltenbuchstaben im Rohdatenblatt ab. |
+| Parameter       | Typ                  | Beschreibung |
+|-----------------|----------------------|--------------|
+| `errorData`     | `DataSheetConfig`    | Blatt der Fehler (`ca_error_data`); die Statusmeldung zählt seine Zeilen. |
+| `errorObject`   | `DataSheetConfig`    | Blatt der Fehlerobjekte (`ca_error_object`). |
+| `catchmentArea` | `DataSheetConfig`    | Statistikblatt der Teileinzugsgebiete (`v_vsa_teileinzugsgebiet`). |
+| `node`          | `DataSheetConfig`    | Statistikblatt der Knoten (`v_vsa_knoten` plus `geom_detail`, die Detailgeometrie). |
+| `reach`         | `DataSheetConfig`    | Statistikblatt der Leitungen (`v_vsa_leitung` plus `function_hierarchic_group`, PAA oder SAA). |
+| `cantonMatrix`  | `CantonMatrixConfig` | Rohdatenblatt der kantonalen Fehlermatrix-Vorlage (`ca_statistics_attribute`), siehe [Kantonale Fehlermatrix](#kantonale-fehlermatrix). |
 
 Die Quelle jedes Blatts (Tabelle, View oder Unterabfrage) ist im Code festgelegt; die
 Konfiguration wählt daraus die Attribute. Ein Datenblatt sieht so aus:
@@ -65,22 +65,29 @@ Vorlagen in A3, mit Zwischensummen je Gruppe.
 
 ### Validierung
 
-Beim Start lehnt der Prozess mit einer `ArgumentException` ab: ein Blatt ohne Namen
-oder Spalten, einen Attribut-Key, der kein einfacher Spaltenname ist, eine Spalte ohne
-Header oder mit ungültigem Buchstaben, zwei Attribute in derselben Spalte, eine
-fehlende Spalte, die ein Pivot braucht, und doppelte Blattnamen in der Arbeitsmappe
-(ohne Rücksicht auf Gross- und Kleinschreibung). Fehlt die Quelle eines Blatts im
-GeoPackage, scheitert der Lauf beim Lesen.
+Beim Start lehnt der Prozess mit einer `ArgumentException` ab, bei den Datenblättern wie
+beim Rohdatenblatt der kantonalen Fehlermatrix: ein Blatt ohne Namen oder Spalten, einen
+Attribut-Key, der kein einfacher Spaltenname ist, eine Spalte mit ungültigem Buchstaben
+und zwei Attribute in derselben Spalte. Bei den Datenblättern zusätzlich: eine Spalte
+ohne Header, eine fehlende Spalte, die ein Pivot braucht, und doppelte Blattnamen in der
+Arbeitsmappe (ohne Rücksicht auf Gross- und Kleinschreibung). Fehlt die Quelle eines
+Datenblatts im GeoPackage, scheitert der Lauf beim Lesen.
 
 ### Kantonale Fehlermatrix
 
-`cantonErrorColumnMapping` bildet die acht Spalten von `ca_statistics_attribute`
-(`tabelle`, `attribut`, `anzahl_total`, `anzahl_paa`, `anzahl_saa`, `anzahl_null`,
-`anzahl_null_paa`, `anzahl_null_saa`) auf Spaltenbuchstaben des Rohdatenblatts der
-Vorlage ab. Anders als die Fehlerdatenblätter hat das Rohdatenblatt **keine
-Kopfzeile**: die Statistikzeilen werden ab Zeile 1 geschrieben. Für dieses Mapping
-gibt es keine Startup-Validierung; es adressiert schlicht die Spalten, die die
-Vorlage im Rohdatenblatt erwartet. Die View liefert zusätzlich eine
+`cantonMatrix` beschreibt das Rohdatenblatt der Vorlage wie ein Datenblatt, aber ohne
+Header:
+
+```yaml
+cantonMatrix:
+  sheet: raw_data
+  columns: { tabelle: A, attribut: B, anzahl_total: C, anzahl_paa: D, anzahl_saa: E, anzahl_null: F, anzahl_null_paa: G, anzahl_null_saa: H }
+```
+
+`columns` bildet die acht Spalten von `ca_statistics_attribute` auf die
+Spaltenbuchstaben ab, die die Vorlage im Rohdatenblatt erwartet. Anders als die
+Datenblätter hat das Rohdatenblatt **keine Kopfzeile**: die Statistikzeilen werden ab
+Zeile 1 geschrieben. Die View liefert zusätzlich eine
 `sortierung`-Spalte, die die Zeilenreihenfolge festlegt und beim Rücklesen für
 `ORDER BY sortierung` verwendet wird (nicht ins Excel geschrieben); so entsprechen
 die Zeilen den fest verdrahteten Zellbezügen der Validierungsblätter der Vorlage.
@@ -126,8 +133,8 @@ die Zeilen den fest verdrahteten Zellbezügen der Validierungsblätter der Vorla
      Kopie der Vorlage `ErrorMatrixKanton.xlsx` angelegt und in place bearbeitet.
    - Ist die Tabelle `ca_statistics_attribute` vorhanden, werden ihre Zeilen
      (`ORDER BY sortierung`) aus derselben schreibgeschützten Verbindung in das
-     Rohdatenblatt (`cantonErrorObjectSheet`) geschrieben: jeder Attribut-Key in die
-     per `cantonErrorColumnMapping` definierte Spalte, ab Zeile 1 und ohne Kopfzeile.
+     Rohdatenblatt (`cantonMatrix.sheet`) geschrieben: jeder Attribut-Key in seine
+     Spalte aus `cantonMatrix.columns`, ab Zeile 1 und ohne Kopfzeile.
      Zellwerte behalten ihren SQLite-Typ (Ganzzahl / Gleitkommazahl bleiben
      numerisch); NULL-Werte werden übersprungen, die Zelle bleibt leer.
    - Fehlt `ca_statistics_attribute` (z.B. bei minimalen Testfixtures), bleibt das
