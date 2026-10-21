@@ -219,6 +219,26 @@ public sealed class ErrorOverviewExportProcessTest
     }
 
     [TestMethod]
+    public async Task RunAsync_ColumnMappingWithGaps_WritesEachAttributeIntoItsColumn()
+    {
+        var geopackage = CreateTestGeoPackage(SeedStandardData);
+        var process = CreateProcess(
+            dataAttributeMapping: new Dictionary<string, string> { { "tid", "TID" }, { "class", "Klasse" } },
+            dataColumnMapping: new Dictionary<string, string> { { "tid", "D" }, { "class", "B" } });
+
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
+
+        using var workbook = await OpenOutputWorkbookAsync(result);
+        var dataSheet = workbook.Worksheet("Error Data");
+        Assert.AreEqual("Klasse", dataSheet.Cell("B1").GetString());
+        Assert.AreEqual("TID", dataSheet.Cell("D1").GetString());
+        Assert.AreEqual("Leitung", dataSheet.Cell("B2").GetString());
+        Assert.AreEqual("LT001", dataSheet.Cell("D2").GetString());
+        Assert.IsTrue(dataSheet.Cell("A1").IsEmpty() && dataSheet.Cell("C1").IsEmpty(), "Unmapped columns should stay empty.");
+        Assert.AreEqual("B1:D3", dataSheet.AutoFilter.Range.RangeAddress.ToString());
+    }
+
+    [TestMethod]
     public async Task RunAsync_WithPivotConfig_CreatesOverviewSheets()
     {
         var geopackage = CreateTestGeoPackage(SeedStandardData);
@@ -243,6 +263,106 @@ public sealed class ErrorOverviewExportProcessTest
         using var workbook = await OpenOutputWorkbookAsync(result);
         Assert.AreEqual(3, workbook.Worksheets.Count);
         Assert.IsTrue(workbook.Worksheet("Uebersicht_WK").PivotTables.Contains("Uebersicht_WK"));
+    }
+
+    [TestMethod]
+    public async Task RunAsync_WithPivotConfig_CountsErrorsPerPriorityClassAndErrorWithoutSubtotals()
+    {
+        var geopackage = CreateTestGeoPackage(SeedStandardData);
+        var process = CreateProcess(overviewWkSheet: "Uebersicht_WK", overviewGepSheet: "Uebersicht_GEP");
+
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
+
+        using var workbook = await OpenOutputWorkbookAsync(result);
+        AssertOverviewPivot(workbook, "Uebersicht_WK", "WK");
+        AssertOverviewPivot(workbook, "Uebersicht_GEP", "GEP");
+    }
+
+    [TestMethod]
+    public async Task RunAsync_WithPivotConfigAndObjects_PlacesOverviewsBetweenErrorAndStatisticsSheets()
+    {
+        var geopackage = CreateTestGeoPackage(SeedStandardData, ObjectStatisticsGeoPackage.Create(inputDirectory));
+        var process = CreateProcess(overviewWkSheet: "Uebersicht_WK", overviewGepSheet: "Uebersicht_GEP");
+
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
+
+        using var workbook = await OpenOutputWorkbookAsync(result);
+        Assert.AreEqual(
+            "Error Data, Error Object, Uebersicht_WK, Uebersicht_GEP, drainage_system_current, catchment_area_data, function, node_data, function_hierarchic, usage_current, reach_data",
+            string.Join(", ", workbook.Worksheets.Select(worksheet => worksheet.Name)));
+    }
+
+    [TestMethod]
+    public async Task RunAsync_GeoPackageWithObjects_AppendsObjectStatisticsSheets()
+    {
+        var geopackage = CreateTestGeoPackage(SeedStandardData, ObjectStatisticsGeoPackage.Create(inputDirectory));
+        var process = CreateProcess();
+
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
+
+        using var workbook = await OpenOutputWorkbookAsync(result);
+        Assert.AreEqual(string.Join(", ", ErrorAndObjectStatisticsSheets), string.Join(", ", workbook.Worksheets.Select(worksheet => worksheet.Name)));
+    }
+
+    [TestMethod]
+    public async Task RunAsync_GeoPackageWithObjects_AddsCountAndSharePivotsWithTheRowFieldsOfTheTemplates()
+    {
+        var geopackage = CreateTestGeoPackage(SeedStandardData, ObjectStatisticsGeoPackage.Create(inputDirectory));
+        var process = CreateProcess();
+
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
+
+        using var workbook = await OpenOutputWorkbookAsync(result);
+        AssertCountAndSharePivot(workbook, "drainage_system_current", "drainage_system_current");
+        AssertCountAndSharePivot(workbook, "function", "function_hierarchic", "function");
+        AssertCountAndSharePivot(workbook, "function_hierarchic", "function_hierarchic");
+        AssertCountAndSharePivot(workbook, "usage_current", "function_hierarchic_group", "usage_current");
+    }
+
+    [TestMethod]
+    public async Task RunAsync_GeoPackageWithObjects_WritesStatisticsRowsWithTheirTypes()
+    {
+        var geopackage = CreateTestGeoPackage(SeedStandardData, ObjectStatisticsGeoPackage.Create(inputDirectory));
+        var process = CreateProcess();
+
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
+
+        using var workbook = await OpenOutputWorkbookAsync(result);
+        var reaches = workbook.Worksheet("reach_data");
+        Assert.AreEqual("LT1", reaches.Cell("A2").GetString());
+        Assert.AreEqual(XLDataType.Number, reaches.Cell("B2").DataType, "year_of_construction should stay numeric.");
+        Assert.AreEqual(1989, reaches.Cell("B2").GetValue<int>());
+        Assert.IsTrue(reaches.Cell("D2").IsEmpty(), "A NULL remark should stay an empty cell.");
+        Assert.AreEqual("PAA", reaches.Cell("H2").GetString());
+        Assert.AreEqual("LINESTRING (2600100 1200100, 2600200 1200200)", reaches.Cell("AW2").GetString());
+    }
+
+    [TestMethod]
+    public async Task RunAsync_GeoPackageWithoutObjects_KeepsHeaderOnlyStatisticsSheetsAndTheirPivots()
+    {
+        var geopackage = CreateTestGeoPackage(SeedStandardData, ObjectStatisticsGeoPackage.Create(inputDirectory, withObjects: false));
+        var process = CreateProcess();
+
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
+
+        using var workbook = await OpenOutputWorkbookAsync(result);
+        Assert.AreEqual("tid", workbook.Worksheet("reach_data").Cell("A1").GetString());
+        Assert.IsTrue(workbook.Worksheet("reach_data").Cell("A2").IsEmpty());
+        AssertCountAndSharePivot(workbook, "usage_current", "function_hierarchic_group", "usage_current");
+    }
+
+    [TestMethod]
+    public async Task RunAsync_GeoPackageWithObjects_FiltersEachDataSheetBelowAFrozenHeaderRow()
+    {
+        var geopackage = CreateTestGeoPackage(SeedStandardData, ObjectStatisticsGeoPackage.Create(inputDirectory));
+        var process = CreateProcess();
+
+        var result = await process.RunAsync(geopackage, CreateCantonTemplate());
+
+        using var workbook = await OpenOutputWorkbookAsync(result);
+        AssertFilteredBelowFrozenHeader(workbook, "Error Data", "A1:K3");
+        AssertFilteredBelowFrozenHeader(workbook, "Error Object", "A1:E2");
+        AssertFilteredBelowFrozenHeader(workbook, "reach_data", "A1:AW4");
     }
 
     [TestMethod]
@@ -305,6 +425,9 @@ public sealed class ErrorOverviewExportProcessTest
         StringAssert.Contains(ex.Message, "nonexistent");
     }
 
+    private static readonly string[] ErrorAndObjectStatisticsSheets =
+        ["Error Data", "Error Object", "drainage_system_current", "catchment_area_data", "function", "node_data", "function_hierarchic", "usage_current", "reach_data"];
+
     private static readonly List<string> OverviewRowFields = ["class", "error"];
 
     private static readonly List<string> OverviewFilterFields = ["check_type", "function_hierarchic", "owner", "status"];
@@ -335,9 +458,9 @@ public sealed class ErrorOverviewExportProcessTest
             logger: NullLogger.Instance);
     }
 
-    private TestPipelineFile CreateTestGeoPackage(Action<SqliteConnection>? seedAction = null)
+    private TestPipelineFile CreateTestGeoPackage(Action<SqliteConnection>? seedAction = null, string? gpkgPath = null)
     {
-        var gpkgPath = Path.Combine(inputDirectory, $"test-{Guid.NewGuid():N}.gpkg");
+        gpkgPath ??= Path.Combine(inputDirectory, $"test-{Guid.NewGuid():N}.gpkg");
 
         using var connection = new SqliteConnection($"Data Source={gpkgPath};Pooling=false");
         connection.Open();
@@ -426,6 +549,52 @@ public sealed class ErrorOverviewExportProcessTest
         await fileStream.CopyToAsync(memoryStream);
         memoryStream.Position = 0;
         return new XLWorkbook(memoryStream);
+    }
+
+    private static void AssertOverviewPivot(XLWorkbook workbook, string sheetName, string priorityField)
+    {
+        var worksheet = workbook.Worksheet(sheetName);
+        var pivotTable = worksheet.PivotTables.Single();
+
+        // The fields are the error data headers of the configured attribute keys, the priority field first.
+        Assert.AreEqual($"{priorityField}, Klasse, Fehler", string.Join(", ", pivotTable.RowLabels.Select(field => field.SourceName)), $"Row fields of '{sheetName}'.");
+        Assert.IsFalse(pivotTable.RowLabels.Any(field => field.Subtotals.Count > 0), $"Row fields of '{sheetName}' should show no subtotals.");
+        Assert.AreEqual("Prueftyp, Funktionhierarchisch, Eigentuemer, Status", string.Join(", ", pivotTable.ReportFilters.Select(field => field.SourceName)), $"Filters of '{sheetName}'.");
+        CollectionAssert.AreEqual(
+            new[] { ("Anzahl Fehler", "FID", XLPivotSummary.Count, XLPivotCalculation.Normal) },
+            pivotTable.Values.Select(value => (value.CustomName, value.SourceName, value.SummaryFormula, value.Calculation)).ToArray(),
+            $"Values of '{sheetName}'.");
+        Assert.AreEqual("A1", pivotTable.TargetCell.Address.ToString(), $"Location of '{sheetName}'.");
+        Assert.AreEqual(105, worksheet.Column("A").Width, $"Width of column A of '{sheetName}'.");
+        Assert.AreEqual(13, worksheet.Column("B").Width, $"Width of column B of '{sheetName}'.");
+    }
+
+    private static void AssertFilteredBelowFrozenHeader(XLWorkbook workbook, string sheetName, string range)
+    {
+        var worksheet = workbook.Worksheet(sheetName);
+        Assert.AreEqual(range, worksheet.AutoFilter.Range.RangeAddress.ToString(), $"Autofilter of '{sheetName}'.");
+        Assert.AreEqual(1, worksheet.SheetView.SplitRow, $"Frozen rows of '{sheetName}'.");
+    }
+
+    private static void AssertCountAndSharePivot(XLWorkbook workbook, string sheetName, params string[] rowFields)
+    {
+        var pivotTable = workbook.Worksheet(sheetName).PivotTables.Single();
+
+        Assert.AreEqual(string.Join(", ", rowFields), string.Join(", ", pivotTable.RowLabels.Select(field => field.SourceName)), $"Row fields of '{sheetName}'.");
+        Assert.AreEqual("A3", pivotTable.TargetCell.Address.ToString(), $"Location of '{sheetName}'.");
+
+        // As in the templates, a two-level pivot totals each group (e.g. PAA, SAA) in its group row.
+        Assert.IsTrue(
+            pivotTable.RowLabels.All(field => field.Subtotals.Contains(XLSubtotalFunction.Automatic)),
+            $"Row fields of '{sheetName}' should show Excel's automatic subtotals.");
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                ("Anzahl von tid", "tid", XLPivotSummary.Count, XLPivotCalculation.Normal),
+                ("Anteil", "tid", XLPivotSummary.Count, XLPivotCalculation.PercentageOfTotal),
+            },
+            pivotTable.Values.Select(value => (value.CustomName, value.SourceName, value.SummaryFormula, value.Calculation)).ToArray(),
+            $"Values of '{sheetName}'.");
     }
 
     [SuppressMessage("Security", "CA2100", Justification = "Test queries use hardcoded SQL, not user input.")]

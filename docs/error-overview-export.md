@@ -4,7 +4,8 @@ Der Error Overview Export Prozess liest die materialisierten Fehlertabellen aus
 dem von der [Geopackage Generation](vsa-geopackage-generation.md) erzeugten
 GeoPackage und exportiert sie in eine Excel-Arbeitsmappe (XLSX) mit zwei
 konfigurierbaren Datenblättern und optionalen Pivot-Übersichtsblättern für die
-WK- und GEP-Prioritäten.
+WK- und GEP-Prioritäten. Dazu kommen [Objektstatistiken](#objektstatistiken) für
+Teileinzugsgebiete, Knoten und Leitungen.
 
 Zusätzlich befüllt der Prozess eine Kopie der kantonalen Fehlermatrix-Vorlage
 (`ErrorMatrixKanton.xlsx`) mit der Attribut-Statistik aus `ca_statistics_attribute`
@@ -72,7 +73,7 @@ die Zeilen den fest verdrahteten Zellbezügen der Validierungsblätter der Vorla
 
 | Parameter    | Quelle                | Typ             | Beschreibung                                            |
 |--------------|-----------------------|-----------------|--------------------------------------------------------|
-| `geopackage` | Geopackage Generation | `IPipelineFile` | Das befüllte GeoPackage mit `ca_error_data`, `ca_error_object` und `ca_statistics_attribute`. |
+| `geopackage` | Geopackage Generation | `IPipelineFile` | Das befüllte GeoPackage mit `ca_error_data`, `ca_error_object`, `ca_statistics_attribute` und den Views `v_vsa_teileinzugsgebiet`, `v_vsa_knoten` und `v_vsa_leitung`. |
 | `cantonErrorMatrixTemplate` | Ressourcen (`${file()}`) | `IPipelineFile` | Excel-Vorlage der kantonalen Fehlermatrix (`ErrorMatrixKanton.xlsx`), direkt aus dem Ressourcenverzeichnis injiziert. |
 
 ## Output
@@ -88,20 +89,28 @@ die Zeilen den fest verdrahteten Zellbezügen der Validierungsblätter der Vorla
 ## Verarbeitung
 
 1. Das GeoPackage wird über `Microsoft.Data.Sqlite` schreibgeschützt geöffnet.
-2. Für jedes konfigurierte Blatt (`ca_error_data`, `ca_error_object`):
-   - Ein Arbeitsblatt wird mit dem konfigurierten Blattnamen erstellt.
-   - Zeile 1 wird mit den Header-Anzeigenamen aus dem Attribut-Mapping befüllt,
-     platziert an den durch das Spalten-Mapping definierten Spaltenpositionen.
-   - Alle Zeilen der Quelltabelle werden abgefragt (nur die gemappten Spalten)
-     und ab Zeile 2 geschrieben.
-   - Zellwerte behalten ihren SQLite-Typ: Ganzzahlen und Gleitkommazahlen
-     bleiben in Excel numerisch, Text bleibt Text, NULL-Zellen bleiben leer.
-3. Falls konfiguriert, werden Pivot-Übersichtsblätter erstellt. Jedes Blatt
-   enthält eine ClosedXML-Pivot-Tabelle, die auf den verwendeten Bereich des
-   Fehlerdatenblatts verweist. Die Pivot-Tabelle gruppiert Fehler nach
-   Prioritätsstufe (WK oder GEP), Klasse und Fehlertyp, mit konfigurierbaren
-   Berichtsfiltern und einer Zählaggregation. Spalte A wird auf Breite 105 und
-   Spalte B auf Breite 13 gesetzt.
+2. Zuerst werden alle Blätter gelesen, als unveränderliche Datensätze
+   (`DataSheet` mit den `PivotSheet`s darüber):
+   - Für jedes konfigurierte Blatt (`ca_error_data`, `ca_error_object`) werden
+     alle Zeilen der Quelltabelle abgefragt (nur die gemappten Spalten). Die
+     Spalten erhalten die Header-Anzeigenamen aus dem Attribut-Mapping und die
+     Spaltenpositionen aus dem Spalten-Mapping.
+   - Falls konfiguriert, gehören die Pivot-Übersichten zum Fehlerdatenblatt.
+     Sie gruppieren die Fehler nach Prioritätsstufe (WK oder GEP), Klasse und
+     Fehlertyp, ohne Zwischensummen, mit konfigurierbaren Berichtsfiltern und
+     einer Zählaggregation. Spalte A erhält die Breite 105, Spalte B die
+     Breite 13.
+   - Die [Objektstatistiken](#objektstatistiken) liest `ObjectStatistics.Read`.
+3. Danach schreibt der Prozess die Arbeitsmappe, für alle Blätter auf dieselbe
+   Weise:
+   - Ein Datenblatt erhält in Zeile 1 die Header und ab Zeile 2 die Zeilen, mit
+     Autofilter und fixierter Kopfzeile. Zellwerte behalten ihren SQLite-Typ:
+     Ganzzahlen und Gleitkommazahlen bleiben in Excel numerisch, Text bleibt
+     Text, NULL-Zellen bleiben leer.
+   - Ein Pivot-Blatt enthält eine ClosedXML-Pivot-Tabelle über den
+     geschriebenen Bereich seines Datenblatts.
+   - Reihenfolge: Fehlerdaten, Fehlerobjekte, die Übersichten (WK, GEP), dann je
+     Objektklasse die Pivot-Blätter vor ihrem Rohdatenblatt.
 4. Die Arbeitsmappe wird über ClosedXML in eine Pipeline-Output-Datei
    geschrieben (`ErrorOverview`).
 5. Die kantonale Fehlermatrix wird befüllt (`ExportCantonMatrixAsync`):
@@ -121,3 +130,32 @@ die Zeilen den fest verdrahteten Zellbezügen der Validierungsblätter der Vorla
      `#REF!` machen.
    - Zum Schluss wird das erste Arbeitsblatt wieder aktiviert, damit die Mappe beim
      Öffnen auf dem Validierungsblatt steht und nicht auf dem Rohdatenblatt.
+
+## Objektstatistiken
+
+`ObjectStatistics.Read` liest je Objektklasse die Rohdaten und gibt sie wie die Fehlerblätter als
+unveränderliche Datensätze zurück; der Prozess schreibt daraus ein Rohdatenblatt und die Pivot-Blätter, die die
+Vorlagen `statistics_catchment_area.xlsx`, `statistics_node.xlsx` und `statistics_reach.xlsx` aus
+[Issue #71](https://github.com/geowerkstatt/vsa-checker-analytics/issues/71) vorgeben. Blattnamen,
+Spalten und Pivot-Felder sind fest im Code definiert, nicht in der Pipeline-YAML.
+
+| Rohdatenblatt | Quelle | Pivot-Blätter (Zeilenfelder) |
+|---------------|--------|------------------------------|
+| `catchment_area_data` | `v_vsa_teileinzugsgebiet` | `drainage_system_current` (`drainage_system_current`) |
+| `node_data` | `v_vsa_knoten`, Detailgeometrie aus `knoten` | `function` (`function_hierarchic`, `function`) |
+| `reach_data` | `v_vsa_leitung` | `function_hierarchic` (`function_hierarchic`), `usage_current` (`function_hierarchic_group`, `usage_current`) |
+
+- Die Spalten entsprechen den Kopfzeilen der Vorlagen, also den View-Spalten ohne `fid`.
+  Beim Knoten kommen `geometry (WKT)` und `geometry_detail (WKT)` dazu, bei der Leitung
+  `function_hierarchic_group` und `geometry (WKT)`.
+- `function_hierarchic_group` ist die Obergruppe von `function_hierarchic`, der Teil vor dem
+  ersten Punkt (`PAA.Sammelkanal` → `PAA`), wie mit dem PO abgesprochen.
+- Jede Pivot-Tabelle zählt `tid` («Anzahl von tid») und zeigt den Anteil am Total («Anteil»,
+  Format 0.00 %), bei zwei Zeilenfeldern mit Zwischensummen je Gruppe (z.B. PAA, SAA). Die
+  Pivot-Blätter stehen wie in den Vorlagen vor ihrem Rohdatenblatt. Die
+  Vorlage der Teileinzugsgebiete gruppierte versehentlich nach `direct_discharge_current`;
+  gemeint ist laut PO `drainage_system_current`.
+- Geometrien werden als WKT geschrieben. Excel fasst höchstens 32'767 Zeichen pro Zelle;
+  längere oder nicht lesbare Geometrien bleiben leer, und eine Warnung nennt ihre Anzahl.
+- Fehlt eine Quell-View (z.B. bei älteren GeoPackages oder minimalen Testfixtures), entfallen
+  ihr Rohdatenblatt und ihre Pivot-Blätter, und es wird eine Warnung protokolliert.
