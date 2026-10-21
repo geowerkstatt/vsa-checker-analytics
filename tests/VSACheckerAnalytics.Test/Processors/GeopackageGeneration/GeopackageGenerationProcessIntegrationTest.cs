@@ -164,6 +164,45 @@ public class GeopackageGenerationProcessIntegrationTest
         Assert.IsGreaterThan(0L, (long)(command.ExecuteScalar() ?? 0L));
     }
 
+    [TestMethod]
+    [DataRow("2020")]
+    [DataRow("2020.1")]
+    public async Task RunGeopackageGenerationPipeline_RegistersQueryableTeileinzugsgebietViews(string modelVersion)
+    {
+        var result = await RunPipelineAsync(
+            includeUserOrgs: false,
+            "DE",
+            modelVersion,
+            "transferdatensatz_2020_1_d_LV95_T-20231205_mini_t_err.csv",
+            "transferdatensatz_2020_1_d_LV95_T-20231205_mini_a_err.csv",
+            "transferdatensatz_2020_1_d_LV95_T-20231205_mini_fp_err.csv");
+
+        Assert.AreEqual(StepState.Success, result.StepState);
+
+        var generatedGeopackage = result.StepResult.ExtractProperty(nameof(GeopackageGenerationResult.GeneratedGeopackage));
+        var gpkgFile = Assert.IsInstanceOfType<IPipelineFile>(generatedGeopackage);
+
+        using var connection = new SqliteConnection($"Data Source={await gpkgFile.GetLocalPathAsync()};Mode=ReadOnly;Pooling=false");
+        connection.Open();
+
+        foreach (var view in new[] { "v_vsa_teileinzugsgebiet", "v_error_error_teileinzugsgebiet", "v_error_category_teileinzugsgebiet" })
+        {
+            // The GeoPackage spec requires gpkg_contents and gpkg_geometry_columns to agree on the SRS.
+            using var registration = connection.CreateCommand();
+            registration.CommandText = """
+                SELECT c.data_type || ' ' || IFNULL(c.srs_id, 'NULL') || ' ' || IFNULL(g.srs_id, 'NULL')
+                  FROM gpkg_contents c
+                  JOIN gpkg_geometry_columns g ON g.table_name = c.table_name
+                 WHERE c.table_name = @view
+                """;
+            registration.Parameters.AddWithValue("@view", view);
+            Assert.AreEqual("features 2056 2056", registration.ExecuteScalar(), $"{view} should be a feature layer in SRID 2056.");
+
+            // SQLite resolves a view's columns only when it is queried; this throws if the template lacks one.
+            _ = CountRows(connection, view);
+        }
+    }
+
     private async Task<(StepState StepState, StepResult StepResult)> RunPipelineAsync(bool includeUserOrgs, string language, string modelVersion, string checkerCsvT, string checkerCsvA, string checkerCsvFp)
     {
         pipeline = host.CreatePipeline();
@@ -214,6 +253,13 @@ public class GeopackageGenerationProcessIntegrationTest
     {
         using var command = connection.CreateCommand();
         command.CommandText = $"SELECT COUNT(*) FROM ca_error_data WHERE {whereClause}";
+        return (long)(command.ExecuteScalar() ?? 0L);
+    }
+
+    private static long CountRows(SqliteConnection connection, string tableOrView)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT COUNT(*) FROM \"{tableOrView}\"";
         return (long)(command.ExecuteScalar() ?? 0L);
     }
 #pragma warning restore CA2100
