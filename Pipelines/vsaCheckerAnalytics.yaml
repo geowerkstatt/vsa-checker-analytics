@@ -15,82 +15,206 @@ processes:
   - id: error_overview_export
     implementation: VsaCheckerAnalytics.Processors.ErrorOverviewExport.ErrorOverviewExportProcess
     default_config:
-      errorDataSheet: "Error Data"
-      errorDataAttributeMapping:
-        action_context: Recommendation Detail
-        required_action: Recommendation
-        gsp: GEP
-        uc: WK
-        module: Modul
-        model: Modell
-        category: Kategorie
-        status: Status
-        owner: Eigentümer
-        function_hierarchic: Funktionhierarchisch
-        detail: Detail
-        error: Fehlertyp
-        errorid: Fehler-ID
-        class: Klasse
-        topic: Thema
-        check_type: Prüftyp
-        tid: TID
-        fid: FID
-      errorDataColumnMapping:
-        action_context: A
-        required_action: B
-        gsp: C
-        uc: D
-        module: E
-        model: F
-        category: G
-        status: H
-        owner: I
-        function_hierarchic: J
-        detail: K
-        error: L
-        errorid: M
-        class: N
-        topic: O
-        check_type: P
-        tid: Q
-        fid: R
-      errorObjectSheet: "Error Object"
-      errorObjectAttributeMapping:
-        gsp_max: GEP Maximum
-        uc_max: WK Maximum
-        count_error: Anzahl Fehler
-        class: Klasse
-        tid: TID
-        fid: FID
-      errorObjectColumnMapping:
-        gsp_max: A
-        uc_max: B
-        count_error: C
-        class: D
-        tid: E
-        fid: F
-      overviewWkSheet: "Uebersicht WK"
-      overviewGepSheet: "Uebersicht GEP"
-      overviewRowFields:
-        - "class"
-        - "error"
-      overviewFilterFields:
-        - "check_type"
-        - "function_hierarchic"
-        - "owner"
-        - "status"
-      overviewValueField: "fid"
-      overviewValueName: "Anzahl Fehler"
-      cantonErrorObjectSheet: "raw_data"
-      cantonErrorColumnMapping:
-        tabelle: A
-        attribut: B
-        anzahl_total: C
-        anzahl_paa: D
-        anzahl_saa: E
-        anzahl_null: F
-        anzahl_null_paa: G
-        anzahl_null_saa: H
+      errorData:
+        sheet: "Error Data"
+        columns:
+          action_context: { column: A, header: Recommendation Detail }
+          required_action: { column: B, header: Recommendation }
+          gsp: { column: C, header: GEP }
+          uc: { column: D, header: WK }
+          module: { column: E, header: Modul }
+          model: { column: F, header: Modell }
+          category: { column: G, header: Kategorie }
+          status: { column: H, header: Status }
+          owner: { column: I, header: Eigentümer }
+          function_hierarchic: { column: J, header: Funktionhierarchisch }
+          detail: { column: K, header: Detail }
+          error: { column: L, header: Fehlertyp }
+          errorid: { column: M, header: Fehler-ID }
+          class: { column: N, header: Klasse }
+          topic: { column: O, header: Thema }
+          check_type: { column: P, header: Prüftyp }
+          tid: { column: Q, header: TID }
+          fid: { column: R, header: FID }
+      errorObject:
+        sheet: "Error Object"
+        columns:
+          gsp_max: { column: A, header: GEP Maximum }
+          uc_max: { column: B, header: WK Maximum }
+          count_error: { column: C, header: Anzahl Fehler }
+          class: { column: D, header: Klasse }
+          tid: { column: E, header: TID }
+          fid: { column: F, header: FID }
+      catchmentArea:
+        sheet: catchment_area_data
+        columns:
+          tid: { column: A, header: tid }
+          runoff_limit_planned: { column: B, header: runoff_limit_planned }
+          runoff_limit_current: { column: C, header: runoff_limit_current }
+          discharge_coefficient_rw_planned: { column: D, header: discharge_coefficient_rw_planned }
+          discharge_coefficient_rw_current: { column: E, header: discharge_coefficient_rw_current }
+          discharge_coefficient_ww_planned: { column: F, header: discharge_coefficient_ww_planned }
+          discharge_coefficient_ww_current: { column: G, header: discharge_coefficient_ww_current }
+          seal_factor_rw_planned: { column: H, header: seal_factor_rw_planned }
+          seal_factor_rw_current: { column: I, header: seal_factor_rw_current }
+          seal_factor_ww_planned: { column: J, header: seal_factor_ww_planned }
+          seal_factor_ww_current: { column: K, header: seal_factor_ww_current }
+          remark: { column: L, header: remark }
+          identifier: { column: M, header: identifier }
+          direct_discharge_planned: { column: N, header: direct_discharge_planned }
+          direct_discharge_current: { column: O, header: direct_discharge_current }
+          population_density_planned: { column: P, header: population_density_planned }
+          population_density_current: { column: Q, header: population_density_current }
+          drainage_system_planned: { column: R, header: drainage_system_planned }
+          drainage_system_current: { column: S, header: drainage_system_current }
+          surface_area: { column: T, header: surface_area }
+          sewer_infiltration_water_production_planned: { column: U, header: sewer_infiltration_water_production_planned }
+          sewer_infiltration_water_production_current: { column: V, header: sewer_infiltration_water_production_current }
+          geom: { column: W, header: geom }
+          retention_planned: { column: X, header: retention_planned }
+          retention_current: { column: Y, header: retention_current }
+          waste_water_production_planned: { column: Z, header: waste_water_production_planned }
+          waste_water_production_current: { column: AA, header: waste_water_production_current }
+          infiltration_planned: { column: AB, header: infiltration_planned }
+          infiltration_current: { column: AC, header: infiltration_current }
+          fk_node_rw_current: { column: AD, header: fk_node_rw_current }
+          fk_node_rw_planned: { column: AE, header: fk_node_rw_planned }
+          fk_node_ww_current: { column: AF, header: fk_node_ww_current }
+          fk_node_ww_planned: { column: AG, header: fk_node_ww_planned }
+          fk_sb_rw_current_lc_syphon_head: { column: AH, header: fk_sb_rw_current_lc_syphon_head }
+          fk_sb_rw_current_lc_stormwater_retention_channel: { column: AI, header: fk_sb_rw_current_lc_stormwater_retention_channel }
+          fk_sb_rw_current_lc_separating_structure: { column: AJ, header: fk_sb_rw_current_lc_separating_structure }
+          fk_sb_rw_current_lc_discharge_point: { column: AK, header: fk_sb_rw_current_lc_discharge_point }
+          fk_sb_rw_current_lc_stormwater_overflow: { column: AL, header: fk_sb_rw_current_lc_stormwater_overflow }
+          fk_sb_rw_current_lc_stormwater_overflow_tank: { column: AM, header: fk_sb_rw_current_lc_stormwater_overflow_tank }
+          fk_sb_rw_current_lc_pump_station: { column: AN, header: fk_sb_rw_current_lc_pump_station }
+          fk_sb_rw_current_lc_autonomous_measuring_point: { column: AO, header: fk_sb_rw_current_lc_autonomous_measuring_point }
+          fk_sb_rw_current_lc_other: { column: AP, header: fk_sb_rw_current_lc_other }
+          fk_sb_rw_planned_lc_syphon_head: { column: AQ, header: fk_sb_rw_planned_lc_syphon_head }
+          fk_sb_rw_planned_lc_stormwater_retention_channel: { column: AR, header: fk_sb_rw_planned_lc_stormwater_retention_channel }
+          fk_sb_rw_planned_lc_separating_structure: { column: AS, header: fk_sb_rw_planned_lc_separating_structure }
+          fk_sb_rw_planned_lc_discharge_point: { column: AT, header: fk_sb_rw_planned_lc_discharge_point }
+          fk_sb_rw_planned_lc_stormwater_overflow: { column: AU, header: fk_sb_rw_planned_lc_stormwater_overflow }
+          fk_sb_rw_planned_lc_stormwater_overflow_tank: { column: AV, header: fk_sb_rw_planned_lc_stormwater_overflow_tank }
+          fk_sb_rw_planned_lc_pump_station: { column: AW, header: fk_sb_rw_planned_lc_pump_station }
+          fk_sb_rw_planned_lc_autonomous_measuring_point: { column: AX, header: fk_sb_rw_planned_lc_autonomous_measuring_point }
+          fk_sb_rw_planned_lc_other: { column: AY, header: fk_sb_rw_planned_lc_other }
+          fk_sb_ww_current_lc_syphon_head: { column: AZ, header: fk_sb_ww_current_lc_syphon_head }
+          fk_sb_ww_current_lc_stormwater_retention_channel: { column: BA, header: fk_sb_ww_current_lc_stormwater_retention_channel }
+          fk_sb_ww_current_lc_separating_structure: { column: BB, header: fk_sb_ww_current_lc_separating_structure }
+          fk_sb_ww_current_lc_discharge_point: { column: BC, header: fk_sb_ww_current_lc_discharge_point }
+          fk_sb_ww_current_lc_stormwater_overflow: { column: BD, header: fk_sb_ww_current_lc_stormwater_overflow }
+          fk_sb_ww_current_lc_stormwater_overflow_tank: { column: BE, header: fk_sb_ww_current_lc_stormwater_overflow_tank }
+          fk_sb_ww_current_lc_pump_station: { column: BF, header: fk_sb_ww_current_lc_pump_station }
+          fk_sb_ww_current_lc_autonomous_measuring_point: { column: BG, header: fk_sb_ww_current_lc_autonomous_measuring_point }
+          fk_sb_ww_current_lc_other: { column: BH, header: fk_sb_ww_current_lc_other }
+          fk_sb_ww_planned_lc_syphon_head: { column: BI, header: fk_sb_ww_planned_lc_syphon_head }
+          fk_sb_ww_planned_lc_stormwater_retention_channel: { column: BJ, header: fk_sb_ww_planned_lc_stormwater_retention_channel }
+          fk_sb_ww_planned_lc_separating_structure: { column: BK, header: fk_sb_ww_planned_lc_separating_structure }
+          fk_sb_ww_planned_lc_discharge_point: { column: BL, header: fk_sb_ww_planned_lc_discharge_point }
+          fk_sb_ww_planned_lc_stormwater_overflow: { column: BM, header: fk_sb_ww_planned_lc_stormwater_overflow }
+          fk_sb_ww_planned_lc_stormwater_overflow_tank: { column: BN, header: fk_sb_ww_planned_lc_stormwater_overflow_tank }
+          fk_sb_ww_planned_lc_pump_station: { column: BO, header: fk_sb_ww_planned_lc_pump_station }
+          fk_sb_ww_planned_lc_autonomous_measuring_point: { column: BP, header: fk_sb_ww_planned_lc_autonomous_measuring_point }
+          fk_sb_ww_planned_lc_other: { column: BQ, header: fk_sb_ww_planned_lc_other }
+          data_owner: { column: BR, header: data_owner }
+          data_owner_org_type: { column: BS, header: data_owner_org_type }
+          data_provider: { column: BT, header: data_provider }
+          data_provider_org_type: { column: BU, header: data_provider_org_type }
+          last_modification: { column: BV, header: last_modification }
+      node:
+        sheet: node_data
+        columns:
+          tid: { column: A, header: tid }
+          wwtp_no: { column: B, header: wwtp_no }
+          year_of_construction: { column: C, header: year_of_construction }
+          structure_condition: { column: D, header: structure_condition }
+          remark: { column: E, header: remark }
+          identifier: { column: F, header: identifier }
+          cover_level: { column: G, header: cover_level }
+          dimension1: { column: H, header: dimension1 }
+          dimension2: { column: I, header: dimension2 }
+          financing: { column: J, header: financing }
+          function: { column: K, header: function }
+          function_hierarchic: { column: L, header: function_hierarchic }
+          positional_accuracy: { column: M, header: positional_accuracy }
+          usage_planned: { column: N, header: usage_planned }
+          usage_current: { column: O, header: usage_current }
+          fk_wastewater_structure: { column: P, header: fk_wastewater_structure }
+          fk_cover: { column: Q, header: fk_cover }
+          backflow_level: { column: R, header: backflow_level }
+          renovation_necessity: { column: S, header: renovation_necessity }
+          bottom_level: { column: T, header: bottom_level }
+          status: { column: U, header: status }
+          symbolori: { column: V, header: symbolori }
+          accessibility: { column: W, header: accessibility }
+          condition_survey_year: { column: X, header: condition_survey_year }
+          operator: { column: Y, header: operator }
+          operator_org_type: { column: Z, header: operator_org_type }
+          owner: { column: AA, header: owner }
+          owner_org_type: { column: AB, header: owner_org_type }
+          data_owner: { column: AC, header: data_owner }
+          data_owner_org_type: { column: AD, header: data_owner_org_type }
+          data_provider: { column: AE, header: data_provider }
+          data_provider_org_type: { column: AF, header: data_provider_org_type }
+          last_modification: { column: AG, header: last_modification }
+          geom: { column: AH, header: geometry (WKT) }
+          geom_detail: { column: AI, header: geometry_detail (WKT) }
+      reach:
+        sheet: reach_data
+        columns:
+          tid: { column: A, header: tid }
+          year_of_construction: { column: B, header: year_of_construction }
+          structure_condition: { column: C, header: structure_condition }
+          remark: { column: D, header: remark }
+          identifier: { column: E, header: identifier }
+          financing: { column: F, header: financing }
+          function_hierarchic: { column: G, header: function_hierarchic }
+          function_hierarchic_group: { column: H, header: function_hierarchic_group }
+          function_hydraulic: { column: I, header: function_hydraulic }
+          elevation_accuracy_to: { column: J, header: elevation_accuracy_to }
+          elevation_accuracy_from: { column: K, header: elevation_accuracy_from }
+          hydraulic_load_current: { column: L, header: hydraulic_load_current }
+          level_to: { column: M, header: level_to }
+          level_from: { column: N, header: level_from }
+          length_effective: { column: O, header: length_effective }
+          horizontal_positioning: { column: P, header: horizontal_positioning }
+          leak_protection: { column: Q, header: leak_protection }
+          clear_width: { column: R, header: clear_width }
+          clear_height: { column: S, header: clear_height }
+          material: { column: T, header: material }
+          usage_planned: { column: U, header: usage_planned }
+          usage_current: { column: V, header: usage_current }
+          fk_wastewater_structure: { column: W, header: fk_wastewater_structure }
+          fk_reach_point_to: { column: X, header: fk_reach_point_to }
+          fk_reach_point_from: { column: Y, header: fk_reach_point_from }
+          profile_type: { column: Z, header: profile_type }
+          relining_kind: { column: AA, header: relining_kind }
+          reliner_nominal_size: { column: AB, header: reliner_nominal_size }
+          renovation_necessity: { column: AC, header: renovation_necessity }
+          status: { column: AD, header: status }
+          wall_roughness: { column: AE, header: wall_roughness }
+          rv_base_year: { column: AF, header: rv_base_year }
+          rv_construction_type: { column: AG, header: rv_construction_type }
+          replacement_value: { column: AH, header: replacement_value }
+          condition_survey_year: { column: AI, header: condition_survey_year }
+          operator: { column: AJ, header: operator }
+          operator_org_type: { column: AK, header: operator_org_type }
+          owner: { column: AL, header: owner }
+          owner_org_type: { column: AM, header: owner_org_type }
+          fk_node_to: { column: AN, header: fk_node_to }
+          fk_node_from: { column: AO, header: fk_node_from }
+          fk_reach_to: { column: AP, header: fk_reach_to }
+          fk_pipe_profile: { column: AQ, header: fk_pipe_profile }
+          data_owner: { column: AR, header: data_owner }
+          data_owner_org_type: { column: AS, header: data_owner_org_type }
+          data_provider: { column: AT, header: data_provider }
+          data_provider_org_type: { column: AU, header: data_provider_org_type }
+          last_modification: { column: AV, header: last_modification }
+          geom: { column: AW, header: geometry (WKT) }
+      cantonMatrix:
+        sheet: raw_data
+        columns: { tabelle: A, attribut: B, anzahl_total: C, anzahl_paa: D, anzahl_saa: E, anzahl_null: F, anzahl_null_paa: G, anzahl_null_saa: H }
 pipelines:
   - id: vsa_checker_analytics
     display_name:

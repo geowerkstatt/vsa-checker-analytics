@@ -889,3 +889,116 @@ h.t_ili_tid AS tid,
               e.category;
 INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_category_leitung', 'features', 'v_error_category_leitung', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
 INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_category_leitung', 'geom', 'LINESTRING', 2056, 0, 0);
+
+CREATE VIEW v_error_error_teileinzugsgebiet AS
+SELECT
+h.T_Id AS fid,
+h.t_ili_tid AS tid,
+           e.error AS error,
+           h.perimeter AS geom
+      FROM ca_error_data e
+           JOIN
+           teileinzugsgebiet h ON e.tid = h.t_ili_tid
+     WHERE e.class LIKE 'Teileinzugsgebiet'
+     GROUP BY h.t_ili_tid,
+              e.error;
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_error_teileinzugsgebiet', 'features', 'v_error_error_teileinzugsgebiet', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
+INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_error_teileinzugsgebiet', 'geom', 'CURVEPOLYGON', 2056, 0, 0);
+
+CREATE VIEW v_error_category_teileinzugsgebiet AS
+SELECT
+h.T_Id AS fid,
+h.t_ili_tid AS tid,
+           e.category AS category,
+           h.perimeter AS geom
+      FROM ca_error_data e
+           JOIN
+           teileinzugsgebiet h ON e.tid = h.t_ili_tid
+     WHERE e.class LIKE 'Teileinzugsgebiet'
+     GROUP BY h.t_ili_tid,
+              e.category;
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_error_category_teileinzugsgebiet', 'features', 'v_error_category_teileinzugsgebiet', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
+INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_error_category_teileinzugsgebiet', 'geom', 'CURVEPOLYGON', 2056, 0, 0);
+
+CREATE VIEW v_vsa_teileinzugsgebiet AS
+SELECT
+t.T_Id AS fid,
+t.T_Ili_Tid AS tid,
+t.abflussbegrenzung_geplant AS runoff_limit_planned,
+t.abflussbegrenzung_ist AS runoff_limit_current,
+t.abflussbeiwert_rw_geplant AS discharge_coefficient_rw_planned,
+t.abflussbeiwert_rw_ist AS discharge_coefficient_rw_current,
+t.abflussbeiwert_sw_geplant AS discharge_coefficient_ww_planned,
+t.abflussbeiwert_sw_ist AS discharge_coefficient_ww_current,
+t.befestigungsgrad_rw_geplant AS seal_factor_rw_planned,
+t.befestigungsgrad_rw_ist AS seal_factor_rw_current,
+t.befestigungsgrad_sw_geplant AS seal_factor_ww_planned,
+t.befestigungsgrad_sw_ist AS seal_factor_ww_current,
+t.bemerkung AS remark,
+t.bezeichnung AS identifier,
+t.direkteinleitung_in_gewaesser_geplant AS direct_discharge_planned,
+t.direkteinleitung_in_gewaesser_ist AS direct_discharge_current,
+t.einwohnerdichte_geplant AS population_density_planned,
+t.einwohnerdichte_ist AS population_density_current,
+t.entwaesserungssystem_geplant AS drainage_system_planned,
+t.entwaesserungssystem_ist AS drainage_system_current,
+t.flaeche AS surface_area,
+t.fremdwasseranfall_geplant AS sewer_infiltration_water_production_planned,
+t.fremdwasseranfall_ist AS sewer_infiltration_water_production_current,
+t.perimeter AS geom,
+t.retention_geplant AS retention_planned,
+t.retention_ist AS retention_current,
+t.schmutzabwasseranfall_geplant AS waste_water_production_planned,
+t.schmutzabwasseranfall_ist AS waste_water_production_current,
+t.versickerung_geplant AS infiltration_planned,
+t.versickerung_ist AS infiltration_current,
+t.knoten_rw_istref AS fk_node_rw_current,
+t.knoten_rw_geplantref AS fk_node_rw_planned,
+t.knoten_sw_istref AS fk_node_ww_current,
+t.knoten_sw_geplantref AS fk_node_ww_planned,
+t.sbw_rw_istref_sk_duekeroberhaupt AS fk_sb_rw_current_lc_syphon_head,
+t.sbw_rw_istref_sk_regenrueckhaltebecken_kanal AS fk_sb_rw_current_lc_stormwater_retention_channel,
+t.sbw_rw_istref_sk_trennbauwerk AS fk_sb_rw_current_lc_separating_structure,
+t.sbw_rw_istref_sk_einleitstelle AS fk_sb_rw_current_lc_discharge_point,
+t.sbw_rw_istref_sk_regenueberlauf AS fk_sb_rw_current_lc_stormwater_overflow,
+t.sbw_rw_istref_sk_regenueberlaufbecken AS fk_sb_rw_current_lc_stormwater_overflow_tank,
+t.sbw_rw_istref_sk_pumpwerk AS fk_sb_rw_current_lc_pump_station,
+t.sbw_rw_istref_sk_autonome_messstelle AS fk_sb_rw_current_lc_autonomous_measuring_point,
+t.sbw_rw_istref_sk_uebrige AS fk_sb_rw_current_lc_other,
+t.sbw_rw_geplantref_sk_duekeroberhaupt AS fk_sb_rw_planned_lc_syphon_head,
+t.sbw_rw_geplantref_sk_regenrueckhaltebecken_kanal AS fk_sb_rw_planned_lc_stormwater_retention_channel,
+t.sbw_rw_geplantref_sk_trennbauwerk AS fk_sb_rw_planned_lc_separating_structure,
+t.sbw_rw_geplantref_sk_einleitstelle AS fk_sb_rw_planned_lc_discharge_point,
+t.sbw_rw_geplantref_sk_regenueberlauf AS fk_sb_rw_planned_lc_stormwater_overflow,
+t.sbw_rw_geplantref_sk_regenueberlaufbecken AS fk_sb_rw_planned_lc_stormwater_overflow_tank,
+t.sbw_rw_geplantref_sk_pumpwerk AS fk_sb_rw_planned_lc_pump_station,
+t.sbw_rw_geplantref_sk_autonome_messstelle AS fk_sb_rw_planned_lc_autonomous_measuring_point,
+t.sbw_rw_geplantref_sk_uebrige AS fk_sb_rw_planned_lc_other,
+t.sbw_sw_istref_sk_duekeroberhaupt AS fk_sb_ww_current_lc_syphon_head,
+t.sbw_sw_istref_sk_regenrueckhaltebecken_kanal AS fk_sb_ww_current_lc_stormwater_retention_channel,
+t.sbw_sw_istref_sk_trennbauwerk AS fk_sb_ww_current_lc_separating_structure,
+t.sbw_sw_istref_sk_einleitstelle AS fk_sb_ww_current_lc_discharge_point,
+t.sbw_sw_istref_sk_regenueberlauf AS fk_sb_ww_current_lc_stormwater_overflow,
+t.sbw_sw_istref_sk_regenueberlaufbecken AS fk_sb_ww_current_lc_stormwater_overflow_tank,
+t.sbw_sw_istref_sk_pumpwerk AS fk_sb_ww_current_lc_pump_station,
+t.sbw_sw_istref_sk_autonome_messstelle AS fk_sb_ww_current_lc_autonomous_measuring_point,
+t.sbw_sw_istref_sk_uebrige AS fk_sb_ww_current_lc_other,
+t.sbw_sw_geplantref_sk_duekeroberhaupt AS fk_sb_ww_planned_lc_syphon_head,
+t.sbw_sw_geplantref_sk_regenrueckhaltebecken_kanal AS fk_sb_ww_planned_lc_stormwater_retention_channel,
+t.sbw_sw_geplantref_sk_trennbauwerk AS fk_sb_ww_planned_lc_separating_structure,
+t.sbw_sw_geplantref_sk_einleitstelle AS fk_sb_ww_planned_lc_discharge_point,
+t.sbw_sw_geplantref_sk_regenueberlauf AS fk_sb_ww_planned_lc_stormwater_overflow,
+t.sbw_sw_geplantref_sk_regenueberlaufbecken AS fk_sb_ww_planned_lc_stormwater_overflow_tank,
+t.sbw_sw_geplantref_sk_pumpwerk AS fk_sb_ww_planned_lc_pump_station,
+t.sbw_sw_geplantref_sk_autonome_messstelle AS fk_sb_ww_planned_lc_autonomous_measuring_point,
+t.sbw_sw_geplantref_sk_uebrige AS fk_sb_ww_planned_lc_other,
+o1.bezeichnung AS data_owner,
+o1.organisationstyp AS data_owner_org_type,
+o2.bezeichnung AS data_provider,
+o2.organisationstyp AS data_provider_org_type,
+t.letzte_aenderung AS last_modification
+FROM teileinzugsgebiet t
+    LEFT JOIN organisation o1 ON t.datenherrref = o1.t_id
+    LEFT JOIN organisation o2 ON t.datenlieferantref = o2.t_id;
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) VALUES ('v_vsa_teileinzugsgebiet', 'features', 'v_vsa_teileinzugsgebiet', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 2480000.0, 1070000.0, 2840000.0, 1300000.0, 2056);
+INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('v_vsa_teileinzugsgebiet', 'geom', 'CURVEPOLYGON', 2056, 0, 0);

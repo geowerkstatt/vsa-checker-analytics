@@ -2,9 +2,9 @@
 
 Der Error Overview Export Prozess liest die materialisierten Fehlertabellen aus
 dem von der [Geopackage Generation](vsa-geopackage-generation.md) erzeugten
-GeoPackage und exportiert sie in eine Excel-Arbeitsmappe (XLSX) mit zwei
-konfigurierbaren Datenblättern und optionalen Pivot-Übersichtsblättern für die
-WK- und GEP-Prioritäten.
+GeoPackage und exportiert sie zusammen mit [Objektstatistiken](#objektstatistiken)
+für Teileinzugsgebiete, Knoten und Leitungen in eine Excel-Arbeitsmappe (XLSX).
+Jedes Datenblatt und die Pivot-Blätter darüber sind auf dieselbe Weise konfiguriert.
 
 Zusätzlich befüllt der Prozess eine Kopie der kantonalen Fehlermatrix-Vorlage
 (`ErrorMatrixKanton.xlsx`) mit der Attribut-Statistik aus `ca_statistics_attribute`
@@ -18,52 +18,76 @@ ist.
 ## Konfiguration
 
 Alle Konfigurationsparameter werden aus der Pipeline-YAML aufgelöst
-(`default_config` / `process_config_overwrites`). Blattnamen, Spaltenpositionen
-und Anzeige-Header sind vollständig konfigurationsgesteuert, sodass Änderungen am
-Excel-Layout keine Codeänderungen erfordern.
+(`default_config` / `process_config_overwrites`). Jedes Datenblatt wird auf dieselbe
+Weise beschrieben, Fehlerblätter wie Statistikblätter: Blattname und Spalten. Das
+Rohdatenblatt der kantonalen Fehlermatrix ebenso, nur ohne Header. Die Pivot-Blätter
+über den Datenblättern sind fest im Code definiert (siehe [Pivot-Blätter](#pivot-blätter)).
 
-| Parameter                      | Typ                          | Beschreibung                                                     |
-|--------------------------------|------------------------------|-----------------------------------------------------------------|
-| `errorDataSheet`               | `string`                     | Excel-Blattname für den `ca_error_data`-Export.                 |
-| `errorDataAttributeMapping`    | `IDictionary<string,string>` | Bildet Attribut-Keys (SQLite-Spaltennamen) auf Excel-Header-Anzeigenamen ab. |
-| `errorDataColumnMapping`       | `IDictionary<string,string>` | Bildet dieselben Attribut-Keys auf Excel-Spaltenbuchstaben ab (A, B, ...). |
-| `errorObjectSheet`             | `string`                     | Excel-Blattname für den `ca_error_object`-Export.               |
-| `errorObjectAttributeMapping`  | `IDictionary<string,string>` | Bildet Attribut-Keys auf Anzeigenamen für das Objektblatt ab.   |
-| `errorObjectColumnMapping`     | `IDictionary<string,string>` | Bildet dieselben Attribut-Keys auf Spaltenbuchstaben für das Objektblatt ab. |
-| `overviewWkSheet`              | `string?`                    | Blattname für die WK-Pivot-Übersicht. `null` zum Überspringen.  |
-| `overviewGepSheet`             | `string?`                    | Blattname für die GEP-Pivot-Übersicht. `null` zum Überspringen. |
-| `overviewRowFields`            | `IList<string>?`             | Attribut-Keys für die Pivot-Zeilenfelder (nach dem Prioritätsfeld). |
-| `overviewFilterFields`         | `IList<string>?`             | Attribut-Keys für die Pivot-Berichtsfilterfelder.               |
-| `overviewValueField`           | `string?`                    | Attribut-Key für das Pivot-Zählwertfeld.                        |
-| `overviewValueName`            | `string?`                    | Anzeigename für die Pivot-Wertespalte.                          |
-| `cantonErrorObjectSheet`       | `string`                     | Blattname des Rohdatenblatts in der kantonalen Fehlermatrix-Vorlage (`raw_data`). |
-| `cantonErrorColumnMapping`     | `IDictionary<string,string>` | Bildet Attribut-Keys von `ca_statistics_attribute` auf Excel-Spaltenbuchstaben im Rohdatenblatt ab. |
+| Parameter       | Typ                  | Beschreibung |
+|-----------------|----------------------|--------------|
+| `errorData`     | `DataSheetConfig`    | Blatt der Fehler (`ca_error_data`); die Statusmeldung zählt seine Zeilen. |
+| `errorObject`   | `DataSheetConfig`    | Blatt der Fehlerobjekte (`ca_error_object`). |
+| `catchmentArea` | `DataSheetConfig`    | Statistikblatt der Teileinzugsgebiete (`v_vsa_teileinzugsgebiet`). |
+| `node`          | `DataSheetConfig`    | Statistikblatt der Knoten (`v_vsa_knoten` plus `geom_detail`, die Detailgeometrie). |
+| `reach`         | `DataSheetConfig`    | Statistikblatt der Leitungen (`v_vsa_leitung` plus `function_hierarchic_group`, PAA oder SAA). |
+| `cantonMatrix`  | `CantonMatrixConfig` | Rohdatenblatt der kantonalen Fehlermatrix-Vorlage (`ca_statistics_attribute`), siehe [Kantonale Fehlermatrix](#kantonale-fehlermatrix). |
 
-### Mapping-Validierung
+Die Quelle jedes Blatts (Tabelle, View oder Unterabfrage) ist im Code festgelegt; die
+Konfiguration wählt daraus die Attribute. Ein Datenblatt sieht so aus:
 
-Das `attributeMapping` und das `columnMapping` jedes Blatts müssen exakt
-dieselbe Menge an Keys definieren. Eine Abweichung (Key im einen vorhanden, im
-anderen nicht) führt zur Konstruktionszeit zu einer `ArgumentException`, die die
-abweichenden Keys auflistet.
+```yaml
+reach:
+  sheet: reach_data
+  columns:
+    tid: { column: A, header: tid }
+    geom: { column: AW, header: geometry (WKT) }
+```
 
-### Pivot-Übersichts-Validierung
+`columns` bildet jeden Attribut-Key der Quelle auf Spaltenbuchstabe und Header ab.
 
-Wenn entweder `overviewWkSheet` oder `overviewGepSheet` gesetzt ist, müssen alle
-übrigen `overview*`-Parameter angegeben werden. Jeder Attribut-Key in
-`overviewRowFields`, `overviewFilterFields` und `overviewValueField` muss in
-`errorDataAttributeMapping` vorhanden sein; ein fehlender Key führt zur
-Konstruktionszeit zu einer `ArgumentException`. Das WK-Blatt verwendet das
-Attribut `uc` als erstes Zeilenfeld, das GEP-Blatt das Attribut `gsp`.
+### Pivot-Blätter
+
+Die Pivot-Blätter sind fest im Code definiert. Ihre Felder sind Attribut-Keys, die
+Spalten ihres Datenblatts müssen sie deshalb enthalten.
+
+| Datenblatt | Pivot-Blatt | Zeilenfelder | Filter | Werte |
+|------------|-------------|--------------|--------|-------|
+| `errorData` | `Uebersicht WK` | `uc`, `class`, `error` | `check_type`, `function_hierarchic`, `owner`, `status` | Anzahl `fid` («Anzahl Fehler») |
+| `errorData` | `Uebersicht GEP` | `gsp`, `class`, `error` | wie WK | wie WK |
+| `catchmentArea` | `drainage_system_current` | `drainage_system_current` | | Anzahl und Anteil `tid` |
+| `node` | `function` | `function_hierarchic`, `function` | | Anzahl und Anteil `tid` |
+| `reach` | `function_hierarchic` | `function_hierarchic` | | Anzahl und Anteil `tid` |
+| `reach` | `usage_current` | `function_hierarchic_group`, `usage_current` | | Anzahl und Anteil `tid` |
+
+Die Übersichten beginnen in A1 (die Filter oben), ohne Zwischensummen, Spalte A mit
+Breite 105 und Spalte B mit Breite 13. Die Statistik-Pivots beginnen wie in den
+Vorlagen in A3, mit Zwischensummen je Gruppe.
+
+### Validierung
+
+Beim Start lehnt der Prozess mit einer `ArgumentException` ab, bei den Datenblättern wie
+beim Rohdatenblatt der kantonalen Fehlermatrix: ein Blatt ohne Namen oder Spalten, einen
+Attribut-Key, der kein einfacher Spaltenname ist, eine Spalte mit ungültigem Buchstaben
+und zwei Attribute in derselben Spalte. Bei den Datenblättern zusätzlich: eine Spalte
+ohne Header, eine fehlende Spalte, die ein Pivot braucht, und doppelte Blattnamen in der
+Arbeitsmappe (ohne Rücksicht auf Gross- und Kleinschreibung). Fehlt die Quelle eines
+Datenblatts im GeoPackage, scheitert der Lauf beim Lesen.
 
 ### Kantonale Fehlermatrix
 
-`cantonErrorColumnMapping` bildet die acht Spalten von `ca_statistics_attribute`
-(`tabelle`, `attribut`, `anzahl_total`, `anzahl_paa`, `anzahl_saa`, `anzahl_null`,
-`anzahl_null_paa`, `anzahl_null_saa`) auf Spaltenbuchstaben des Rohdatenblatts der
-Vorlage ab. Anders als die Fehlerdatenblätter hat das Rohdatenblatt **keine
-Kopfzeile**: die Statistikzeilen werden ab Zeile 1 geschrieben. Für dieses Mapping
-gibt es keine Startup-Validierung; es adressiert schlicht die Spalten, die die
-Vorlage im Rohdatenblatt erwartet. Die View liefert zusätzlich eine
+`cantonMatrix` beschreibt das Rohdatenblatt der Vorlage wie ein Datenblatt, aber ohne
+Header:
+
+```yaml
+cantonMatrix:
+  sheet: raw_data
+  columns: { tabelle: A, attribut: B, anzahl_total: C, anzahl_paa: D, anzahl_saa: E, anzahl_null: F, anzahl_null_paa: G, anzahl_null_saa: H }
+```
+
+`columns` bildet die acht Spalten von `ca_statistics_attribute` auf die
+Spaltenbuchstaben ab, die die Vorlage im Rohdatenblatt erwartet. Anders als die
+Datenblätter hat das Rohdatenblatt **keine Kopfzeile**: die Statistikzeilen werden ab
+Zeile 1 geschrieben. Die View liefert zusätzlich eine
 `sortierung`-Spalte, die die Zeilenreihenfolge festlegt und beim Rücklesen für
 `ORDER BY sortierung` verwendet wird (nicht ins Excel geschrieben); so entsprechen
 die Zeilen den fest verdrahteten Zellbezügen der Validierungsblätter der Vorlage.
@@ -72,7 +96,7 @@ die Zeilen den fest verdrahteten Zellbezügen der Validierungsblätter der Vorla
 
 | Parameter    | Quelle                | Typ             | Beschreibung                                            |
 |--------------|-----------------------|-----------------|--------------------------------------------------------|
-| `geopackage` | Geopackage Generation | `IPipelineFile` | Das befüllte GeoPackage mit `ca_error_data`, `ca_error_object` und `ca_statistics_attribute`. |
+| `geopackage` | Geopackage Generation | `IPipelineFile` | Das befüllte GeoPackage mit `ca_error_data`, `ca_error_object`, `ca_statistics_attribute` und den Views `v_vsa_teileinzugsgebiet`, `v_vsa_knoten` und `v_vsa_leitung`. |
 | `cantonErrorMatrixTemplate` | Ressourcen (`${file()}`) | `IPipelineFile` | Excel-Vorlage der kantonalen Fehlermatrix (`ErrorMatrixKanton.xlsx`), direkt aus dem Ressourcenverzeichnis injiziert. |
 
 ## Output
@@ -88,20 +112,20 @@ die Zeilen den fest verdrahteten Zellbezügen der Validierungsblätter der Vorla
 ## Verarbeitung
 
 1. Das GeoPackage wird über `Microsoft.Data.Sqlite` schreibgeschützt geöffnet.
-2. Für jedes konfigurierte Blatt (`ca_error_data`, `ca_error_object`):
-   - Ein Arbeitsblatt wird mit dem konfigurierten Blattnamen erstellt.
-   - Zeile 1 wird mit den Header-Anzeigenamen aus dem Attribut-Mapping befüllt,
-     platziert an den durch das Spalten-Mapping definierten Spaltenpositionen.
-   - Alle Zeilen der Quelltabelle werden abgefragt (nur die gemappten Spalten)
-     und ab Zeile 2 geschrieben.
-   - Zellwerte behalten ihren SQLite-Typ: Ganzzahlen und Gleitkommazahlen
-     bleiben in Excel numerisch, Text bleibt Text, NULL-Zellen bleiben leer.
-3. Falls konfiguriert, werden Pivot-Übersichtsblätter erstellt. Jedes Blatt
-   enthält eine ClosedXML-Pivot-Tabelle, die auf den verwendeten Bereich des
-   Fehlerdatenblatts verweist. Die Pivot-Tabelle gruppiert Fehler nach
-   Prioritätsstufe (WK oder GEP), Klasse und Fehlertyp, mit konfigurierbaren
-   Berichtsfiltern und einer Zählaggregation. Spalte A wird auf Breite 105 und
-   Spalte B auf Breite 13 gesetzt.
+2. Zuerst werden alle fünf Datenblätter gelesen (`DataSheetReader`): von jeder
+   Quelle die konfigurierten Attribute, als unveränderliche Datensätze (`DataSheet`
+   mit den `PivotSheet`s darüber). Geometrien werden dabei als WKT gelesen.
+3. Danach schreibt der Prozess die Arbeitsmappe, für alle Blätter auf dieselbe
+   Weise:
+   - Ein Datenblatt erhält in Zeile 1 die Header und ab Zeile 2 die Zeilen, mit
+     Autofilter und fixierter Kopfzeile. Zellwerte behalten ihren SQLite-Typ:
+     Ganzzahlen und Gleitkommazahlen bleiben in Excel numerisch, Text bleibt
+     Text, NULL-Zellen bleiben leer.
+   - Jedes Pivot-Blatt enthält eine ClosedXML-Pivot-Tabelle über den geschriebenen
+     Bereich seines Datenblatts und steht vor diesem Datenblatt.
+   - Reihenfolge: Übersicht WK, Übersicht GEP, Fehlerdaten, Fehlerobjekte, dann je
+     Objektklasse die Pivot-Blätter und ihr Rohdatenblatt. Die Mappe öffnet auf dem
+     ersten Blatt.
 4. Die Arbeitsmappe wird über ClosedXML in eine Pipeline-Output-Datei
    geschrieben (`ErrorOverview`).
 5. Die kantonale Fehlermatrix wird befüllt (`ExportCantonMatrixAsync`):
@@ -109,8 +133,8 @@ die Zeilen den fest verdrahteten Zellbezügen der Validierungsblätter der Vorla
      Kopie der Vorlage `ErrorMatrixKanton.xlsx` angelegt und in place bearbeitet.
    - Ist die Tabelle `ca_statistics_attribute` vorhanden, werden ihre Zeilen
      (`ORDER BY sortierung`) aus derselben schreibgeschützten Verbindung in das
-     Rohdatenblatt (`cantonErrorObjectSheet`) geschrieben: jeder Attribut-Key in die
-     per `cantonErrorColumnMapping` definierte Spalte, ab Zeile 1 und ohne Kopfzeile.
+     Rohdatenblatt (`cantonMatrix.sheet`) geschrieben: jeder Attribut-Key in seine
+     Spalte aus `cantonMatrix.columns`, ab Zeile 1 und ohne Kopfzeile.
      Zellwerte behalten ihren SQLite-Typ (Ganzzahl / Gleitkommazahl bleiben
      numerisch); NULL-Werte werden übersprungen, die Zelle bleibt leer.
    - Fehlt `ca_statistics_attribute` (z.B. bei minimalen Testfixtures), bleibt das
@@ -121,3 +145,21 @@ die Zeilen den fest verdrahteten Zellbezügen der Validierungsblätter der Vorla
      `#REF!` machen.
    - Zum Schluss wird das erste Arbeitsblatt wieder aktiviert, damit die Mappe beim
      Öffnen auf dem Validierungsblatt steht und nicht auf dem Rohdatenblatt.
+
+## Objektstatistiken
+
+Die Statistikblätter (`catchmentArea`, `node`, `reach`) bilden mit ihren Pivot-Blättern
+die Vorlagen `statistics_catchment_area.xlsx`, `statistics_node.xlsx` und
+`statistics_reach.xlsx` aus [Issue #71](https://github.com/geowerkstatt/vsa-checker-analytics/issues/71)
+ab. Die Spalten stehen in der Pipeline-YAML, die Pivots fest im Code.
+
+- Die Quelle der Knoten ergänzt `v_vsa_knoten` um `geom_detail` (`knoten.detailgeometrie`),
+  die der Leitungen `v_vsa_leitung` um `function_hierarchic_group`: die Obergruppe von
+  `function_hierarchic`, der Teil vor dem ersten Punkt (`PAA.Sammelkanal` → `PAA`), wie mit
+  dem PO abgesprochen.
+- Die Pivots zählen `tid` («Anzahl von tid») und zeigen den Anteil am Total («Anteil»,
+  Format 0.00 %), mit Zwischensummen je Gruppe. Die Vorlage der Teileinzugsgebiete
+  gruppierte versehentlich nach `direct_discharge_current`; gemeint ist laut PO
+  `drainage_system_current`.
+- Geometrien werden als WKT geschrieben. Excel fasst höchstens 32'767 Zeichen pro Zelle;
+  längere oder nicht lesbare Geometrien bleiben leer, und eine Warnung nennt ihre Anzahl.
