@@ -332,7 +332,7 @@ pipelines:
           checkerCsvT: "${step_output(vsa_matcher.CheckerCsvT)}"
           checkerCsvA: "${step_output(vsa_matcher.CheckerCsvA)}"
           checkerCsvFp: "${step_output(vsa_matcher.CheckerCsvFp)}"
-          errorMatrix: "${file(errorMatrix.xlsx)}"
+          errorMatrix: "${file(vsa-checker-analytics/errorMatrix.xlsx)}"
           language: "${step_output(vsa_matcher.Language)}"
           modelVersion: "${step_output(vsa_matcher.ModelVersion)}"
         output_actions:
@@ -366,7 +366,7 @@ pipelines:
                   fr: "Questa operazione viene eseguita solo sui modelli tedeschi"
         input:
           geopackage: "${step_output(geopackage_generation.GeneratedGeopackage)}"
-          cantonErrorMatrixTemplate: "${file(errorMatrixKanton_de.xlsx)}"
+          cantonErrorMatrixTemplate: "${file(vsa-checker-analytics/errorMatrixKanton_de.xlsx)}"
         output_actions:
           - property: ErrorOverview
             actions:
@@ -395,7 +395,7 @@ pipelines:
                   fr: "Questa operazione viene eseguita solo sui modelli francesi"
         input:
           geopackage: "${step_output(geopackage_generation.GeneratedGeopackage)}"
-          cantonErrorMatrixTemplate: "${file(errorMatrixKanton_fr.xlsx)}"
+          cantonErrorMatrixTemplate: "${file(vsa-checker-analytics/errorMatrixKanton_fr.xlsx)}"
         output_actions:
           - property: ErrorOverview
             actions:
