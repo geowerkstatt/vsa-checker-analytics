@@ -12,7 +12,7 @@ jobs:
     name: Build plugin and create a new GitHub release
     permissions:
       contents: write
-      packages: read
+      packages: write
 
     steps:
       - name: Checkout repository
@@ -37,6 +37,22 @@ jobs:
         run: |
           cd publish
           zip -r ../VSACheckerAnalytics-v${{ env.VERSION }}.zip .
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push plugin image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/geowerkstatt/vsa-checker-analytics:${{ env.VERSION }}
+            ghcr.io/geowerkstatt/vsa-checker-analytics:latest
 
       - name: Create GitHub release with asset
         run: |

@@ -1,0 +1,58 @@
+name: Image
+
+on:
+  push:
+    branches:
+      - publishImages
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and push branch image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          dotnet-version: "10.0"
+
+      - name: Get image tag from branch name
+        id: image
+        run: echo "tag=${GITHUB_REF_NAME//[^a-zA-Z0-9_.-]/-}" >> "$GITHUB_OUTPUT"
+
+      - name: Authenticate to GitHub Packages
+        run: dotnet nuget update source github-geowerkstatt --username "$GITHUB_ACTOR" --password "$GITHUB_TOKEN" --store-password-in-clear-text
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish plugin
+        run: dotnet publish src/VSACheckerAnalytics/VSACheckerAnalytics.csproj -c Release -p:VersionSuffix="$IMAGE_TAG" -o publish
+        env:
+          IMAGE_TAG: ${{ steps.image.outputs.tag }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push plugin image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/geowerkstatt/vsa-checker-analytics:${{ steps.image.outputs.tag }}
