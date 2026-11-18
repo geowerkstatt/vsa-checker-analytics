@@ -15,17 +15,27 @@ Die Testdaten in `Resources/` kommen nicht ins Image.
 
 ## Release
 
-`release.yml` pusht das Image als `ghcr.io/geowerkstatt/vsa-checker-analytics:v<Version>`. Das ZIP am Release gibt es weiterhin.
+`release.yml` pusht das Image als `ghcr.io/geowerkstatt/vsa-checker-analytics:v<Version>`. Zum Image gehört eine Build-Attestation. Das ZIP am Release gibt es weiterhin.
 
-Ein Deployment sollte das Image per Digest pinnen, zum Beispiel `ghcr.io/geowerkstatt/vsa-checker-analytics:v<Version>@sha256:<Digest>`. Ein Tag allein kann später auf ein anderes Image zeigen.
+Ein Deployment übernimmt ein neues Release in drei Schritten:
 
-Zum Image gehört eine Build-Attestation. Dieser Befehl prüft, dass das Image aus dem Release-Workflow von `main` stammt:
+1. Den Digest des Tags lesen:
 
-```bash
-gh attestation verify oci://ghcr.io/geowerkstatt/vsa-checker-analytics@sha256:<Digest> \
-  --repo geowerkstatt/vsa-checker-analytics \
-  --cert-identity https://github.com/geowerkstatt/vsa-checker-analytics/.github/workflows/release.yml@refs/heads/main
-```
+   ```bash
+   docker buildx imagetools inspect ghcr.io/geowerkstatt/vsa-checker-analytics:v<Version>
+   ```
+
+2. Den Digest prüfen. Das ist Pflicht, denn im Paket können auch Images liegen, die nicht aus dem Release-Workflow von `main` stammen:
+
+   ```bash
+   gh attestation verify oci://ghcr.io/geowerkstatt/vsa-checker-analytics@sha256:<Digest> \
+     --repo geowerkstatt/vsa-checker-analytics \
+     --cert-identity https://github.com/geowerkstatt/vsa-checker-analytics/.github/workflows/release.yml@refs/heads/main
+   ```
+
+   Der Befehl schlägt fehl, wenn die Attestation fehlt oder nicht aus `release.yml` auf `main` stammt.
+
+3. Das Image per Digest pinnen, zum Beispiel `ghcr.io/geowerkstatt/vsa-checker-analytics:v<Version>@sha256:<Digest>`. Ein Tag allein kann später auf ein anderes Image zeigen.
 
 ## Einhängen
 
@@ -62,7 +72,7 @@ volumes:
       reference: ghcr.io/geowerkstatt/vsa-checker-analytics:v<Version>@sha256:<Digest>
 ```
 
-Docker Compose ab v5.5.0 hängt das Image genauso ein, mit `type: image` und `image.subpath`.
+Für `subPath` bei Image-Volumes braucht es auf den Nodes containerd ab Version 2.2.
 
 ## Ressourcen in der Pipeline
 
@@ -73,18 +83,16 @@ errorMatrix: "${file(vsa-checker-analytics/errorMatrix.xlsx)}"
 cantonErrorMatrixTemplate: "${file(vsa-checker-analytics/errorMatrixKanton_de.xlsx)}"
 ```
 
-Die GeoPackage-Vorlagen sind dagegen normale Pfade in der Konfiguration des [VSA Matchers](vsa-matcher.md). Sie brauchen den vollen Pfad. Zusammen mit den beiden Organisationstabellen sieht das so aus:
+Die GeoPackage-Vorlagen sind dagegen normale Pfade in der Konfiguration des [VSA Matchers](vsa-matcher.md). Sie brauchen den vollen Pfad. Pfade und URLs gehören in die Basis-Konfiguration von geopilot (`Pipeline:ProcessConfigs`), nicht in die Pipeline. Die Referenz-Pipeline setzt sie darum nicht. Zusammen mit den beiden Organisationstabellen sieht das als Umgebungsvariablen so aus:
 
-```yaml
-processes:
-  - id: vsa_matcher
-    implementation: VsaCheckerAnalytics.Processors.VsaMatcher.VsaMatcherProcess
-    default_config:
-      geoPackageTemplatePath2020: /resources/vsa-checker-analytics/template_ca_dssmini_2020_d.gpkg
-      geoPackageTemplatePath20201: /resources/vsa-checker-analytics/template_ca_dssmini_2020_1_d.gpkg
-      vsaOrgTableUrl2020: https://www.vsa.ch/models/organisation/vsa_organisationen.xtf
-      vsaOrgTableUrl20201: https://www.vsa.ch/models/organisation/vsa_organisationen_2020_1.xtf
+```text
+Pipeline__ProcessConfigs__VsaCheckerAnalytics.Processors.VsaMatcher.VsaMatcherProcess__geoPackageTemplatePath2020=/resources/vsa-checker-analytics/template_ca_dssmini_2020_d.gpkg
+Pipeline__ProcessConfigs__VsaCheckerAnalytics.Processors.VsaMatcher.VsaMatcherProcess__geoPackageTemplatePath20201=/resources/vsa-checker-analytics/template_ca_dssmini_2020_1_d.gpkg
+Pipeline__ProcessConfigs__VsaCheckerAnalytics.Processors.VsaMatcher.VsaMatcherProcess__vsaOrgTableUrl2020=https://www.vsa.ch/models/organisation/vsa_organisationen.xtf
+Pipeline__ProcessConfigs__VsaCheckerAnalytics.Processors.VsaMatcher.VsaMatcherProcess__vsaOrgTableUrl20201=https://www.vsa.ch/models/organisation/vsa_organisationen_2020_1.xtf
 ```
+
+Steht ein Wert zusätzlich in der Pipeline, etwa in `default_config`, startet geopilot nicht ([Kollision mit der Basis-Konfiguration](https://github.com/geowerkstatt/geopilot/blob/main/docs/pipeline/Pipelines.md#kollision-mit-der-basis-konfiguration)).
 
 ## Lokal bauen
 
