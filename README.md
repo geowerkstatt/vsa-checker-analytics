@@ -23,3 +23,7 @@ dotnet nuget add source https://nuget.pkg.github.com/GeoWerkstatt/index.json \
 ```
 
 You need to create a personal access token (PAT) with the `read:packages` scope. For more information on how to create a PAT, see the [GitHub documentation](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token).
+
+## Deployment
+
+Each release publishes a container image with the plugin and its resources. The [plugin image documentation](docs/plugin-image.md) (in German) describes how a host mounts it and how a pipeline references the resources.
