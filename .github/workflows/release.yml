@@ -3,32 +3,42 @@ name: Release
 on:
   workflow_dispatch:
 
-env:
-  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+permissions: {}
 
 jobs:
   create-release:
     runs-on: ubuntu-latest
     name: Build plugin and create a new GitHub release
+    # Only main is reviewed, so a release from another branch could ship unreviewed code
+    # (geowerkstatt/geopilot#921).
+    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 15
     permissions:
       contents: write
-      packages: read
+      # Reads the NuGet feed and pushes the image with its attestation.
+      packages: write
+      # The build attestation of the image.
+      id-token: write
+      attestations: write
+      artifact-metadata: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Set environment variables
         run: |
-          echo VERSION=$(grep -oP "(?<=<VersionPrefix>)[^<]+" Directory.Build.props).$GITHUB_RUN_NUMBER >> $GITHUB_ENV
+          echo "VERSION=$(grep -oP "(?<=<VersionPrefix>)[^<]+" Directory.Build.props).$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
 
       - name: Setup dotnet
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
         with:
           dotnet-version: "10.0"
 
       - name: Authenticate to GitHub Packages
-        run: dotnet nuget update source github-geowerkstatt --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text
+        run: dotnet nuget update source github-geowerkstatt --username "$GITHUB_ACTOR" --password "$GITHUB_TOKEN" --store-password-in-clear-text
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish plugin
         run: dotnet publish src/VSACheckerAnalytics/VSACheckerAnalytics.csproj -c Release -p:Version=${{ env.VERSION }} -o publish
@@ -38,6 +48,35 @@ jobs:
           cd publish
           zip -r ../VSACheckerAnalytics-v${{ env.VERSION }}.zip .
 
+      # The ZIP keeps all platforms for geopilot-hosting. The image only goes into Linux containers,
+      # so it holds the linux-x64 build.
+      - name: Publish plugin for the image
+        run: |
+          rm -rf publish
+          dotnet publish src/VSACheckerAnalytics/VSACheckerAnalytics.csproj -c Release -r linux-x64 -p:Version=${{ env.VERSION }} -o publish
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push plugin image
+        id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/geowerkstatt/vsa-checker-analytics:v${{ env.VERSION }}
+
+      - name: Attest plugin image
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ghcr.io/geowerkstatt/vsa-checker-analytics
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
       - name: Create GitHub release with asset
         run: |
           gh release create "v${{ env.VERSION }}" \
@@ -45,3 +84,5 @@ jobs:
             --title "${{ env.VERSION }}" \
             --generate-notes \
             "VSACheckerAnalytics-v${{ env.VERSION }}.zip"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
