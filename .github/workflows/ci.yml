@@ -36,3 +36,10 @@ jobs:
 
       - name: Test
         run: dotnet test VSACheckerAnalytics.slnx -c Release --no-build --verbosity normal
+
+      # Builds the image like the release does, but without pushing it. A broken Dockerfile or
+      # .dockerignore then fails here and not only in the next release.
+      - name: Build plugin image
+        run: |
+          dotnet publish src/VSACheckerAnalytics/VSACheckerAnalytics.csproj -c Release -r linux-x64 -o publish
+          docker build .

@@ -152,8 +152,8 @@ internal sealed class TestPipelineHost : IDisposable
     {
         [VsaMatcherImplementation] = new Parameterization
         {
-            { "geoPackageTemplatePath2020", Path.Combine(ResourcesDirectory, "template_ca_dssmini_2020_d.gpkg") },
-            { "geoPackageTemplatePath20201", Path.Combine(ResourcesDirectory, "template_ca_dssmini_2020_1_d.gpkg") },
+            { "geoPackageTemplatePath2020", Path.Combine(ResourcesDirectory, "vsa-checker-analytics", "template_ca_dssmini_2020_d.gpkg") },
+            { "geoPackageTemplatePath20201", Path.Combine(ResourcesDirectory, "vsa-checker-analytics", "template_ca_dssmini_2020_1_d.gpkg") },
             { "vsaOrgTableUrl2020", VsaOrgTableUrl2020 },
             { "vsaOrgTableUrl20201", VsaOrgTableUrl20201 },
         },
